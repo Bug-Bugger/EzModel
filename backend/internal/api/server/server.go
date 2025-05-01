@@ -5,20 +5,29 @@ import (
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/routes"
 	"github.com/Bug-Bugger/ezmodel/internal/config"
+	"github.com/Bug-Bugger/ezmodel/internal/repository"
+	"gorm.io/gorm"
 )
 
 type Server struct {
-	config *config.Config
-	router *http.ServeMux
+	config   *config.Config
+	router   *http.ServeMux
+	db       *gorm.DB
+	userRepo *repository.UserRepository
 }
 
-func New(cfg *config.Config) *Server {
+func New(cfg *config.Config, db *gorm.DB) *Server {
 	s := &Server{
 		config: cfg,
 		router: http.NewServeMux(),
+		db:     db,
 	}
 
-	routes.SetupRoutes(s.router)
+	// Initialize repositories
+	s.userRepo = repository.NewUserRepository(db)
+
+	// Setup routes
+	routes.SetupRoutes(s.router, s.userRepo)
 
 	return s
 }

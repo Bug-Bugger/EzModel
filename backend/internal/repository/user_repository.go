@@ -42,7 +42,7 @@ func (r *UserRepository) GetAll() ([]*models.User, error) {
 }
 
 func (r *UserRepository) Update(user *models.User) error {
-	result := r.db.Save(user)
+	result := r.db.Model(user).Select("name").Updates(user)
 	return result.Error
 }
 

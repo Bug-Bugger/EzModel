@@ -103,20 +103,26 @@ func (h *UserHandler) Update() http.HandlerFunc {
 			return
 		}
 
-		var user models.User
-		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		existingUser, err := h.userRepo.GetByID(id)
+		if err != nil {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+
+		var updatedFields models.User
+		if err := json.NewDecoder(r.Body).Decode(&updatedFields); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
 
-		user.ID = id
-		if err := h.userRepo.Update(&user); err != nil {
+		existingUser.Name = updatedFields.Name
+		if err := h.userRepo.Update(existingUser); err != nil {
 			http.Error(w, "Failed to update user", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(user)
+		json.NewEncoder(w).Encode(existingUser)
 	}
 }
 

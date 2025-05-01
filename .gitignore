@@ -28,3 +28,6 @@ go.work
 .AppleDouble
 .LSOverride
 Icon[]
+
+
+.env

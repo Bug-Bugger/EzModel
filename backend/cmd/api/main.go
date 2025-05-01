@@ -6,9 +6,16 @@ import (
 	"github.com/Bug-Bugger/ezmodel/internal/api/server"
 	"github.com/Bug-Bugger/ezmodel/internal/config"
 	"github.com/Bug-Bugger/ezmodel/internal/db"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Warning: No .env file found or error loading it. Using default values or environment variables.")
+	}
+
 	// Load configuration
 	cfg := config.New()
 

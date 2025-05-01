@@ -1,5 +1,9 @@
 package config
 
+import (
+	"os"
+)
+
 type Config struct {
 	Port     string
 	Env      string
@@ -15,16 +19,23 @@ type Config struct {
 
 func New() *Config {
 	cfg := &Config{
-		Port: ":8080",
-		Env:  "development",
+		Port: getEnv("PORT", ":8080"),
+		Env:  getEnv("ENV", "development"),
 	}
 
-	cfg.Database.Host = "localhost"
-	cfg.Database.Port = "5432"
-	cfg.Database.User = "hoopoe"
-	cfg.Database.Password = ""
-	cfg.Database.DBName = "ezmodel_backend"
-	cfg.Database.SSLMode = "disable"
+	cfg.Database.Host = getEnv("DB_HOST", "localhost")
+	cfg.Database.Port = getEnv("DB_PORT", "5432")
+	cfg.Database.User = getEnv("DB_USER", "postgres")
+	cfg.Database.Password = getEnv("DB_PASSWORD", "")
+	cfg.Database.DBName = getEnv("DB_NAME", "ezmodel_backend")
+	cfg.Database.SSLMode = getEnv("DB_SSL_MODE", "disable")
 
 	return cfg
+}
+
+func getEnv(key, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return defaultValue
 }

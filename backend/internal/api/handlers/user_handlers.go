@@ -6,8 +6,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
 	"github.com/Bug-Bugger/ezmodel/internal/repository"
+	"github.com/Bug-Bugger/ezmodel/internal/validation"
 )
 
 type UserHandler struct {
@@ -27,65 +29,33 @@ func (h *UserHandler) Create() http.HandlerFunc {
 			return
 		}
 
-		var user models.User
-		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		// Parse request body
+		var req dto.CreateUserRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
-		id, err := h.userRepo.Create(&user)
+		// Validate input
+		if err := validation.Validate(req); err != nil {
+			validationErrors := validation.ValidationErrors(err)
+			respondWithValidationErrors(w, validationErrors)
+			return
+		}
+
+		// Create user
+		user := &models.User{
+			Name: req.Name,
+		}
+
+		id, err := h.userRepo.Create(user)
 		if err != nil {
-			http.Error(w, "Failed to create user", http.StatusInternalServerError)
+			respondWithError(w, http.StatusInternalServerError, "Failed to create user")
 			return
 		}
 
 		user.ID = id
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(user)
-	}
-}
-
-func (h *UserHandler) GetByID() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		path := strings.TrimPrefix(r.URL.Path, "/users/")
-		id, err := strconv.ParseInt(path, 10, 64)
-		if err != nil {
-			http.Error(w, "Invalid user ID", http.StatusBadRequest)
-			return
-		}
-
-		user, err := h.userRepo.GetByID(id)
-		if err != nil {
-			http.Error(w, "User not found", http.StatusNotFound)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(user)
-	}
-}
-
-func (h *UserHandler) GetAll() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		users, err := h.userRepo.GetAll()
-		if err != nil {
-			http.Error(w, "Failed to retrieve users", http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(users)
+		respondWithSuccess(w, http.StatusCreated, "User created successfully", user)
 	}
 }
 
@@ -99,49 +69,95 @@ func (h *UserHandler) Update() http.HandlerFunc {
 		path := strings.TrimPrefix(r.URL.Path, "/users/")
 		id, err := strconv.ParseInt(path, 10, 64)
 		if err != nil {
-			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
 		}
 
 		existingUser, err := h.userRepo.GetByID(id)
 		if err != nil {
-			http.Error(w, "User not found", http.StatusNotFound)
+			respondWithError(w, http.StatusNotFound, "User not found")
 			return
 		}
 
-		var updatedFields models.User
-		if err := json.NewDecoder(r.Body).Decode(&updatedFields); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+		var req dto.UpdateUserRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
-		existingUser.Name = updatedFields.Name
+		if err := validation.Validate(req); err != nil {
+			validationErrors := validation.ValidationErrors(err)
+			respondWithValidationErrors(w, validationErrors)
+			return
+		}
+
+		existingUser.Name = req.Name
 		if err := h.userRepo.Update(existingUser); err != nil {
-			http.Error(w, "Failed to update user", http.StatusInternalServerError)
+			respondWithError(w, http.StatusInternalServerError, "Failed to update user")
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(existingUser)
+		respondWithSuccess(w, http.StatusOK, "User updated successfully", existingUser)
 	}
 }
 
-func (h *UserHandler) Delete() http.HandlerFunc {
+func (h *UserHandler) GetByID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		if r.Method != http.MethodGet {
+			respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			return
 		}
 
 		path := strings.TrimPrefix(r.URL.Path, "/users/")
 		id, err := strconv.ParseInt(path, 10, 64)
 		if err != nil {
-			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
+		user, err := h.userRepo.GetByID(id)
+		if err != nil {
+			respondWithError(w, http.StatusNotFound, "User not found")
+			return
+		}
+
+		respondWithSuccess(w, http.StatusOK, "User retrieved successfully", user)
+	}
+}
+
+func (h *UserHandler) GetAll() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+			return
+		}
+
+		users, err := h.userRepo.GetAll()
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Failed to retrieve users")
+			return
+		}
+
+		respondWithSuccess(w, http.StatusOK, "Users retrieved successfully", users)
+	}
+}
+
+func (h *UserHandler) Delete() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+			return
+		}
+
+		path := strings.TrimPrefix(r.URL.Path, "/users/")
+		id, err := strconv.ParseInt(path, 10, 64)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
 		}
 
 		if err := h.userRepo.Delete(id); err != nil {
-			http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+			respondWithError(w, http.StatusInternalServerError, "Failed to delete user")
 			return
 		}
 

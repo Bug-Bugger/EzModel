@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
 	"github.com/Bug-Bugger/ezmodel/internal/repository"
 	"github.com/Bug-Bugger/ezmodel/internal/validation"
+	"github.com/go-chi/chi/v5"
 )
 
 type UserHandler struct {
@@ -24,11 +24,6 @@ func NewUserHandler(userRepo *repository.UserRepository) *UserHandler {
 
 func (h *UserHandler) Create() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
 		// Parse request body
 		var req dto.CreateUserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -61,13 +56,8 @@ func (h *UserHandler) Create() http.HandlerFunc {
 
 func (h *UserHandler) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPut {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-
-		path := strings.TrimPrefix(r.URL.Path, "/users/")
-		id, err := strconv.ParseInt(path, 10, 64)
+		idStr := chi.URLParam(r, "id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
@@ -103,13 +93,8 @@ func (h *UserHandler) Update() http.HandlerFunc {
 
 func (h *UserHandler) GetByID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			return
-		}
-
-		path := strings.TrimPrefix(r.URL.Path, "/users/")
-		id, err := strconv.ParseInt(path, 10, 64)
+		idStr := chi.URLParam(r, "id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
@@ -127,11 +112,6 @@ func (h *UserHandler) GetByID() http.HandlerFunc {
 
 func (h *UserHandler) GetAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			return
-		}
-
 		users, err := h.userRepo.GetAll()
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, "Failed to retrieve users")
@@ -144,13 +124,8 @@ func (h *UserHandler) GetAll() http.HandlerFunc {
 
 func (h *UserHandler) Delete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete {
-			respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
-			return
-		}
-
-		path := strings.TrimPrefix(r.URL.Path, "/users/")
-		id, err := strconv.ParseInt(path, 10, 64)
+		idStr := chi.URLParam(r, "id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return

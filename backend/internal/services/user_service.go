@@ -19,7 +19,6 @@ func NewUserService(userRepo repository.UserRepositoryInterface) *UserService {
 	}
 }
 
-// Implement UserServiceInterface
 func (s *UserService) CreateUser(name string) (*models.User, error) {
 	name = strings.TrimSpace(name)
 	if len(name) < 2 {

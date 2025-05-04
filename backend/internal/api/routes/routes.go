@@ -6,7 +6,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// Now using the interface instead of concrete type
 func SetupRoutes(r *chi.Mux, userService services.UserServiceInterface) {
 	// Basic routes
 	r.Get("/", handlers.HomeHandler())

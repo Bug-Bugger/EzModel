@@ -6,28 +6,39 @@ import (
 	"github.com/Bug-Bugger/ezmodel/internal/api/routes"
 	"github.com/Bug-Bugger/ezmodel/internal/config"
 	"github.com/Bug-Bugger/ezmodel/internal/repository"
+	"github.com/Bug-Bugger/ezmodel/internal/services"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"gorm.io/gorm"
 )
 
 type Server struct {
-	config   *config.Config
-	router   *http.ServeMux
-	db       *gorm.DB
-	userRepo *repository.UserRepository
+	config      *config.Config
+	router      *chi.Mux
+	db          *gorm.DB
+	userRepo    *repository.UserRepository
+	userService *services.UserService
 }
 
 func New(cfg *config.Config, db *gorm.DB) *Server {
 	s := &Server{
 		config: cfg,
-		router: http.NewServeMux(),
+		router: chi.NewRouter(),
 		db:     db,
 	}
+
+	// Apply global middleware
+	s.router.Use(middleware.Logger)
+	s.router.Use(middleware.Recoverer)
 
 	// Initialize repositories
 	s.userRepo = repository.NewUserRepository(db)
 
+	// Initialize services
+	s.userService = services.NewUserService(s.userRepo)
+
 	// Setup routes
-	routes.SetupRoutes(s.router, s.userRepo)
+	routes.SetupRoutes(s.router, s.userService)
 
 	return s
 }

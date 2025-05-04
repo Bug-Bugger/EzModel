@@ -2,17 +2,17 @@ package routes
 
 import (
 	"github.com/Bug-Bugger/ezmodel/internal/api/handlers"
-	"github.com/Bug-Bugger/ezmodel/internal/repository"
+	"github.com/Bug-Bugger/ezmodel/internal/services"
 	"github.com/go-chi/chi/v5"
 )
 
-func SetupRoutes(r *chi.Mux, userRepo *repository.UserRepository) {
+func SetupRoutes(r *chi.Mux, userService *services.UserService) {
 	// Basic routes
 	r.Get("/", handlers.HomeHandler())
 	r.Get("/api", handlers.APIHandler())
 
 	// User routes
-	userHandler := handlers.NewUserHandler(userRepo)
+	userHandler := handlers.NewUserHandler(userService)
 
 	r.Route("/users", func(r chi.Router) {
 		r.Get("/", userHandler.GetAll())

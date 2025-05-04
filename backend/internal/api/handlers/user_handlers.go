@@ -6,19 +6,18 @@ import (
 	"strconv"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
-	"github.com/Bug-Bugger/ezmodel/internal/models"
-	"github.com/Bug-Bugger/ezmodel/internal/repository"
+	"github.com/Bug-Bugger/ezmodel/internal/services"
 	"github.com/Bug-Bugger/ezmodel/internal/validation"
 	"github.com/go-chi/chi/v5"
 )
 
 type UserHandler struct {
-	userRepo *repository.UserRepository
+	userService *services.UserService
 }
 
-func NewUserHandler(userRepo *repository.UserRepository) *UserHandler {
+func NewUserHandler(userService *services.UserService) *UserHandler {
 	return &UserHandler{
-		userRepo: userRepo,
+		userService: userService,
 	}
 }
 
@@ -38,18 +37,12 @@ func (h *UserHandler) Create() http.HandlerFunc {
 			return
 		}
 
-		// Create user
-		user := &models.User{
-			Name: req.Name,
-		}
-
-		id, err := h.userRepo.Create(user)
+		user, err := h.userService.CreateUser(req.Name)
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, "Failed to create user")
 			return
 		}
 
-		user.ID = id
 		respondWithSuccess(w, http.StatusCreated, "User created successfully", user)
 	}
 }
@@ -60,12 +53,6 @@ func (h *UserHandler) Update() http.HandlerFunc {
 		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
-			return
-		}
-
-		existingUser, err := h.userRepo.GetByID(id)
-		if err != nil {
-			respondWithError(w, http.StatusNotFound, "User not found")
 			return
 		}
 
@@ -81,13 +68,13 @@ func (h *UserHandler) Update() http.HandlerFunc {
 			return
 		}
 
-		existingUser.Name = req.Name
-		if err := h.userRepo.Update(existingUser); err != nil {
+		user, err := h.userService.UpdateUser(id, req.Name)
+		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, "Failed to update user")
 			return
 		}
 
-		respondWithSuccess(w, http.StatusOK, "User updated successfully", existingUser)
+		respondWithSuccess(w, http.StatusOK, "User updated successfully", user)
 	}
 }
 
@@ -100,7 +87,7 @@ func (h *UserHandler) GetByID() http.HandlerFunc {
 			return
 		}
 
-		user, err := h.userRepo.GetByID(id)
+		user, err := h.userService.GetUserByID(id)
 		if err != nil {
 			respondWithError(w, http.StatusNotFound, "User not found")
 			return
@@ -112,7 +99,7 @@ func (h *UserHandler) GetByID() http.HandlerFunc {
 
 func (h *UserHandler) GetAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		users, err := h.userRepo.GetAll()
+		users, err := h.userService.GetAllUsers()
 		if err != nil {
 			respondWithError(w, http.StatusInternalServerError, "Failed to retrieve users")
 			return
@@ -131,7 +118,7 @@ func (h *UserHandler) Delete() http.HandlerFunc {
 			return
 		}
 
-		if err := h.userRepo.Delete(id); err != nil {
+		if err := h.userService.DeleteUser(id); err != nil {
 			respondWithError(w, http.StatusInternalServerError, "Failed to delete user")
 			return
 		}

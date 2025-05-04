@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -12,10 +13,10 @@ import (
 )
 
 type UserHandler struct {
-	userService *services.UserService
+	userService services.UserServiceInterface
 }
 
-func NewUserHandler(userService *services.UserService) *UserHandler {
+func NewUserHandler(userService services.UserServiceInterface) *UserHandler {
 	return &UserHandler{
 		userService: userService,
 	}
@@ -37,9 +38,17 @@ func (h *UserHandler) Create() http.HandlerFunc {
 			return
 		}
 
+		// Create user through service
 		user, err := h.userService.CreateUser(req.Name)
 		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, "Failed to create user")
+			switch {
+			case errors.Is(err, services.ErrUserAlreadyExists):
+				respondWithError(w, http.StatusConflict, "User already exists")
+			case errors.Is(err, services.ErrInvalidInput):
+				respondWithError(w, http.StatusBadRequest, "Invalid input")
+			default:
+				respondWithError(w, http.StatusInternalServerError, "Failed to create user")
+			}
 			return
 		}
 
@@ -70,7 +79,14 @@ func (h *UserHandler) Update() http.HandlerFunc {
 
 		user, err := h.userService.UpdateUser(id, req.Name)
 		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, "Failed to update user")
+			switch {
+			case errors.Is(err, services.ErrUserNotFound):
+				respondWithError(w, http.StatusNotFound, "User not found")
+			case errors.Is(err, services.ErrInvalidInput):
+				respondWithError(w, http.StatusBadRequest, "Invalid input")
+			default:
+				respondWithError(w, http.StatusInternalServerError, "Failed to update user")
+			}
 			return
 		}
 
@@ -89,7 +105,11 @@ func (h *UserHandler) GetByID() http.HandlerFunc {
 
 		user, err := h.userService.GetUserByID(id)
 		if err != nil {
-			respondWithError(w, http.StatusNotFound, "User not found")
+			if errors.Is(err, services.ErrUserNotFound) {
+				respondWithError(w, http.StatusNotFound, "User not found")
+			} else {
+				respondWithError(w, http.StatusInternalServerError, "Failed to retrieve user")
+			}
 			return
 		}
 
@@ -119,7 +139,11 @@ func (h *UserHandler) Delete() http.HandlerFunc {
 		}
 
 		if err := h.userService.DeleteUser(id); err != nil {
-			respondWithError(w, http.StatusInternalServerError, "Failed to delete user")
+			if errors.Is(err, services.ErrUserNotFound) {
+				respondWithError(w, http.StatusNotFound, "User not found")
+			} else {
+				respondWithError(w, http.StatusInternalServerError, "Failed to delete user")
+			}
 			return
 		}
 

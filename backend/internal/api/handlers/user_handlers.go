@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
 	"github.com/Bug-Bugger/ezmodel/internal/validation"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 type UserHandler struct {
@@ -39,7 +39,7 @@ func (h *UserHandler) Create() http.HandlerFunc {
 		}
 
 		// Create user through service
-		user, err := h.userService.CreateUser(req.Name)
+		user, err := h.userService.CreateUser(req.Email, req.Username, req.Password, req.AvatarURL)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrUserAlreadyExists):
@@ -52,14 +52,23 @@ func (h *UserHandler) Create() http.HandlerFunc {
 			return
 		}
 
-		respondWithSuccess(w, http.StatusCreated, "User created successfully", user)
+		// Create user response without password
+		userResponse := dto.UserResponse{
+			ID:            user.ID,
+			Email:         user.Email,
+			Username:      user.Username,
+			AvatarURL:     user.AvatarURL,
+			EmailVerified: user.EmailVerified,
+		}
+
+		respondWithSuccess(w, http.StatusCreated, "User created successfully", userResponse)
 	}
 }
 
 func (h *UserHandler) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idStr := chi.URLParam(r, "id")
-		id, err := strconv.ParseInt(idStr, 10, 64)
+		id, err := uuid.Parse(idStr)
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
@@ -71,17 +80,26 @@ func (h *UserHandler) Update() http.HandlerFunc {
 			return
 		}
 
+		// Validate the fields that were provided
 		if err := validation.Validate(req); err != nil {
 			validationErrors := validation.ValidationErrors(err)
 			respondWithValidationErrors(w, validationErrors)
 			return
 		}
 
-		user, err := h.userService.UpdateUser(id, req.Name)
+		// Empty update request
+		if req.Username == nil && req.Email == nil && req.AvatarURL == nil {
+			respondWithError(w, http.StatusBadRequest, "No fields to update provided")
+			return
+		}
+
+		user, err := h.userService.UpdateUser(id, &req)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrUserNotFound):
 				respondWithError(w, http.StatusNotFound, "User not found")
+			case errors.Is(err, services.ErrUserAlreadyExists):
+				respondWithError(w, http.StatusConflict, "Email already in use")
 			case errors.Is(err, services.ErrInvalidInput):
 				respondWithError(w, http.StatusBadRequest, "Invalid input")
 			default:
@@ -90,14 +108,60 @@ func (h *UserHandler) Update() http.HandlerFunc {
 			return
 		}
 
-		respondWithSuccess(w, http.StatusOK, "User updated successfully", user)
+		userResponse := dto.UserResponse{
+			ID:            user.ID,
+			Email:         user.Email,
+			Username:      user.Username,
+			AvatarURL:     user.AvatarURL,
+			EmailVerified: user.EmailVerified,
+		}
+
+		respondWithSuccess(w, http.StatusOK, "User updated successfully", userResponse)
+	}
+}
+
+func (h *UserHandler) UpdatePassword() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := chi.URLParam(r, "id")
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
+		var req dto.UpdatePasswordRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid request body")
+			return
+		}
+
+		if err := validation.Validate(req); err != nil {
+			validationErrors := validation.ValidationErrors(err)
+			respondWithValidationErrors(w, validationErrors)
+			return
+		}
+
+		err = h.userService.UpdatePassword(id, req.Password)
+		if err != nil {
+			switch {
+			case errors.Is(err, services.ErrUserNotFound):
+				respondWithError(w, http.StatusNotFound, "User not found")
+			case errors.Is(err, services.ErrInvalidInput):
+				respondWithError(w, http.StatusBadRequest, "Invalid input")
+			default:
+				respondWithError(w, http.StatusInternalServerError, "Failed to update password")
+			}
+			return
+		}
+
+		respondWithSuccess(w, http.StatusOK, "Password updated successfully", nil)
 	}
 }
 
 func (h *UserHandler) GetByID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idStr := chi.URLParam(r, "id")
-		id, err := strconv.ParseInt(idStr, 10, 64)
+		id, err := uuid.Parse(idStr)
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
@@ -113,7 +177,15 @@ func (h *UserHandler) GetByID() http.HandlerFunc {
 			return
 		}
 
-		respondWithSuccess(w, http.StatusOK, "User retrieved successfully", user)
+		userResponse := dto.UserResponse{
+			ID:            user.ID,
+			Email:         user.Email,
+			Username:      user.Username,
+			AvatarURL:     user.AvatarURL,
+			EmailVerified: user.EmailVerified,
+		}
+
+		respondWithSuccess(w, http.StatusOK, "User retrieved successfully", userResponse)
 	}
 }
 
@@ -125,14 +197,25 @@ func (h *UserHandler) GetAll() http.HandlerFunc {
 			return
 		}
 
-		respondWithSuccess(w, http.StatusOK, "Users retrieved successfully", users)
+		var userResponses []dto.UserResponse
+		for _, user := range users {
+			userResponses = append(userResponses, dto.UserResponse{
+				ID:            user.ID,
+				Email:         user.Email,
+				Username:      user.Username,
+				AvatarURL:     user.AvatarURL,
+				EmailVerified: user.EmailVerified,
+			})
+		}
+
+		respondWithSuccess(w, http.StatusOK, "Users retrieved successfully", userResponses)
 	}
 }
 
 func (h *UserHandler) Delete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idStr := chi.URLParam(r, "id")
-		id, err := strconv.ParseInt(idStr, 10, 64)
+		id, err := uuid.Parse(idStr)
 		if err != nil {
 			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
@@ -147,6 +230,28 @@ func (h *UserHandler) Delete() http.HandlerFunc {
 			return
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		respondWithSuccess(w, http.StatusOK, "User deleted successfully", nil)
+	}
+}
+
+func (h *UserHandler) VerifyEmail() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		idStr := chi.URLParam(r, "id")
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
+		if err := h.userService.VerifyEmail(id); err != nil {
+			if errors.Is(err, services.ErrUserNotFound) {
+				respondWithError(w, http.StatusNotFound, "User not found")
+			} else {
+				respondWithError(w, http.StatusInternalServerError, "Failed to verify email")
+			}
+			return
+		}
+
+		respondWithSuccess(w, http.StatusOK, "Email verified successfully", nil)
 	}
 }

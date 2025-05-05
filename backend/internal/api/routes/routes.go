@@ -13,6 +13,8 @@ func SetupRoutes(r *chi.Mux, userService services.UserServiceInterface) {
 
 	// User routes
 	userHandler := handlers.NewUserHandler(userService)
+	authHandler := handlers.NewAuthHandler(userService)
+	r.Post("/login", authHandler.Login())
 
 	r.Route("/users", func(r chi.Router) {
 		r.Get("/", userHandler.GetAll())
@@ -22,6 +24,8 @@ func SetupRoutes(r *chi.Mux, userService services.UserServiceInterface) {
 			r.Get("/", userHandler.GetByID())
 			r.Put("/", userHandler.Update())
 			r.Delete("/", userHandler.Delete())
+			r.Post("/verify-email", userHandler.VerifyEmail())
+			r.Put("/password", userHandler.UpdatePassword())
 		})
 	})
 }

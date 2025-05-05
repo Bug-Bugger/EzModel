@@ -1,11 +1,20 @@
 package services
 
-import "github.com/Bug-Bugger/ezmodel/internal/models"
+import (
+	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
+	"github.com/Bug-Bugger/ezmodel/internal/models"
+	"github.com/google/uuid"
+)
 
 type UserServiceInterface interface {
-	CreateUser(name string) (*models.User, error)
-	GetUserByID(id int64) (*models.User, error)
+	CreateUser(email, username, password string, avatarURL string) (*models.User, error)
+	GetUserByID(id uuid.UUID) (*models.User, error)
+	GetUserByEmail(email string) (*models.User, error)
 	GetAllUsers() ([]*models.User, error)
-	UpdateUser(id int64, name string) (*models.User, error)
-	DeleteUser(id int64) error
+	UpdateUser(id uuid.UUID, req *dto.UpdateUserRequest) (*models.User, error)
+	UpdatePassword(id uuid.UUID, password string) error
+	DeleteUser(id uuid.UUID) error
+	VerifyEmail(id uuid.UUID) error
+	RecordLogin(id uuid.UUID) error
+	AuthenticateUser(email, password string) (*models.User, error)
 }

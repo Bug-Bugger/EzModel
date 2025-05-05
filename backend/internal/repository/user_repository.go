@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/Bug-Bugger/ezmodel/internal/models"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -15,17 +16,26 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 	}
 }
 
-func (r *UserRepository) Create(user *models.User) (int64, error) {
+func (r *UserRepository) Create(user *models.User) (uuid.UUID, error) {
 	result := r.db.Create(user)
 	if result.Error != nil {
-		return 0, result.Error
+		return uuid.Nil, result.Error
 	}
 	return user.ID, nil
 }
 
-func (r *UserRepository) GetByID(id int64) (*models.User, error) {
+func (r *UserRepository) GetByID(id uuid.UUID) (*models.User, error) {
 	var user models.User
-	result := r.db.First(&user, id)
+	result := r.db.First(&user, "id = ?", id)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) GetByEmail(email string) (*models.User, error) {
+	var user models.User
+	result := r.db.First(&user, "email = ?", email)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -42,11 +52,11 @@ func (r *UserRepository) GetAll() ([]*models.User, error) {
 }
 
 func (r *UserRepository) Update(user *models.User) error {
-	result := r.db.Model(user).Select("name").Updates(user)
+	result := r.db.Save(user)
 	return result.Error
 }
 
-func (r *UserRepository) Delete(id int64) error {
-	result := r.db.Delete(&models.User{}, id)
+func (r *UserRepository) Delete(id uuid.UUID) error {
+	result := r.db.Delete(&models.User{}, "id = ?", id)
 	return result.Error
 }

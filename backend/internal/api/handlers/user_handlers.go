@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
+	"github.com/Bug-Bugger/ezmodel/internal/api/responses"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
 	"github.com/Bug-Bugger/ezmodel/internal/validation"
 	"github.com/go-chi/chi/v5"
@@ -27,14 +28,14 @@ func (h *UserHandler) Create() http.HandlerFunc {
 		// Parse request body
 		var req dto.CreateUserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid request body")
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		// Validate input
 		if err := validation.Validate(req); err != nil {
 			validationErrors := validation.ValidationErrors(err)
-			respondWithValidationErrors(w, validationErrors)
+			responses.RespondWithValidationErrors(w, validationErrors)
 			return
 		}
 
@@ -43,11 +44,11 @@ func (h *UserHandler) Create() http.HandlerFunc {
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrUserAlreadyExists):
-				respondWithError(w, http.StatusConflict, "User already exists")
+				responses.RespondWithError(w, http.StatusConflict, "User already exists")
 			case errors.Is(err, services.ErrInvalidInput):
-				respondWithError(w, http.StatusBadRequest, "Invalid input")
+				responses.RespondWithError(w, http.StatusBadRequest, "Invalid input")
 			default:
-				respondWithError(w, http.StatusInternalServerError, "Failed to create user")
+				responses.RespondWithError(w, http.StatusInternalServerError, "Failed to create user")
 			}
 			return
 		}
@@ -61,7 +62,7 @@ func (h *UserHandler) Create() http.HandlerFunc {
 			EmailVerified: user.EmailVerified,
 		}
 
-		respondWithSuccess(w, http.StatusCreated, "User created successfully", userResponse)
+		responses.RespondWithSuccess(w, http.StatusCreated, "User created successfully", userResponse)
 	}
 }
 
@@ -70,26 +71,26 @@ func (h *UserHandler) Update() http.HandlerFunc {
 		idStr := chi.URLParam(r, "id")
 		id, err := uuid.Parse(idStr)
 		if err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
 		}
 
 		var req dto.UpdateUserRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid request body")
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		// Validate the fields that were provided
 		if err := validation.Validate(req); err != nil {
 			validationErrors := validation.ValidationErrors(err)
-			respondWithValidationErrors(w, validationErrors)
+			responses.RespondWithValidationErrors(w, validationErrors)
 			return
 		}
 
 		// Empty update request
 		if req.Username == nil && req.Email == nil && req.AvatarURL == nil {
-			respondWithError(w, http.StatusBadRequest, "No fields to update provided")
+			responses.RespondWithError(w, http.StatusBadRequest, "No fields to update provided")
 			return
 		}
 
@@ -97,13 +98,13 @@ func (h *UserHandler) Update() http.HandlerFunc {
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrUserNotFound):
-				respondWithError(w, http.StatusNotFound, "User not found")
+				responses.RespondWithError(w, http.StatusNotFound, "User not found")
 			case errors.Is(err, services.ErrUserAlreadyExists):
-				respondWithError(w, http.StatusConflict, "Email already in use")
+				responses.RespondWithError(w, http.StatusConflict, "Email already in use")
 			case errors.Is(err, services.ErrInvalidInput):
-				respondWithError(w, http.StatusBadRequest, "Invalid input")
+				responses.RespondWithError(w, http.StatusBadRequest, "Invalid input")
 			default:
-				respondWithError(w, http.StatusInternalServerError, "Failed to update user")
+				responses.RespondWithError(w, http.StatusInternalServerError, "Failed to update user")
 			}
 			return
 		}
@@ -116,7 +117,7 @@ func (h *UserHandler) Update() http.HandlerFunc {
 			EmailVerified: user.EmailVerified,
 		}
 
-		respondWithSuccess(w, http.StatusOK, "User updated successfully", userResponse)
+		responses.RespondWithSuccess(w, http.StatusOK, "User updated successfully", userResponse)
 	}
 }
 
@@ -125,19 +126,19 @@ func (h *UserHandler) UpdatePassword() http.HandlerFunc {
 		idStr := chi.URLParam(r, "id")
 		id, err := uuid.Parse(idStr)
 		if err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
 		}
 
 		var req dto.UpdatePasswordRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid request body")
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
 			return
 		}
 
 		if err := validation.Validate(req); err != nil {
 			validationErrors := validation.ValidationErrors(err)
-			respondWithValidationErrors(w, validationErrors)
+			responses.RespondWithValidationErrors(w, validationErrors)
 			return
 		}
 
@@ -145,16 +146,16 @@ func (h *UserHandler) UpdatePassword() http.HandlerFunc {
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrUserNotFound):
-				respondWithError(w, http.StatusNotFound, "User not found")
+				responses.RespondWithError(w, http.StatusNotFound, "User not found")
 			case errors.Is(err, services.ErrInvalidInput):
-				respondWithError(w, http.StatusBadRequest, "Invalid input")
+				responses.RespondWithError(w, http.StatusBadRequest, "Invalid input")
 			default:
-				respondWithError(w, http.StatusInternalServerError, "Failed to update password")
+				responses.RespondWithError(w, http.StatusInternalServerError, "Failed to update password")
 			}
 			return
 		}
 
-		respondWithSuccess(w, http.StatusOK, "Password updated successfully", nil)
+		responses.RespondWithSuccess(w, http.StatusOK, "Password updated successfully", nil)
 	}
 }
 
@@ -163,16 +164,16 @@ func (h *UserHandler) GetByID() http.HandlerFunc {
 		idStr := chi.URLParam(r, "id")
 		id, err := uuid.Parse(idStr)
 		if err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
 		}
 
 		user, err := h.userService.GetUserByID(id)
 		if err != nil {
 			if errors.Is(err, services.ErrUserNotFound) {
-				respondWithError(w, http.StatusNotFound, "User not found")
+				responses.RespondWithError(w, http.StatusNotFound, "User not found")
 			} else {
-				respondWithError(w, http.StatusInternalServerError, "Failed to retrieve user")
+				responses.RespondWithError(w, http.StatusInternalServerError, "Failed to retrieve user")
 			}
 			return
 		}
@@ -185,7 +186,7 @@ func (h *UserHandler) GetByID() http.HandlerFunc {
 			EmailVerified: user.EmailVerified,
 		}
 
-		respondWithSuccess(w, http.StatusOK, "User retrieved successfully", userResponse)
+		responses.RespondWithSuccess(w, http.StatusOK, "User retrieved successfully", userResponse)
 	}
 }
 
@@ -193,7 +194,7 @@ func (h *UserHandler) GetAll() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		users, err := h.userService.GetAllUsers()
 		if err != nil {
-			respondWithError(w, http.StatusInternalServerError, "Failed to retrieve users")
+			responses.RespondWithError(w, http.StatusInternalServerError, "Failed to retrieve users")
 			return
 		}
 
@@ -208,7 +209,7 @@ func (h *UserHandler) GetAll() http.HandlerFunc {
 			})
 		}
 
-		respondWithSuccess(w, http.StatusOK, "Users retrieved successfully", userResponses)
+		responses.RespondWithSuccess(w, http.StatusOK, "Users retrieved successfully", userResponses)
 	}
 }
 
@@ -217,20 +218,20 @@ func (h *UserHandler) Delete() http.HandlerFunc {
 		idStr := chi.URLParam(r, "id")
 		id, err := uuid.Parse(idStr)
 		if err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
 		}
 
 		if err := h.userService.DeleteUser(id); err != nil {
 			if errors.Is(err, services.ErrUserNotFound) {
-				respondWithError(w, http.StatusNotFound, "User not found")
+				responses.RespondWithError(w, http.StatusNotFound, "User not found")
 			} else {
-				respondWithError(w, http.StatusInternalServerError, "Failed to delete user")
+				responses.RespondWithError(w, http.StatusInternalServerError, "Failed to delete user")
 			}
 			return
 		}
 
-		respondWithSuccess(w, http.StatusOK, "User deleted successfully", nil)
+		responses.RespondWithSuccess(w, http.StatusOK, "User deleted successfully", nil)
 	}
 }
 
@@ -239,19 +240,19 @@ func (h *UserHandler) VerifyEmail() http.HandlerFunc {
 		idStr := chi.URLParam(r, "id")
 		id, err := uuid.Parse(idStr)
 		if err != nil {
-			respondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
 			return
 		}
 
 		if err := h.userService.VerifyEmail(id); err != nil {
 			if errors.Is(err, services.ErrUserNotFound) {
-				respondWithError(w, http.StatusNotFound, "User not found")
+				responses.RespondWithError(w, http.StatusNotFound, "User not found")
 			} else {
-				respondWithError(w, http.StatusInternalServerError, "Failed to verify email")
+				responses.RespondWithError(w, http.StatusInternalServerError, "Failed to verify email")
 			}
 			return
 		}
 
-		respondWithSuccess(w, http.StatusOK, "Email verified successfully", nil)
+		responses.RespondWithSuccess(w, http.StatusOK, "Email verified successfully", nil)
 	}
 }

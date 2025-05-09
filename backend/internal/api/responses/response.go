@@ -1,4 +1,4 @@
-package handlers
+package responses
 
 import (
 	"encoding/json"
@@ -14,14 +14,14 @@ func respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Write(response)
 }
 
-func respondWithError(w http.ResponseWriter, code int, message string) {
+func RespondWithError(w http.ResponseWriter, code int, message string) {
 	respondWithJSON(w, code, dto.APIResponse{
 		Success: false,
 		Message: message,
 	})
 }
 
-func respondWithValidationErrors(w http.ResponseWriter, errors map[string]string) {
+func RespondWithValidationErrors(w http.ResponseWriter, errors map[string]string) {
 	respondWithJSON(w, http.StatusBadRequest, dto.APIResponse{
 		Success: false,
 		Message: "Validation failed",
@@ -29,7 +29,7 @@ func respondWithValidationErrors(w http.ResponseWriter, errors map[string]string
 	})
 }
 
-func respondWithSuccess(w http.ResponseWriter, code int, message string, data interface{}) {
+func RespondWithSuccess(w http.ResponseWriter, code int, message string, data interface{}) {
 	respondWithJSON(w, code, dto.APIResponse{
 		Success: true,
 		Message: message,

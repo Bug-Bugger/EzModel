@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 )
 
 type Config struct {
@@ -14,6 +15,11 @@ type Config struct {
 		Password string
 		DBName   string
 		SSLMode  string
+	}
+	JWT struct {
+		Secret          string
+		AccessTokenExp  time.Duration
+		RefreshTokenExp time.Duration
 	}
 }
 
@@ -29,6 +35,13 @@ func New() *Config {
 	cfg.Database.Password = getEnv("DB_PASSWORD", "")
 	cfg.Database.DBName = getEnv("DB_NAME", "ezmodel_backend")
 	cfg.Database.SSLMode = getEnv("DB_SSL_MODE", "disable")
+
+	// JWT Configuration
+	cfg.JWT.Secret = getEnv("JWT_SECRET", "")
+	accessExp, _ := time.ParseDuration(getEnv("JWT_ACCESS_EXP", "15m"))
+	refreshExp, _ := time.ParseDuration(getEnv("JWT_REFRESH_EXP", "7d"))
+	cfg.JWT.AccessTokenExp = accessExp
+	cfg.JWT.RefreshTokenExp = refreshExp
 
 	return cfg
 }

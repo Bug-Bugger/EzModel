@@ -1,10 +1,11 @@
-## What type of PR is this? (check all applicable)
+### What type of PR is this? (check all applicable)
 
 - [ ] Refactor
 - [ ] Feature
 - [ ] Bug Fix
 - [ ] Optimization
 - [ ] Documentation Update
+- [ ] Test Update
 
 ### Summary <!-- Required -->
 
@@ -14,6 +15,8 @@
 <!-- Some examples are shown below. -->
 
 ### Notes <!-- Optional -->
+
+<!--- List any important or subtle points, future considerations, or other items of note. -->
 
 ## Checklist
 

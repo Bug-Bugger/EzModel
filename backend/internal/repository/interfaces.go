@@ -13,3 +13,14 @@ type UserRepositoryInterface interface {
 	Update(user *models.User) error
 	Delete(id uuid.UUID) error
 }
+
+type ProjectRepositoryInterface interface {
+	Create(project *models.Project) (uuid.UUID, error)
+	GetByID(id uuid.UUID) (*models.Project, error)
+	GetByOwnerID(ownerID uuid.UUID) ([]*models.Project, error)
+	GetAll() ([]*models.Project, error)
+	Update(project *models.Project) error
+	Delete(id uuid.UUID) error
+	GetWithOwner(id uuid.UUID) (*models.Project, error)
+	GetAllWithOwner() ([]*models.Project, error)
+}

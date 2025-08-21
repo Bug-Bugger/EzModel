@@ -21,7 +21,7 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 	}
 
 	// Auto Migrate the schema
-	err = db.AutoMigrate(&models.User{})
+	err = db.AutoMigrate(&models.User{}, &models.Project{})
 	if err != nil {
 		return nil, err
 	}

@@ -10,6 +10,7 @@ import (
 func SetupRoutes(
 	r *chi.Mux,
 	userService services.UserServiceInterface,
+	projectService services.ProjectServiceInterface,
 	jwtService *services.JWTService,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
@@ -20,6 +21,7 @@ func SetupRoutes(
 	// User handlers
 	userHandler := handlers.NewUserHandler(userService)
 	authHandler := handlers.NewAuthHandler(userService, jwtService)
+	projectHandler := handlers.NewProjectHandler(projectService)
 
 	// Public auth routes
 	r.Post("/login", authHandler.Login())
@@ -40,6 +42,21 @@ func SetupRoutes(
 				r.Put("/", userHandler.Update())
 				r.Delete("/", userHandler.Delete())
 				r.Put("/password", userHandler.UpdatePassword())
+			})
+		})
+
+		// Project routes
+		r.Route("/projects", func(r chi.Router) {
+			r.Post("/", projectHandler.Create())
+			r.Get("/", projectHandler.GetAll())
+			r.Get("/my", projectHandler.GetMyProjects())
+
+			r.Route("/{id}", func(r chi.Router) {
+				r.Get("/", projectHandler.GetByID())
+				r.Put("/", projectHandler.Update())
+				r.Delete("/", projectHandler.Delete())
+				r.Post("/collaborators", projectHandler.AddCollaborator())
+				r.Delete("/collaborators/{collaborator_id}", projectHandler.RemoveCollaborator())
 			})
 		})
 	})

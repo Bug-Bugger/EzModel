@@ -39,7 +39,6 @@ func SetupRoutes(
 				r.Get("/", userHandler.GetByID())
 				r.Put("/", userHandler.Update())
 				r.Delete("/", userHandler.Delete())
-				r.Post("/verify-email", userHandler.VerifyEmail())
 				r.Put("/password", userHandler.UpdatePassword())
 			})
 		})

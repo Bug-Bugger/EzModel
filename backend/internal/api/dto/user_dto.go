@@ -5,16 +5,14 @@ import (
 )
 
 type CreateUserRequest struct {
-	Email     string `json:"email" validate:"required,email"`
-	Username  string `json:"username" validate:"required,min=3,max=100"`
-	Password  string `json:"password" validate:"required,min=6"`
-	AvatarURL string `json:"avatar_url,omitempty"`
+	Email    string `json:"email" validate:"required,email"`
+	Username string `json:"username" validate:"required,min=3,max=100"`
+	Password string `json:"password" validate:"required,min=6"`
 }
 
 type UpdateUserRequest struct {
-	Username  *string `json:"username,omitempty" validate:"omitempty,min=3,max=100"`
-	Email     *string `json:"email,omitempty" validate:"omitempty,email"`
-	AvatarURL *string `json:"avatar_url,omitempty"`
+	Username *string `json:"username,omitempty" validate:"omitempty,min=3,max=100"`
+	Email    *string `json:"email,omitempty" validate:"omitempty,email"`
 }
 
 type UpdatePasswordRequest struct {
@@ -22,11 +20,9 @@ type UpdatePasswordRequest struct {
 }
 
 type UserResponse struct {
-	ID            uuid.UUID `json:"id"`
-	Email         string    `json:"email"`
-	Username      string    `json:"username"`
-	AvatarURL     string    `json:"avatar_url,omitempty"`
-	EmailVerified bool      `json:"email_verified"`
+	ID       uuid.UUID `json:"id"`
+	Email    string    `json:"email"`
+	Username string    `json:"username"`
 }
 
 type APIResponse struct {

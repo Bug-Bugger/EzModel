@@ -7,14 +7,12 @@ import (
 )
 
 type UserServiceInterface interface {
-	CreateUser(email, username, password string, avatarURL string) (*models.User, error)
+	CreateUser(email, username, password string) (*models.User, error)
 	GetUserByID(id uuid.UUID) (*models.User, error)
 	GetUserByEmail(email string) (*models.User, error)
 	GetAllUsers() ([]*models.User, error)
 	UpdateUser(id uuid.UUID, req *dto.UpdateUserRequest) (*models.User, error)
 	UpdatePassword(id uuid.UUID, password string) error
 	DeleteUser(id uuid.UUID) error
-	VerifyEmail(id uuid.UUID) error
-	RecordLogin(id uuid.UUID) error
 	AuthenticateUser(email, password string) (*models.User, error)
 }

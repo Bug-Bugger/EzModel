@@ -40,7 +40,7 @@ func (h *UserHandler) Create() http.HandlerFunc {
 		}
 
 		// Create user through service
-		user, err := h.userService.CreateUser(req.Email, req.Username, req.Password, req.AvatarURL)
+		user, err := h.userService.CreateUser(req.Email, req.Username, req.Password)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrUserAlreadyExists):
@@ -55,11 +55,9 @@ func (h *UserHandler) Create() http.HandlerFunc {
 
 		// Create user response without password
 		userResponse := dto.UserResponse{
-			ID:            user.ID,
-			Email:         user.Email,
-			Username:      user.Username,
-			AvatarURL:     user.AvatarURL,
-			EmailVerified: user.EmailVerified,
+			ID:       user.ID,
+			Email:    user.Email,
+			Username: user.Username,
 		}
 
 		responses.RespondWithSuccess(w, http.StatusCreated, "User created successfully", userResponse)
@@ -89,7 +87,7 @@ func (h *UserHandler) Update() http.HandlerFunc {
 		}
 
 		// Empty update request
-		if req.Username == nil && req.Email == nil && req.AvatarURL == nil {
+		if req.Username == nil && req.Email == nil {
 			responses.RespondWithError(w, http.StatusBadRequest, "No fields to update provided")
 			return
 		}
@@ -110,11 +108,9 @@ func (h *UserHandler) Update() http.HandlerFunc {
 		}
 
 		userResponse := dto.UserResponse{
-			ID:            user.ID,
-			Email:         user.Email,
-			Username:      user.Username,
-			AvatarURL:     user.AvatarURL,
-			EmailVerified: user.EmailVerified,
+			ID:       user.ID,
+			Email:    user.Email,
+			Username: user.Username,
 		}
 
 		responses.RespondWithSuccess(w, http.StatusOK, "User updated successfully", userResponse)
@@ -179,11 +175,9 @@ func (h *UserHandler) GetByID() http.HandlerFunc {
 		}
 
 		userResponse := dto.UserResponse{
-			ID:            user.ID,
-			Email:         user.Email,
-			Username:      user.Username,
-			AvatarURL:     user.AvatarURL,
-			EmailVerified: user.EmailVerified,
+			ID:       user.ID,
+			Email:    user.Email,
+			Username: user.Username,
 		}
 
 		responses.RespondWithSuccess(w, http.StatusOK, "User retrieved successfully", userResponse)
@@ -201,11 +195,9 @@ func (h *UserHandler) GetAll() http.HandlerFunc {
 		var userResponses []dto.UserResponse
 		for _, user := range users {
 			userResponses = append(userResponses, dto.UserResponse{
-				ID:            user.ID,
-				Email:         user.Email,
-				Username:      user.Username,
-				AvatarURL:     user.AvatarURL,
-				EmailVerified: user.EmailVerified,
+				ID:       user.ID,
+				Email:    user.Email,
+				Username: user.Username,
 			})
 		}
 
@@ -235,24 +227,3 @@ func (h *UserHandler) Delete() http.HandlerFunc {
 	}
 }
 
-func (h *UserHandler) VerifyEmail() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		idStr := chi.URLParam(r, "id")
-		id, err := uuid.Parse(idStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
-			return
-		}
-
-		if err := h.userService.VerifyEmail(id); err != nil {
-			if errors.Is(err, services.ErrUserNotFound) {
-				responses.RespondWithError(w, http.StatusNotFound, "User not found")
-			} else {
-				responses.RespondWithError(w, http.StatusInternalServerError, "Failed to verify email")
-			}
-			return
-		}
-
-		responses.RespondWithSuccess(w, http.StatusOK, "Email verified successfully", nil)
-	}
-}

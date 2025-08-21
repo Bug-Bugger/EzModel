@@ -2,9 +2,7 @@ package services
 
 import (
 	"errors"
-	"log"
 	"strings"
-	"time"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
@@ -24,10 +22,9 @@ func NewUserService(userRepo repository.UserRepositoryInterface) *UserService {
 	}
 }
 
-func (s *UserService) CreateUser(email, username, password, avatarURL string) (*models.User, error) {
+func (s *UserService) CreateUser(email, username, password string) (*models.User, error) {
 	email = strings.TrimSpace(email)
 	username = strings.TrimSpace(username)
-	avatarURL = strings.TrimSpace(avatarURL)
 
 	if len(email) < 5 || len(username) < 3 || len(password) < 6 {
 		return nil, ErrInvalidInput
@@ -51,7 +48,6 @@ func (s *UserService) CreateUser(email, username, password, avatarURL string) (*
 		Email:        email,
 		Username:     username,
 		PasswordHash: string(hashedPassword),
-		AvatarURL:    avatarURL,
 	}
 
 	id, err := s.userRepo.Create(user)
@@ -126,9 +122,6 @@ func (s *UserService) UpdateUser(id uuid.UUID, req *dto.UpdateUserRequest) (*mod
 		user.Email = email
 	}
 
-	if req.AvatarURL != nil {
-		user.AvatarURL = strings.TrimSpace(*req.AvatarURL)
-	}
 
 	if err := s.userRepo.Update(user); err != nil {
 		return nil, err
@@ -172,32 +165,7 @@ func (s *UserService) DeleteUser(id uuid.UUID) error {
 	return s.userRepo.Delete(id)
 }
 
-func (s *UserService) VerifyEmail(id uuid.UUID) error {
-	user, err := s.userRepo.GetByID(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrUserNotFound
-		}
-		return err
-	}
 
-	user.EmailVerified = true
-	return s.userRepo.Update(user)
-}
-
-func (s *UserService) RecordLogin(id uuid.UUID) error {
-	user, err := s.userRepo.GetByID(id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrUserNotFound
-		}
-		return err
-	}
-
-	now := time.Now()
-	user.LastLoginAt = &now
-	return s.userRepo.Update(user)
-}
 
 func (s *UserService) AuthenticateUser(email, password string) (*models.User, error) {
 	user, err := s.userRepo.GetByEmail(email)
@@ -214,12 +182,6 @@ func (s *UserService) AuthenticateUser(email, password string) (*models.User, er
 		return nil, ErrInvalidCredentials
 	}
 
-	// Record login time
-	now := time.Now()
-	user.LastLoginAt = &now
-	if err := s.userRepo.Update(user); err != nil {
-		log.Printf("Failed to update last login time: %v", err)
-	}
 
 	return user, nil
 }

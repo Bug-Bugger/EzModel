@@ -17,8 +17,10 @@ type Server struct {
 	config         *config.Config
 	router         *chi.Mux
 	db             *gorm.DB
-	userRepo       *repository.UserRepository
-	userService    *services.UserService
+	userRepo       repository.UserRepositoryInterface
+	projectRepo    repository.ProjectRepositoryInterface
+	userService    services.UserServiceInterface
+	projectService services.ProjectServiceInterface
 	jwtService     *services.JWTService
 	authMiddleware *middleware.AuthMiddleware
 }
@@ -36,16 +38,18 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 
 	// Initialize repositories
 	s.userRepo = repository.NewUserRepository(db)
+	s.projectRepo = repository.NewProjectRepository(db)
 
 	// Initialize services
 	s.userService = services.NewUserService(s.userRepo)
+	s.projectService = services.NewProjectService(s.projectRepo, s.userRepo)
 	s.jwtService = services.NewJWTService(cfg)
 
 	// Initialize middleware
 	s.authMiddleware = middleware.NewAuthMiddleware(s.jwtService)
 
 	// Setup routes
-	routes.SetupRoutes(s.router, s.userService, s.jwtService, s.authMiddleware)
+	routes.SetupRoutes(s.router, s.userService, s.projectService, s.jwtService, s.authMiddleware)
 
 	return s
 }

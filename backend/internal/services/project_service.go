@@ -11,12 +11,6 @@ import (
 	"gorm.io/gorm"
 )
 
-var (
-	ErrProjectNotFound      = errors.New("project not found")
-	ErrProjectAlreadyExists = errors.New("project already exists")
-	ErrUnauthorized         = errors.New("unauthorized")
-	ErrCollaboratorNotFound = errors.New("collaborator not found")
-)
 
 type ProjectService struct {
 	projectRepo repository.ProjectRepositoryInterface

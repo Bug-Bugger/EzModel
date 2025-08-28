@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 )
 
+
 type UserService struct {
 	userRepo repository.UserRepositoryInterface
 }

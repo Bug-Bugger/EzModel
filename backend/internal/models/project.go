@@ -6,13 +6,20 @@ import (
 	"github.com/google/uuid"
 )
 
+// Project represents a database schema design project
 type Project struct {
-	ID            uuid.UUID `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	Name          string    `json:"name" gorm:"type:varchar(255);not null" validate:"required,min=1,max=255"`
-	Description   string    `json:"description" gorm:"type:text" validate:"max=1000"`
-	OwnerID       uuid.UUID `json:"owner_id" gorm:"type:uuid;not null"`
-	Owner         User      `json:"owner" gorm:"foreignKey:OwnerID"`
-	Collaborators []User    `json:"collaborators,omitempty" gorm:"many2many:project_collaborators;"`
-	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime;type:timestamp with time zone"`
-	UpdatedAt     time.Time `json:"updated_at" gorm:"autoUpdateTime;type:timestamp with time zone"`
+	ID           uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	Name         string    `gorm:"not null" json:"name"`
+	Description  string    `json:"description"`
+	OwnerID      uuid.UUID `gorm:"type:uuid;not null" json:"owner_id"`
+	DatabaseType string    `gorm:"default:'postgresql'" json:"database_type"` // postgresql, mysql, sqlite, sqlserver
+	CanvasData   string    `gorm:"type:jsonb" json:"canvas_data"`             // Visual layout/positioning data
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+
+	// Relationships
+	Owner         User           `gorm:"foreignKey:OwnerID" json:"owner,omitempty"`
+	Collaborators []User         `gorm:"many2many:project_collaborators;" json:"collaborators,omitempty"`
+	Tables        []Table        `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"tables,omitempty"`
+	Relationships []Relationship `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE" json:"relationships,omitempty"`
 }

@@ -48,7 +48,7 @@ func SetupRoutes(
 		r.Route("/users", func(r chi.Router) {
 			r.Get("/", userHandler.GetAll())
 
-			r.Route("/{id}", func(r chi.Router) {
+			r.Route("/{user_id}", func(r chi.Router) {
 				r.Get("/", userHandler.GetByID())
 				r.Put("/", userHandler.Update())
 				r.Delete("/", userHandler.Delete())
@@ -62,12 +62,12 @@ func SetupRoutes(
 			r.Get("/", projectHandler.GetAll())
 			r.Get("/my", projectHandler.GetMyProjects())
 
-			r.Route("/{id}", func(r chi.Router) {
+			r.Route("/{project_id}", func(r chi.Router) {
 				r.Get("/", projectHandler.GetByID())
 				r.Put("/", projectHandler.Update())
 				r.Delete("/", projectHandler.Delete())
 				r.Post("/collaborators", projectHandler.AddCollaborator())
-				r.Delete("/collaborators/{collaborator_id}", projectHandler.RemoveCollaborator())
+				r.Delete("/collaborators/{user_id}", projectHandler.RemoveCollaborator())
 
 				// Table routes within projects
 				r.Route("/tables", func(r chi.Router) {

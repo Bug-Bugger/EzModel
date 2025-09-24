@@ -136,7 +136,7 @@ func (suite *ProjectHandlerTestSuite) TestGetProjectByID_Success() {
 
 	// Setup chi context with URL param
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.GetByID()(w, req)
@@ -157,7 +157,7 @@ func (suite *ProjectHandlerTestSuite) TestGetProjectByID_InvalidUUID() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "invalid-uuid")
+	rctx.URLParams.Add("project_id", "invalid-uuid")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.GetByID()(w, req)
@@ -175,7 +175,7 @@ func (suite *ProjectHandlerTestSuite) TestGetProjectByID_NotFound() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.GetByID()(w, req)
@@ -233,7 +233,7 @@ func (suite *ProjectHandlerTestSuite) TestUpdateProject_Success() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.Update()(w, req)
@@ -258,7 +258,7 @@ func (suite *ProjectHandlerTestSuite) TestDeleteProject_Success() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.Delete()(w, req)
@@ -281,7 +281,7 @@ func (suite *ProjectHandlerTestSuite) TestAddCollaborator_Success() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.AddCollaborator()(w, req)
@@ -301,8 +301,8 @@ func (suite *ProjectHandlerTestSuite) TestRemoveCollaborator_Success() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
-	rctx.URLParams.Add("collaborator_id", collaboratorID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
+	rctx.URLParams.Add("user_id", collaboratorID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.RemoveCollaborator()(w, req)

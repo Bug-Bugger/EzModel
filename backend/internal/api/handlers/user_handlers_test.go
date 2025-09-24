@@ -134,7 +134,7 @@ func (suite *UserHandlerTestSuite) TestGetUserByID_Success() {
 
 	// Setup chi context with URL param
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", userID.String())
+	rctx.URLParams.Add("user_id", userID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.GetByID()(w, req)
@@ -155,7 +155,7 @@ func (suite *UserHandlerTestSuite) TestGetUserByID_InvalidUUID() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "invalid-uuid")
+	rctx.URLParams.Add("user_id", "invalid-uuid")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.GetByID()(w, req)
@@ -173,7 +173,7 @@ func (suite *UserHandlerTestSuite) TestGetUserByID_NotFound() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", userID.String())
+	rctx.URLParams.Add("user_id", userID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.GetByID()(w, req)
@@ -197,7 +197,7 @@ func (suite *UserHandlerTestSuite) TestUpdateUser_Success() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", userID.String())
+	rctx.URLParams.Add("user_id", userID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.Update()(w, req)
@@ -221,7 +221,7 @@ func (suite *UserHandlerTestSuite) TestUpdateUser_EmptyRequest() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", userID.String())
+	rctx.URLParams.Add("user_id", userID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.Update()(w, req)
@@ -240,7 +240,7 @@ func (suite *UserHandlerTestSuite) TestUpdatePassword_Success() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", userID.String())
+	rctx.URLParams.Add("user_id", userID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.UpdatePassword()(w, req)
@@ -283,7 +283,7 @@ func (suite *UserHandlerTestSuite) TestDeleteUser_Success() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", userID.String())
+	rctx.URLParams.Add("user_id", userID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.Delete()(w, req)
@@ -302,7 +302,7 @@ func (suite *UserHandlerTestSuite) TestDeleteUser_NotFound() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", userID.String())
+	rctx.URLParams.Add("user_id", userID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.Delete()(w, req)

@@ -26,7 +26,7 @@ func NewRelationshipHandler(relationshipService services.RelationshipServiceInte
 func (h *RelationshipHandler) Create() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID format")
 		if !ok {
 			return
 		}
@@ -114,7 +114,7 @@ func (h *RelationshipHandler) GetByID() http.HandlerFunc {
 func (h *RelationshipHandler) GetByProjectID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID format")
 		if !ok {
 			return
 		}

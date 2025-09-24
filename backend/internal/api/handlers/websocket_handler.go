@@ -60,9 +60,9 @@ func NewWebSocketHandler(
 
 // HandleWebSocket upgrades HTTP connection to WebSocket for real-time collaboration
 func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	// Get project ID from URL - the route parameter is "id", not "projectID"
-	projectIDStr := chi.URLParam(r, "id")
-	log.Printf("WebSocket: Extracted projectIDStr from 'id' param: '%s'", projectIDStr)
+	// Get project ID from URL - now using standardized "project_id" parameter
+	projectIDStr := chi.URLParam(r, "project_id")
+	log.Printf("WebSocket: Extracted projectIDStr from 'project_id' param: '%s'", projectIDStr)
 	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
 		log.Printf("WebSocket: UUID parsing error for '%s': %v", projectIDStr, err)

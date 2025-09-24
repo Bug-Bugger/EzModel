@@ -26,7 +26,7 @@ func NewCollaborationHandler(collaborationService services.CollaborationSessionS
 func (h *CollaborationHandler) Create() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID format")
 		if !ok {
 			return
 		}
@@ -127,7 +127,7 @@ func (h *CollaborationHandler) GetByID() http.HandlerFunc {
 func (h *CollaborationHandler) GetByProjectID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID format")
 		if !ok {
 			return
 		}
@@ -164,7 +164,7 @@ func (h *CollaborationHandler) GetByProjectID() http.HandlerFunc {
 func (h *CollaborationHandler) GetActiveByProjectID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID format")
 		if !ok {
 			return
 		}

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Bug-Bugger/ezmodel/internal/models"
 	mockService "github.com/Bug-Bugger/ezmodel/internal/mocks/service"
+	"github.com/Bug-Bugger/ezmodel/internal/models"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
 	"github.com/Bug-Bugger/ezmodel/internal/testutil"
 	websocketPkg "github.com/Bug-Bugger/ezmodel/internal/websocket"
@@ -71,7 +71,7 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_InvalidToken() {
 
 	// Create request
 	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", "invalid-token", projectID)
-	req = suite.addURLParam(req, "projectID", projectID.String())
+	req = suite.addURLParam(req, "project_id", projectID.String())
 
 	w := httptest.NewRecorder()
 
@@ -93,7 +93,7 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_ExpiredToken() {
 
 	// Create request
 	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", "expired-token", projectID)
-	req = suite.addURLParam(req, "projectID", projectID.String())
+	req = suite.addURLParam(req, "project_id", projectID.String())
 
 	w := httptest.NewRecorder()
 
@@ -111,7 +111,7 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_MissingToken() {
 
 	// Create request without token
 	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", "", projectID)
-	req = suite.addURLParam(req, "projectID", projectID.String())
+	req = suite.addURLParam(req, "project_id", projectID.String())
 
 	w := httptest.NewRecorder()
 
@@ -138,7 +138,7 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_UserNotFound() {
 
 	// Create request
 	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", token, projectID)
-	req = suite.addURLParam(req, "projectID", projectID.String())
+	req = suite.addURLParam(req, "project_id", projectID.String())
 
 	w := httptest.NewRecorder()
 
@@ -172,7 +172,7 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_ProjectNotFound() {
 
 	// Create request
 	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", token, projectID)
-	req = suite.addURLParam(req, "projectID", projectID.String())
+	req = suite.addURLParam(req, "project_id", projectID.String())
 
 	w := httptest.NewRecorder()
 
@@ -212,7 +212,7 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_AccessDenied() {
 
 	// Create request
 	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", token, projectID)
-	req = suite.addURLParam(req, "projectID", projectID.String())
+	req = suite.addURLParam(req, "project_id", projectID.String())
 
 	w := httptest.NewRecorder()
 
@@ -250,7 +250,7 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsOwner() {
 
 	// Create test server with proper routing
 	router := chi.NewRouter()
-	router.Get("/projects/{projectID}/collaborate", suite.handler.HandleWebSocket)
+	router.Get("/projects/{project_id}/collaborate", suite.handler.HandleWebSocket)
 	server := httptest.NewServer(router)
 	defer server.Close()
 
@@ -295,7 +295,7 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsCollaborato
 
 	// Create test server with proper routing
 	router := chi.NewRouter()
-	router.Get("/projects/{projectID}/collaborate", suite.handler.HandleWebSocket)
+	router.Get("/projects/{project_id}/collaborate", suite.handler.HandleWebSocket)
 	server := httptest.NewServer(router)
 	defer server.Close()
 
@@ -320,7 +320,7 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_InvalidProjectID() {
 
 	// Create request with invalid project ID
 	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/invalid-uuid/collaborate", token, uuid.New())
-	req = suite.addURLParam(req, "projectID", "invalid-uuid")
+	req = suite.addURLParam(req, "project_id", "invalid-uuid")
 
 	w := httptest.NewRecorder()
 

@@ -82,11 +82,10 @@ type ActiveUser struct {
 
 // Schema modification payloads
 type TablePayload struct {
-	TableID     uuid.UUID `json:"table_id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description,omitempty"`
-	X           float64   `json:"x"`
-	Y           float64   `json:"y"`
+	TableID uuid.UUID `json:"table_id"`
+	Name    string    `json:"name"`
+	X       float64   `json:"x"`
+	Y       float64   `json:"y"`
 }
 
 type FieldPayload struct {
@@ -96,7 +95,6 @@ type FieldPayload struct {
 	Type       string    `json:"type"`
 	IsPrimary  bool      `json:"is_primary"`
 	IsNullable bool      `json:"is_nullable"`
-	IsUnique   bool      `json:"is_unique"`
 	Default    *string   `json:"default,omitempty"`
 }
 

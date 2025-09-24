@@ -109,11 +109,10 @@ func CreateTestWebSocketMessage(msgType websocketPkg.MessageType, projectID, use
 		}
 	case websocketPkg.MessageTypeTableCreated:
 		payload = websocketPkg.TablePayload{
-			TableID:     uuid.New(),
-			Name:        "Test Table",
-			Description: "Test Description",
-			X:           100.0,
-			Y:           200.0,
+			TableID: uuid.New(),
+			Name:    "Test Table",
+			X:       100.0,
+			Y:       200.0,
 		}
 	case websocketPkg.MessageTypeCanvasUpdated:
 		payload = websocketPkg.CanvasUpdatedPayload{

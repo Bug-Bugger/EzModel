@@ -216,11 +216,10 @@ func (s *CollaborationSessionService) BroadcastCanvasUpdate(projectID uuid.UUID,
 // NotifyTableCreated notifies collaborators about a new table
 func (s *CollaborationSessionService) NotifyTableCreated(projectID uuid.UUID, table *models.Table, senderUserID uuid.UUID) error {
 	payload := websocketPkg.TablePayload{
-		TableID:     table.ID,
-		Name:        table.Name,
-		Description: "", // Table model doesn't have Description field
-		X:           table.PosX,
-		Y:           table.PosY,
+		TableID: table.ID,
+		Name:    table.Name,
+		X:       table.PosX,
+		Y:       table.PosY,
 	}
 
 	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeTableCreated, payload, senderUserID)
@@ -229,11 +228,10 @@ func (s *CollaborationSessionService) NotifyTableCreated(projectID uuid.UUID, ta
 // NotifyTableUpdated notifies collaborators about a table update
 func (s *CollaborationSessionService) NotifyTableUpdated(projectID uuid.UUID, table *models.Table, senderUserID uuid.UUID) error {
 	payload := websocketPkg.TablePayload{
-		TableID:     table.ID,
-		Name:        table.Name,
-		Description: "", // Table model doesn't have Description field
-		X:           table.PosX,
-		Y:           table.PosY,
+		TableID: table.ID,
+		Name:    table.Name,
+		X:       table.PosX,
+		Y:       table.PosY,
 	}
 
 	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeTableUpdated, payload, senderUserID)
@@ -257,7 +255,6 @@ func (s *CollaborationSessionService) NotifyFieldCreated(projectID uuid.UUID, fi
 		Type:       field.DataType,
 		IsPrimary:  field.IsPrimaryKey,
 		IsNullable: field.IsNullable,
-		IsUnique:   false, // Field model doesn't have IsUnique field
 		Default:    &field.DefaultValue,
 	}
 
@@ -273,7 +270,6 @@ func (s *CollaborationSessionService) NotifyFieldUpdated(projectID uuid.UUID, fi
 		Type:       field.DataType,
 		IsPrimary:  field.IsPrimaryKey,
 		IsNullable: field.IsNullable,
-		IsUnique:   false, // Field model doesn't have IsUnique field
 		Default:    &field.DefaultValue,
 	}
 

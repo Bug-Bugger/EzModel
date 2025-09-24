@@ -145,11 +145,10 @@ func (suite *MessageTestSuite) TestTablePayload() {
 	projectID := uuid.New()
 	tableID := uuid.New()
 	payload := TablePayload{
-		TableID:     tableID,
-		Name:        "Users Table",
-		Description: "User data table",
-		X:           150.5,
-		Y:           250.5,
+		TableID: tableID,
+		Name:    "Users Table",
+		X:       150.5,
+		Y:       250.5,
 	}
 
 	message, err := NewWebSocketMessage(MessageTypeTableCreated, payload, userID, projectID)
@@ -161,7 +160,6 @@ func (suite *MessageTestSuite) TestTablePayload() {
 
 	assert.Equal(suite.T(), payload.TableID, unmarshaledPayload.TableID)
 	assert.Equal(suite.T(), payload.Name, unmarshaledPayload.Name)
-	assert.Equal(suite.T(), payload.Description, unmarshaledPayload.Description)
 	assert.Equal(suite.T(), payload.X, unmarshaledPayload.X)
 	assert.Equal(suite.T(), payload.Y, unmarshaledPayload.Y)
 }
@@ -180,7 +178,6 @@ func (suite *MessageTestSuite) TestFieldPayload() {
 		Type:       "VARCHAR(255)",
 		IsPrimary:  false,
 		IsNullable: false,
-		IsUnique:   true,
 		Default:    &defaultValue,
 	}
 
@@ -197,7 +194,6 @@ func (suite *MessageTestSuite) TestFieldPayload() {
 	assert.Equal(suite.T(), payload.Type, unmarshaledPayload.Type)
 	assert.Equal(suite.T(), payload.IsPrimary, unmarshaledPayload.IsPrimary)
 	assert.Equal(suite.T(), payload.IsNullable, unmarshaledPayload.IsNullable)
-	assert.Equal(suite.T(), payload.IsUnique, unmarshaledPayload.IsUnique)
 	assert.Equal(suite.T(), *payload.Default, *unmarshaledPayload.Default)
 }
 

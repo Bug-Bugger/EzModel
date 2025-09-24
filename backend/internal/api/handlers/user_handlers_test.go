@@ -232,9 +232,9 @@ func (suite *UserHandlerTestSuite) TestUpdateUser_EmptyRequest() {
 // Test Update Password - Success
 func (suite *UserHandlerTestSuite) TestUpdatePassword_Success() {
 	userID := uuid.New()
-	passwordRequest := dto.UpdatePasswordRequest{Password: "newpassword123"}
+	passwordRequest := dto.UpdatePasswordRequest{CurrentPassword: "currentpass123", NewPassword: "newpassword123"}
 
-	suite.mockService.On("UpdatePassword", userID, passwordRequest.Password).Return(nil)
+	suite.mockService.On("UpdatePassword", userID, passwordRequest.CurrentPassword, passwordRequest.NewPassword).Return(nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/users/"+userID.String()+"/password", passwordRequest)
 	w := httptest.NewRecorder()

@@ -5,9 +5,11 @@ import (
 	"net/http"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
+	"github.com/Bug-Bugger/ezmodel/internal/api/middleware"
 	"github.com/Bug-Bugger/ezmodel/internal/api/responses"
 	"github.com/Bug-Bugger/ezmodel/internal/api/utils"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
+	"github.com/google/uuid"
 )
 
 type UserHandler struct {
@@ -108,11 +110,13 @@ func (h *UserHandler) UpdatePassword() http.HandlerFunc {
 			return
 		}
 
-		err := h.userService.UpdatePassword(id, req.Password)
+		err := h.userService.UpdatePassword(id, req.CurrentPassword, req.NewPassword)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrUserNotFound):
 				responses.RespondWithError(w, http.StatusNotFound, "User not found")
+			case errors.Is(err, services.ErrInvalidCredentials):
+				responses.RespondWithError(w, http.StatusBadRequest, "Current password is incorrect")
 			case errors.Is(err, services.ErrInvalidInput):
 				responses.RespondWithError(w, http.StatusBadRequest, "Invalid input")
 			default:
@@ -190,5 +194,42 @@ func (h *UserHandler) Delete() http.HandlerFunc {
 		}
 
 		responses.RespondWithSuccess(w, http.StatusOK, "User deleted successfully", nil)
+	}
+}
+
+func (h *UserHandler) GetMe() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Get user ID from context (set by auth middleware)
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
+		if !ok {
+			responses.RespondWithError(w, http.StatusUnauthorized, "User not authenticated")
+			return
+		}
+
+		// Parse user ID string to UUID
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
+		// Get user from service
+		user, err := h.userService.GetUserByID(userID)
+		if err != nil {
+			if errors.Is(err, services.ErrUserNotFound) {
+				responses.RespondWithError(w, http.StatusNotFound, "User not found")
+			} else {
+				responses.RespondWithError(w, http.StatusInternalServerError, "Failed to retrieve user")
+			}
+			return
+		}
+
+		userResponse := dto.UserResponse{
+			ID:       user.ID,
+			Email:    user.Email,
+			Username: user.Username,
+		}
+
+		responses.RespondWithSuccess(w, http.StatusOK, "Current user retrieved successfully", userResponse)
 	}
 }

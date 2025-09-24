@@ -129,8 +129,8 @@ func (s *UserService) UpdateUser(id uuid.UUID, req *dto.UpdateUserRequest) (*mod
 	return user, nil
 }
 
-func (s *UserService) UpdatePassword(id uuid.UUID, password string) error {
-	if len(password) < 6 {
+func (s *UserService) UpdatePassword(id uuid.UUID, currentPassword, newPassword string) error {
+	if len(newPassword) < 6 {
 		return ErrInvalidInput
 	}
 
@@ -142,8 +142,14 @@ func (s *UserService) UpdatePassword(id uuid.UUID, password string) error {
 		return err
 	}
 
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// Verify current password
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword))
+	if err != nil {
+		return ErrInvalidCredentials
+	}
+
+	// Hash new password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}

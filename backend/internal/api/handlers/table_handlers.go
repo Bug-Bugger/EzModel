@@ -26,7 +26,7 @@ func NewTableHandler(tableService services.TableServiceInterface) *TableHandler 
 func (h *TableHandler) Create() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID format")
 		if !ok {
 			return
 		}
@@ -106,7 +106,7 @@ func (h *TableHandler) GetByID() http.HandlerFunc {
 func (h *TableHandler) GetByProjectID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID format")
 		if !ok {
 			return
 		}

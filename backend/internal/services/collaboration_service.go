@@ -2,11 +2,13 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
 	"github.com/Bug-Bugger/ezmodel/internal/repository"
+	websocketPkg "github.com/Bug-Bugger/ezmodel/internal/websocket"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -16,6 +18,7 @@ type CollaborationSessionService struct {
 	projectRepo repository.ProjectRepositoryInterface
 	userRepo    repository.UserRepositoryInterface
 	authService AuthorizationServiceInterface
+	hub         *websocketPkg.Hub
 }
 
 func NewCollaborationSessionService(
@@ -23,12 +26,14 @@ func NewCollaborationSessionService(
 	projectRepo repository.ProjectRepositoryInterface,
 	userRepo repository.UserRepositoryInterface,
 	authService AuthorizationServiceInterface,
+	hub *websocketPkg.Hub,
 ) *CollaborationSessionService {
 	return &CollaborationSessionService{
 		sessionRepo: sessionRepo,
 		projectRepo: projectRepo,
 		userRepo:    userRepo,
 		authService: authService,
+		hub:         hub,
 	}
 }
 
@@ -179,4 +184,156 @@ func (s *CollaborationSessionService) DeleteSession(sessionID uuid.UUID, userID 
 	}
 
 	return s.sessionRepo.Delete(sessionID)
+}
+
+// WebSocket integration methods
+
+// BroadcastSchemaChange broadcasts schema changes to all collaborators
+func (s *CollaborationSessionService) BroadcastSchemaChange(projectID uuid.UUID, messageType websocketPkg.MessageType, payload interface{}, senderUserID uuid.UUID) error {
+	if s.hub == nil {
+		return fmt.Errorf("WebSocket hub not initialized")
+	}
+
+	message, err := websocketPkg.NewWebSocketMessage(messageType, payload, senderUserID, projectID)
+	if err != nil {
+		return fmt.Errorf("failed to create WebSocket message: %w", err)
+	}
+
+	// Broadcast to all clients in the project
+	s.hub.BroadcastToProject(projectID, message, nil)
+	return nil
+}
+
+// BroadcastCanvasUpdate broadcasts canvas updates to all collaborators
+func (s *CollaborationSessionService) BroadcastCanvasUpdate(projectID uuid.UUID, canvasData string, senderUserID uuid.UUID) error {
+	payload := websocketPkg.CanvasUpdatedPayload{
+		CanvasData: canvasData,
+	}
+
+	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeCanvasUpdated, payload, senderUserID)
+}
+
+// NotifyTableCreated notifies collaborators about a new table
+func (s *CollaborationSessionService) NotifyTableCreated(projectID uuid.UUID, table *models.Table, senderUserID uuid.UUID) error {
+	payload := websocketPkg.TablePayload{
+		TableID: table.ID,
+		Name:    table.Name,
+		X:       table.PosX,
+		Y:       table.PosY,
+	}
+
+	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeTableCreated, payload, senderUserID)
+}
+
+// NotifyTableUpdated notifies collaborators about a table update
+func (s *CollaborationSessionService) NotifyTableUpdated(projectID uuid.UUID, table *models.Table, senderUserID uuid.UUID) error {
+	payload := websocketPkg.TablePayload{
+		TableID: table.ID,
+		Name:    table.Name,
+		X:       table.PosX,
+		Y:       table.PosY,
+	}
+
+	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeTableUpdated, payload, senderUserID)
+}
+
+// NotifyTableDeleted notifies collaborators about a table deletion
+func (s *CollaborationSessionService) NotifyTableDeleted(projectID, tableID uuid.UUID, senderUserID uuid.UUID) error {
+	payload := websocketPkg.TablePayload{
+		TableID: tableID,
+	}
+
+	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeTableDeleted, payload, senderUserID)
+}
+
+// NotifyFieldCreated notifies collaborators about a new field
+func (s *CollaborationSessionService) NotifyFieldCreated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error {
+	payload := websocketPkg.FieldPayload{
+		FieldID:    field.ID,
+		TableID:    field.TableID,
+		Name:       field.Name,
+		Type:       field.DataType,
+		IsPrimary:  field.IsPrimaryKey,
+		IsNullable: field.IsNullable,
+		Default:    &field.DefaultValue,
+	}
+
+	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeFieldCreated, payload, senderUserID)
+}
+
+// NotifyFieldUpdated notifies collaborators about a field update
+func (s *CollaborationSessionService) NotifyFieldUpdated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error {
+	payload := websocketPkg.FieldPayload{
+		FieldID:    field.ID,
+		TableID:    field.TableID,
+		Name:       field.Name,
+		Type:       field.DataType,
+		IsPrimary:  field.IsPrimaryKey,
+		IsNullable: field.IsNullable,
+		Default:    &field.DefaultValue,
+	}
+
+	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeFieldUpdated, payload, senderUserID)
+}
+
+// NotifyFieldDeleted notifies collaborators about a field deletion
+func (s *CollaborationSessionService) NotifyFieldDeleted(projectID, fieldID uuid.UUID, senderUserID uuid.UUID) error {
+	payload := websocketPkg.FieldPayload{
+		FieldID: fieldID,
+	}
+
+	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeFieldDeleted, payload, senderUserID)
+}
+
+// NotifyRelationshipCreated notifies collaborators about a new relationship
+func (s *CollaborationSessionService) NotifyRelationshipCreated(projectID uuid.UUID, relationship *models.Relationship, senderUserID uuid.UUID) error {
+	payload := websocketPkg.RelationshipPayload{
+		RelationshipID: relationship.ID,
+		SourceTableID:  relationship.SourceTableID,
+		TargetTableID:  relationship.TargetTableID,
+		SourceFieldID:  relationship.SourceFieldID,
+		TargetFieldID:  relationship.TargetFieldID,
+		Type:           relationship.RelationType,
+	}
+
+	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeRelationshipCreated, payload, senderUserID)
+}
+
+// NotifyRelationshipUpdated notifies collaborators about a relationship update
+func (s *CollaborationSessionService) NotifyRelationshipUpdated(projectID uuid.UUID, relationship *models.Relationship, senderUserID uuid.UUID) error {
+	payload := websocketPkg.RelationshipPayload{
+		RelationshipID: relationship.ID,
+		SourceTableID:  relationship.SourceTableID,
+		TargetTableID:  relationship.TargetTableID,
+		SourceFieldID:  relationship.SourceFieldID,
+		TargetFieldID:  relationship.TargetFieldID,
+		Type:           relationship.RelationType,
+	}
+
+	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeRelationshipUpdated, payload, senderUserID)
+}
+
+// NotifyRelationshipDeleted notifies collaborators about a relationship deletion
+func (s *CollaborationSessionService) NotifyRelationshipDeleted(projectID, relationshipID uuid.UUID, senderUserID uuid.UUID) error {
+	payload := websocketPkg.RelationshipPayload{
+		RelationshipID: relationshipID,
+	}
+
+	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeRelationshipDeleted, payload, senderUserID)
+}
+
+// GetActiveClientCount returns the number of active clients for a project
+func (s *CollaborationSessionService) GetActiveClientCount(projectID uuid.UUID) int {
+	if s.hub == nil {
+		return 0
+	}
+	return s.hub.GetActiveClients(projectID)
+}
+
+// GetActiveUsers returns active users for a project from the WebSocket hub
+func (s *CollaborationSessionService) GetActiveUsers(projectID uuid.UUID) []websocketPkg.ActiveUser {
+	if s.hub == nil {
+		return []websocketPkg.ActiveUser{}
+	}
+	return s.hub.GetActiveUsers(projectID)
 }

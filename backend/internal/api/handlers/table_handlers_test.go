@@ -44,7 +44,7 @@ func (suite *TableHandlerTestSuite) TestCreateTable_Success() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.Create()(w, req)
@@ -67,7 +67,7 @@ func (suite *TableHandlerTestSuite) TestCreateTable_InvalidProjectID() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "invalid-uuid")
+	rctx.URLParams.Add("project_id", "invalid-uuid")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.Create()(w, req)
@@ -88,7 +88,7 @@ func (suite *TableHandlerTestSuite) TestCreateTable_ValidationError() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.Create()(w, req)
@@ -137,7 +137,7 @@ func (suite *TableHandlerTestSuite) TestGetTablesByProjectID_Success() {
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	suite.handler.GetByProjectID()(w, req)

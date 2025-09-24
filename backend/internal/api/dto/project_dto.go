@@ -14,6 +14,7 @@ type CreateProjectRequest struct {
 type UpdateProjectRequest struct {
 	Name        *string `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
 	Description *string `json:"description,omitempty" validate:"omitempty,max=1000"`
+	CanvasData  *string `json:"canvas_data,omitempty"`
 }
 
 type AddCollaboratorRequest struct {
@@ -25,6 +26,8 @@ type ProjectResponse struct {
 	Name          string         `json:"name"`
 	Description   string         `json:"description"`
 	OwnerID       uuid.UUID      `json:"owner_id"`
+	DatabaseType  string         `json:"database_type"`
+	CanvasData    string         `json:"canvas_data"`
 	Owner         UserResponse   `json:"owner"`
 	Collaborators []UserResponse `json:"collaborators,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`

@@ -73,7 +73,7 @@ func (h *ProjectHandler) Create() http.HandlerFunc {
 
 func (h *ProjectHandler) GetByID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID")
+		id, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID")
 		if !ok {
 			return
 		}
@@ -119,7 +119,7 @@ func (h *ProjectHandler) GetByID() http.HandlerFunc {
 
 func (h *ProjectHandler) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID")
+		id, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID")
 		if !ok {
 			return
 		}
@@ -163,7 +163,7 @@ func (h *ProjectHandler) Update() http.HandlerFunc {
 
 func (h *ProjectHandler) Delete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID")
+		id, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID")
 		if !ok {
 			return
 		}
@@ -273,7 +273,7 @@ func (h *ProjectHandler) GetMyProjects() http.HandlerFunc {
 
 func (h *ProjectHandler) AddCollaborator() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID")
 		if !ok {
 			return
 		}
@@ -302,12 +302,12 @@ func (h *ProjectHandler) AddCollaborator() http.HandlerFunc {
 
 func (h *ProjectHandler) RemoveCollaborator() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "project_id", "Invalid project ID")
 		if !ok {
 			return
 		}
 
-		collaboratorID, ok := utils.ParseUUIDParam(w, r, "collaborator_id")
+		collaboratorID, ok := utils.ParseUUIDParam(w, r, "user_id")
 		if !ok {
 			return
 		}

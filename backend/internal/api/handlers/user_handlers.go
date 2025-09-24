@@ -55,7 +55,7 @@ func (h *UserHandler) Create() http.HandlerFunc {
 
 func (h *UserHandler) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid user ID")
+		id, ok := utils.ParseUUIDParamWithError(w, r, "user_id", "Invalid user ID")
 		if !ok {
 			return
 		}
@@ -98,7 +98,7 @@ func (h *UserHandler) Update() http.HandlerFunc {
 
 func (h *UserHandler) UpdatePassword() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid user ID")
+		id, ok := utils.ParseUUIDParamWithError(w, r, "user_id", "Invalid user ID")
 		if !ok {
 			return
 		}
@@ -127,7 +127,7 @@ func (h *UserHandler) UpdatePassword() http.HandlerFunc {
 
 func (h *UserHandler) GetByID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid user ID")
+		id, ok := utils.ParseUUIDParamWithError(w, r, "user_id", "Invalid user ID")
 		if !ok {
 			return
 		}
@@ -175,7 +175,7 @@ func (h *UserHandler) GetAll() http.HandlerFunc {
 
 func (h *UserHandler) Delete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid user ID")
+		id, ok := utils.ParseUUIDParamWithError(w, r, "user_id", "Invalid user ID")
 		if !ok {
 			return
 		}

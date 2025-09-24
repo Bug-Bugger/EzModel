@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
@@ -150,5 +151,45 @@ func CreateValidTableRequest() dto.CreateTableRequest {
 		Name: "Test Table",
 		PosX: 100.0,
 		PosY: 200.0,
+	}
+}
+
+// CreateTestCollaborationSession creates a test collaboration session
+func CreateTestCollaborationSession(projectID, userID uuid.UUID) *models.CollaborationSession {
+	return &models.CollaborationSession{
+		ID:         uuid.New(),
+		ProjectID:  projectID,
+		UserID:     userID,
+		UserColor:  "#FF6B6B",
+		IsActive:   true,
+		LastPingAt: time.Now(),
+		JoinedAt:   time.Now(),
+	}
+}
+
+// CreateTestField creates a test field with default values
+func CreateTestField(tableID uuid.UUID) *models.Field {
+	return &models.Field{
+		ID:           uuid.New(),
+		TableID:      tableID,
+		Name:         "test_field",
+		DataType:     "VARCHAR(255)",
+		IsPrimaryKey: false,
+		IsNullable:   true,
+		DefaultValue: "",
+		Position:     1,
+	}
+}
+
+// CreateTestRelationship creates a test relationship
+func CreateTestRelationship(projectID, sourceTableID, targetTableID, sourceFieldID, targetFieldID uuid.UUID) *models.Relationship {
+	return &models.Relationship{
+		ID:            uuid.New(),
+		ProjectID:     projectID,
+		SourceTableID: sourceTableID,
+		SourceFieldID: sourceFieldID,
+		TargetTableID: targetTableID,
+		TargetFieldID: targetFieldID,
+		RelationType:  "one_to_many",
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/Bug-Bugger/ezmodel/internal/config"
 	"github.com/Bug-Bugger/ezmodel/internal/repository"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
+	websocketPkg "github.com/Bug-Bugger/ezmodel/internal/websocket"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"gorm.io/gorm"
@@ -32,6 +33,7 @@ type Server struct {
 	collaborationService services.CollaborationSessionServiceInterface
 	jwtService           *services.JWTService
 	authMiddleware       *middleware.AuthMiddleware
+	websocketHub         *websocketPkg.Hub
 }
 
 func New(cfg *config.Config, db *gorm.DB) *Server {
@@ -44,6 +46,9 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 	// Apply global middleware
 	s.router.Use(chiMiddleware.Logger)
 	s.router.Use(chiMiddleware.Recoverer)
+
+	// Initialize WebSocket hub
+	s.websocketHub = websocketPkg.NewHub()
 
 	// Initialize repositories
 	s.userRepo = repository.NewUserRepository(db)
@@ -62,18 +67,21 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 	s.tableService = services.NewTableService(s.tableRepo, s.projectRepo, s.authService)
 	s.fieldService = services.NewFieldService(s.fieldRepo, s.tableRepo, s.authService)
 	s.relationshipService = services.NewRelationshipService(s.relationshipRepo, s.projectRepo, s.tableRepo, s.fieldRepo, s.authService)
-	s.collaborationService = services.NewCollaborationSessionService(s.collaborationRepo, s.projectRepo, s.userRepo, s.authService)
+	s.collaborationService = services.NewCollaborationSessionService(s.collaborationRepo, s.projectRepo, s.userRepo, s.authService, s.websocketHub)
 	s.jwtService = services.NewJWTService(cfg)
 
 	// Initialize middleware
 	s.authMiddleware = middleware.NewAuthMiddleware(s.jwtService)
 
 	// Setup routes
-	routes.SetupRoutes(s.router, s.userService, s.projectService, s.tableService, s.fieldService, s.relationshipService, s.collaborationService, s.jwtService, s.authMiddleware)
+	routes.SetupRoutes(s.router, s.userService, s.projectService, s.tableService, s.fieldService, s.relationshipService, s.collaborationService, s.jwtService, s.authMiddleware, s.websocketHub)
 
 	return s
 }
 
 func (s *Server) Start() error {
+	// Start WebSocket hub in goroutine
+	go s.websocketHub.Run()
+
 	return http.ListenAndServe(s.config.Port, s.router)
 }

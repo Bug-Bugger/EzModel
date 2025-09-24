@@ -79,7 +79,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_Success() {
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -102,7 +102,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_InvalidProjectID() {
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/invalid-id/relationships", relationshipRequest)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "invalid-id")
+	rctx.URLParams.Add("project_id", "invalid-id")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -118,7 +118,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_InvalidJSON() {
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", "invalid json")
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -138,7 +138,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_ValidationError() {
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", invalidRequest)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -158,7 +158,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_ProjectNotFound() {
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -178,7 +178,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_TableNotFound() {
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -198,7 +198,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_FieldNotFound() {
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -218,7 +218,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_ServiceError() {
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -320,7 +320,7 @@ func (suite *RelationshipHandlerTestSuite) TestGetByProjectID_Success() {
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodGet, "/projects/"+projectID.String()+"/relationships", nil)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -340,7 +340,7 @@ func (suite *RelationshipHandlerTestSuite) TestGetByProjectID_InvalidProjectID()
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodGet, "/projects/invalid-id/relationships", nil)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "invalid-id")
+	rctx.URLParams.Add("project_id", "invalid-id")
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()
@@ -358,7 +358,7 @@ func (suite *RelationshipHandlerTestSuite) TestGetByProjectID_ServiceError() {
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodGet, "/projects/"+projectID.String()+"/relationships", nil)
 
 	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", projectID.String())
+	rctx.URLParams.Add("project_id", projectID.String())
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
 	w := httptest.NewRecorder()

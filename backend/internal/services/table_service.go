@@ -14,12 +14,14 @@ import (
 type TableService struct {
 	tableRepo   repository.TableRepositoryInterface
 	projectRepo repository.ProjectRepositoryInterface
+	authService AuthorizationServiceInterface
 }
 
-func NewTableService(tableRepo repository.TableRepositoryInterface, projectRepo repository.ProjectRepositoryInterface) *TableService {
+func NewTableService(tableRepo repository.TableRepositoryInterface, projectRepo repository.ProjectRepositoryInterface, authService AuthorizationServiceInterface) *TableService {
 	return &TableService{
 		tableRepo:   tableRepo,
 		projectRepo: projectRepo,
+		authService: authService,
 	}
 }
 
@@ -116,8 +118,24 @@ func (s *TableService) UpdateTablePosition(id uuid.UUID, posX, posY float64) err
 	return s.tableRepo.UpdatePosition(id, posX, posY)
 }
 
-func (s *TableService) DeleteTable(id uuid.UUID) error {
-	_, err := s.tableRepo.GetByID(id)
+func (s *TableService) DeleteTable(id uuid.UUID, userID uuid.UUID) error {
+	// Get project ID from table
+	projectID, err := s.authService.GetProjectIDFromTable(id)
+	if err != nil {
+		return err
+	}
+
+	// Check authorization
+	canModify, err := s.authService.CanUserModifyProject(userID, projectID)
+	if err != nil {
+		return err
+	}
+	if !canModify {
+		return ErrForbidden
+	}
+
+	// Verify table exists
+	_, err = s.tableRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrTableNotFound

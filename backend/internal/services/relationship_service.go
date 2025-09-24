@@ -15,6 +15,7 @@ type RelationshipService struct {
 	projectRepo      repository.ProjectRepositoryInterface
 	tableRepo        repository.TableRepositoryInterface
 	fieldRepo        repository.FieldRepositoryInterface
+	authService      AuthorizationServiceInterface
 }
 
 func NewRelationshipService(
@@ -22,12 +23,14 @@ func NewRelationshipService(
 	projectRepo repository.ProjectRepositoryInterface,
 	tableRepo repository.TableRepositoryInterface,
 	fieldRepo repository.FieldRepositoryInterface,
+	authService AuthorizationServiceInterface,
 ) *RelationshipService {
 	return &RelationshipService{
 		relationshipRepo: relationshipRepo,
 		projectRepo:      projectRepo,
 		tableRepo:        tableRepo,
 		fieldRepo:        fieldRepo,
+		authService:      authService,
 	}
 }
 
@@ -188,8 +191,24 @@ func (s *RelationshipService) UpdateRelationship(id uuid.UUID, req *dto.UpdateRe
 	return relationship, nil
 }
 
-func (s *RelationshipService) DeleteRelationship(id uuid.UUID) error {
-	_, err := s.relationshipRepo.GetByID(id)
+func (s *RelationshipService) DeleteRelationship(id uuid.UUID, userID uuid.UUID) error {
+	// Get project ID from relationship
+	projectID, err := s.authService.GetProjectIDFromRelationship(id)
+	if err != nil {
+		return err
+	}
+
+	// Check authorization
+	canModify, err := s.authService.CanUserModifyProject(userID, projectID)
+	if err != nil {
+		return err
+	}
+	if !canModify {
+		return ErrForbidden
+	}
+
+	// Verify relationship exists
+	_, err = s.relationshipRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrRelationshipNotFound

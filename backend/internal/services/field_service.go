@@ -14,12 +14,14 @@ import (
 type FieldService struct {
 	fieldRepo repository.FieldRepositoryInterface
 	tableRepo repository.TableRepositoryInterface
+	authService AuthorizationServiceInterface
 }
 
-func NewFieldService(fieldRepo repository.FieldRepositoryInterface, tableRepo repository.TableRepositoryInterface) *FieldService {
+func NewFieldService(fieldRepo repository.FieldRepositoryInterface, tableRepo repository.TableRepositoryInterface, authService AuthorizationServiceInterface) *FieldService {
 	return &FieldService{
 		fieldRepo: fieldRepo,
 		tableRepo: tableRepo,
+		authService: authService,
 	}
 }
 
@@ -127,8 +129,24 @@ func (s *FieldService) UpdateField(id uuid.UUID, req *dto.UpdateFieldRequest) (*
 	return field, nil
 }
 
-func (s *FieldService) DeleteField(id uuid.UUID) error {
-	_, err := s.fieldRepo.GetByID(id)
+func (s *FieldService) DeleteField(id uuid.UUID, userID uuid.UUID) error {
+	// Get project ID from field
+	projectID, err := s.authService.GetProjectIDFromField(id)
+	if err != nil {
+		return err
+	}
+
+	// Check authorization
+	canModify, err := s.authService.CanUserModifyProject(userID, projectID)
+	if err != nil {
+		return err
+	}
+	if !canModify {
+		return ErrForbidden
+	}
+
+	// Verify field exists
+	_, err = s.fieldRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrFieldNotFound

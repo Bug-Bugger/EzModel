@@ -13,6 +13,41 @@ import (
 	"gorm.io/gorm"
 )
 
+// Mock authorization service for tests
+type mockTableAuthService struct {
+	mock.Mock
+}
+
+func (m *mockTableAuthService) CanUserAccessProject(userID, projectID uuid.UUID) (bool, error) {
+	args := m.Called(userID, projectID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockTableAuthService) CanUserModifyProject(userID, projectID uuid.UUID) (bool, error) {
+	args := m.Called(userID, projectID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockTableAuthService) CanUserDeleteCollaborationSession(userID, sessionID uuid.UUID) (bool, error) {
+	args := m.Called(userID, sessionID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockTableAuthService) GetProjectIDFromTable(tableID uuid.UUID) (uuid.UUID, error) {
+	args := m.Called(tableID)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
+func (m *mockTableAuthService) GetProjectIDFromRelationship(relationshipID uuid.UUID) (uuid.UUID, error) {
+	args := m.Called(relationshipID)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
+func (m *mockTableAuthService) GetProjectIDFromField(fieldID uuid.UUID) (uuid.UUID, error) {
+	args := m.Called(fieldID)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
 // Test helper functions
 func createTestTable(projectID uuid.UUID) *models.Table {
 	return &models.Table{
@@ -32,13 +67,15 @@ type TableServiceTestSuite struct {
 	suite.Suite
 	mockTableRepo   *mockRepo.MockTableRepository
 	mockProjectRepo *mockRepo.MockProjectRepository
+	mockAuthService *mockTableAuthService
 	service         *TableService
 }
 
 func (suite *TableServiceTestSuite) SetupTest() {
 	suite.mockTableRepo = new(mockRepo.MockTableRepository)
 	suite.mockProjectRepo = new(mockRepo.MockProjectRepository)
-	suite.service = NewTableService(suite.mockTableRepo, suite.mockProjectRepo)
+	suite.mockAuthService = new(mockTableAuthService)
+	suite.service = NewTableService(suite.mockTableRepo, suite.mockProjectRepo, suite.mockAuthService)
 }
 
 func TestTableServiceSuite(t *testing.T) {
@@ -314,45 +351,73 @@ func (suite *TableServiceTestSuite) TestUpdateTablePosition_RepositoryError() {
 // Test DeleteTable - Success
 func (suite *TableServiceTestSuite) TestDeleteTable_Success() {
 	tableID := uuid.New()
-	existingTable := createTestTable(uuid.New())
+	userID := uuid.New()
+	projectID := uuid.New()
+	existingTable := createTestTable(projectID)
 	existingTable.ID = tableID
 
+	suite.mockAuthService.On("GetProjectIDFromTable", tableID).Return(projectID, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockTableRepo.On("GetByID", tableID).Return(existingTable, nil)
 	suite.mockTableRepo.On("Delete", tableID).Return(nil)
 
-	err := suite.service.DeleteTable(tableID)
+	err := suite.service.DeleteTable(tableID, userID)
 
 	suite.NoError(err)
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockTableRepo.AssertExpectations(suite.T())
 }
 
 // Test DeleteTable - Not Found
 func (suite *TableServiceTestSuite) TestDeleteTable_NotFound() {
 	tableID := uuid.New()
+	userID := uuid.New()
 
-	suite.mockTableRepo.On("GetByID", tableID).Return(nil, gorm.ErrRecordNotFound)
+	suite.mockAuthService.On("GetProjectIDFromTable", tableID).Return(uuid.Nil, ErrTableNotFound)
 
-	err := suite.service.DeleteTable(tableID)
+	err := suite.service.DeleteTable(tableID, userID)
 
 	suite.Error(err)
 	suite.Equal(ErrTableNotFound, err)
 
-	suite.mockTableRepo.AssertExpectations(suite.T())
+	suite.mockAuthService.AssertExpectations(suite.T())
+}
+
+// Test DeleteTable - Forbidden
+func (suite *TableServiceTestSuite) TestDeleteTable_Forbidden() {
+	tableID := uuid.New()
+	userID := uuid.New()
+	projectID := uuid.New()
+
+	suite.mockAuthService.On("GetProjectIDFromTable", tableID).Return(projectID, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(false, nil)
+
+	err := suite.service.DeleteTable(tableID, userID)
+
+	suite.Error(err)
+	suite.Equal(ErrForbidden, err)
+
+	suite.mockAuthService.AssertExpectations(suite.T())
 }
 
 // Test DeleteTable - Repository Error
 func (suite *TableServiceTestSuite) TestDeleteTable_RepositoryError() {
 	tableID := uuid.New()
-	existingTable := createTestTable(uuid.New())
+	userID := uuid.New()
+	projectID := uuid.New()
+	existingTable := createTestTable(projectID)
 	existingTable.ID = tableID
 
+	suite.mockAuthService.On("GetProjectIDFromTable", tableID).Return(projectID, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockTableRepo.On("GetByID", tableID).Return(existingTable, nil)
 	suite.mockTableRepo.On("Delete", tableID).Return(assert.AnError)
 
-	err := suite.service.DeleteTable(tableID)
+	err := suite.service.DeleteTable(tableID, userID)
 
 	suite.Error(err)
 	suite.Equal(assert.AnError, err)
 
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockTableRepo.AssertExpectations(suite.T())
 }

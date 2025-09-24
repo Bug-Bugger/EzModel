@@ -121,9 +121,5 @@ func SetupRoutes(
 			})
 		})
 
-		// Global table routes (for direct table access)
-		r.Route("/tables/{table_id}/relationships", func(r chi.Router) {
-			r.Get("/", relationshipHandler.GetByTableID())             // Get relationships for specific table
-		})
 	})
 }

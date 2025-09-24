@@ -15,6 +15,7 @@ var (
 	ErrProjectNotFound      = errors.New("project not found")
 	ErrProjectAlreadyExists = errors.New("project already exists")
 	ErrUnauthorized         = errors.New("unauthorized")
+	ErrForbidden            = errors.New("forbidden")
 	ErrCollaboratorNotFound = errors.New("collaborator not found")
 
 	// Table errors

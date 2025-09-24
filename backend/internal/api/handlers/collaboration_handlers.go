@@ -350,20 +350,25 @@ func (h *CollaborationHandler) Delete() http.HandlerFunc {
 		}
 
 		// Get current user ID from context for authorization
-		userID, ok := middleware.GetUserIDFromContext(r.Context())
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
 		if !ok {
 			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
 			return
 		}
 
-		// TODO: Add authorization check to ensure user can delete this session
-		_ = userID // Use userID for authorization logic
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
 
-		// Delete session through service
-		if err := h.collaborationService.DeleteSession(sessionID); err != nil {
+		// Delete session through service with authorization check
+		if err := h.collaborationService.DeleteSession(sessionID, userID); err != nil {
 			switch {
 			case errors.Is(err, services.ErrSessionNotFound):
 				responses.RespondWithError(w, http.StatusNotFound, "Collaboration session not found")
+			case errors.Is(err, services.ErrForbidden):
+				responses.RespondWithError(w, http.StatusForbidden, "You don't have permission to delete this collaboration session")
 			default:
 				responses.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 			}

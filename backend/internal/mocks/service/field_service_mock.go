@@ -43,8 +43,8 @@ func (m *MockFieldService) UpdateField(id uuid.UUID, req *dto.UpdateFieldRequest
 	return args.Get(0).(*models.Field), args.Error(1)
 }
 
-func (m *MockFieldService) DeleteField(id uuid.UUID) error {
-	args := m.Called(id)
+func (m *MockFieldService) DeleteField(id uuid.UUID, userID uuid.UUID) error {
+	args := m.Called(id, userID)
 	return args.Error(0)
 }
 

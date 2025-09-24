@@ -51,7 +51,7 @@ func (m *MockRelationshipService) UpdateRelationship(id uuid.UUID, req *dto.Upda
 	return args.Get(0).(*models.Relationship), args.Error(1)
 }
 
-func (m *MockRelationshipService) DeleteRelationship(id uuid.UUID) error {
-	args := m.Called(id)
+func (m *MockRelationshipService) DeleteRelationship(id uuid.UUID, userID uuid.UUID) error {
+	args := m.Called(id, userID)
 	return args.Error(0)
 }

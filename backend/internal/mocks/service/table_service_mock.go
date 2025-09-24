@@ -48,7 +48,7 @@ func (m *MockTableService) UpdateTablePosition(id uuid.UUID, posX, posY float64)
 	return args.Error(0)
 }
 
-func (m *MockTableService) DeleteTable(id uuid.UUID) error {
-	args := m.Called(id)
+func (m *MockTableService) DeleteTable(id uuid.UUID, userID uuid.UUID) error {
+	args := m.Called(id, userID)
 	return args.Error(0)
 }

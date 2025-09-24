@@ -15,17 +15,20 @@ type CollaborationSessionService struct {
 	sessionRepo repository.CollaborationSessionRepositoryInterface
 	projectRepo repository.ProjectRepositoryInterface
 	userRepo    repository.UserRepositoryInterface
+	authService AuthorizationServiceInterface
 }
 
 func NewCollaborationSessionService(
 	sessionRepo repository.CollaborationSessionRepositoryInterface,
 	projectRepo repository.ProjectRepositoryInterface,
 	userRepo repository.UserRepositoryInterface,
+	authService AuthorizationServiceInterface,
 ) *CollaborationSessionService {
 	return &CollaborationSessionService{
 		sessionRepo: sessionRepo,
 		projectRepo: projectRepo,
 		userRepo:    userRepo,
+		authService: authService,
 	}
 }
 
@@ -156,8 +159,18 @@ func (s *CollaborationSessionService) SetSessionInactive(sessionID uuid.UUID) er
 	return s.sessionRepo.SetInactive(sessionID)
 }
 
-func (s *CollaborationSessionService) DeleteSession(sessionID uuid.UUID) error {
-	_, err := s.sessionRepo.GetByID(sessionID)
+func (s *CollaborationSessionService) DeleteSession(sessionID uuid.UUID, userID uuid.UUID) error {
+	// Check authorization first
+	canDelete, err := s.authService.CanUserDeleteCollaborationSession(userID, sessionID)
+	if err != nil {
+		return err
+	}
+	if !canDelete {
+		return ErrForbidden
+	}
+
+	// Verify session exists
+	_, err = s.sessionRepo.GetByID(sessionID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrSessionNotFound

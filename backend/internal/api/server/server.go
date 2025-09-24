@@ -23,6 +23,7 @@ type Server struct {
 	fieldRepo            repository.FieldRepositoryInterface
 	relationshipRepo     repository.RelationshipRepositoryInterface
 	collaborationRepo    repository.CollaborationSessionRepositoryInterface
+	authService          services.AuthorizationServiceInterface
 	userService          services.UserServiceInterface
 	projectService       services.ProjectServiceInterface
 	tableService         services.TableServiceInterface
@@ -52,13 +53,16 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 	s.relationshipRepo = repository.NewRelationshipRepository(db)
 	s.collaborationRepo = repository.NewCollaborationSessionRepository(db)
 
-	// Initialize services
+	// Initialize authorization service first
+	s.authService = services.NewAuthorizationService(s.projectRepo, s.tableRepo, s.fieldRepo, s.relationshipRepo, s.collaborationRepo)
+
+	// Initialize services with authorization service
 	s.userService = services.NewUserService(s.userRepo)
 	s.projectService = services.NewProjectService(s.projectRepo, s.userRepo)
-	s.tableService = services.NewTableService(s.tableRepo, s.projectRepo)
-	s.fieldService = services.NewFieldService(s.fieldRepo, s.tableRepo)
-	s.relationshipService = services.NewRelationshipService(s.relationshipRepo, s.projectRepo, s.tableRepo, s.fieldRepo)
-	s.collaborationService = services.NewCollaborationSessionService(s.collaborationRepo, s.projectRepo, s.userRepo)
+	s.tableService = services.NewTableService(s.tableRepo, s.projectRepo, s.authService)
+	s.fieldService = services.NewFieldService(s.fieldRepo, s.tableRepo, s.authService)
+	s.relationshipService = services.NewRelationshipService(s.relationshipRepo, s.projectRepo, s.tableRepo, s.fieldRepo, s.authService)
+	s.collaborationService = services.NewCollaborationSessionService(s.collaborationRepo, s.projectRepo, s.userRepo, s.authService)
 	s.jwtService = services.NewJWTService(cfg)
 
 	// Initialize middleware

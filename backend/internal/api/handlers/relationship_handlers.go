@@ -272,20 +272,25 @@ func (h *RelationshipHandler) Delete() http.HandlerFunc {
 		}
 
 		// Get current user ID from context for authorization
-		userID, ok := middleware.GetUserIDFromContext(r.Context())
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
 		if !ok {
 			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
 			return
 		}
 
-		// TODO: Add authorization check to ensure user can delete this relationship
-		_ = userID // Use userID for authorization logic
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
 
-		// Delete relationship through service
-		if err := h.relationshipService.DeleteRelationship(relationshipID); err != nil {
+		// Delete relationship through service with authorization check
+		if err := h.relationshipService.DeleteRelationship(relationshipID, userID); err != nil {
 			switch {
 			case errors.Is(err, services.ErrRelationshipNotFound):
 				responses.RespondWithError(w, http.StatusNotFound, "Relationship not found")
+			case errors.Is(err, services.ErrForbidden):
+				responses.RespondWithError(w, http.StatusForbidden, "You don't have permission to delete this relationship")
 			default:
 				responses.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 			}

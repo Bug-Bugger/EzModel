@@ -13,6 +13,41 @@ import (
 	"gorm.io/gorm"
 )
 
+// Mock authorization service for tests
+type mockRelationshipAuthService struct {
+	mock.Mock
+}
+
+func (m *mockRelationshipAuthService) CanUserAccessProject(userID, projectID uuid.UUID) (bool, error) {
+	args := m.Called(userID, projectID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockRelationshipAuthService) CanUserModifyProject(userID, projectID uuid.UUID) (bool, error) {
+	args := m.Called(userID, projectID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockRelationshipAuthService) CanUserDeleteCollaborationSession(userID, sessionID uuid.UUID) (bool, error) {
+	args := m.Called(userID, sessionID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockRelationshipAuthService) GetProjectIDFromTable(tableID uuid.UUID) (uuid.UUID, error) {
+	args := m.Called(tableID)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
+func (m *mockRelationshipAuthService) GetProjectIDFromRelationship(relationshipID uuid.UUID) (uuid.UUID, error) {
+	args := m.Called(relationshipID)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
+func (m *mockRelationshipAuthService) GetProjectIDFromField(fieldID uuid.UUID) (uuid.UUID, error) {
+	args := m.Called(fieldID)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
 // Test helper functions
 func createTestRelationship(projectID, sourceTableID, targetTableID, sourceFieldID, targetFieldID uuid.UUID) *models.Relationship {
 	return &models.Relationship{
@@ -40,6 +75,7 @@ type RelationshipServiceTestSuite struct {
 	mockProjectRepo      *mockRepo.MockProjectRepository
 	mockTableRepo        *mockRepo.MockTableRepository
 	mockFieldRepo        *mockRepo.MockFieldRepository
+	mockAuthService      *mockRelationshipAuthService
 	service              *RelationshipService
 }
 
@@ -48,11 +84,13 @@ func (suite *RelationshipServiceTestSuite) SetupTest() {
 	suite.mockProjectRepo = new(mockRepo.MockProjectRepository)
 	suite.mockTableRepo = new(mockRepo.MockTableRepository)
 	suite.mockFieldRepo = new(mockRepo.MockFieldRepository)
+	suite.mockAuthService = new(mockRelationshipAuthService)
 	suite.service = NewRelationshipService(
 		suite.mockRelationshipRepo,
 		suite.mockProjectRepo,
 		suite.mockTableRepo,
 		suite.mockFieldRepo,
+		suite.mockAuthService,
 	)
 }
 
@@ -393,45 +431,73 @@ func (suite *RelationshipServiceTestSuite) TestUpdateRelationship_SourceTableNot
 // Test DeleteRelationship - Success
 func (suite *RelationshipServiceTestSuite) TestDeleteRelationship_Success() {
 	relationshipID := uuid.New()
-	existingRelationship := createTestRelationship(uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New())
+	userID := uuid.New()
+	projectID := uuid.New()
+	existingRelationship := createTestRelationship(projectID, uuid.New(), uuid.New(), uuid.New(), uuid.New())
 	existingRelationship.ID = relationshipID
 
+	suite.mockAuthService.On("GetProjectIDFromRelationship", relationshipID).Return(projectID, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(existingRelationship, nil)
 	suite.mockRelationshipRepo.On("Delete", relationshipID).Return(nil)
 
-	err := suite.service.DeleteRelationship(relationshipID)
+	err := suite.service.DeleteRelationship(relationshipID, userID)
 
 	suite.NoError(err)
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
 }
 
 // Test DeleteRelationship - Not Found
 func (suite *RelationshipServiceTestSuite) TestDeleteRelationship_NotFound() {
 	relationshipID := uuid.New()
+	userID := uuid.New()
 
-	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(nil, gorm.ErrRecordNotFound)
+	suite.mockAuthService.On("GetProjectIDFromRelationship", relationshipID).Return(uuid.Nil, ErrRelationshipNotFound)
 
-	err := suite.service.DeleteRelationship(relationshipID)
+	err := suite.service.DeleteRelationship(relationshipID, userID)
 
 	suite.Error(err)
 	suite.Equal(ErrRelationshipNotFound, err)
 
-	suite.mockRelationshipRepo.AssertExpectations(suite.T())
+	suite.mockAuthService.AssertExpectations(suite.T())
+}
+
+// Test DeleteRelationship - Forbidden
+func (suite *RelationshipServiceTestSuite) TestDeleteRelationship_Forbidden() {
+	relationshipID := uuid.New()
+	userID := uuid.New()
+	projectID := uuid.New()
+
+	suite.mockAuthService.On("GetProjectIDFromRelationship", relationshipID).Return(projectID, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(false, nil)
+
+	err := suite.service.DeleteRelationship(relationshipID, userID)
+
+	suite.Error(err)
+	suite.Equal(ErrForbidden, err)
+
+	suite.mockAuthService.AssertExpectations(suite.T())
 }
 
 // Test DeleteRelationship - Repository Error
 func (suite *RelationshipServiceTestSuite) TestDeleteRelationship_RepositoryError() {
 	relationshipID := uuid.New()
-	existingRelationship := createTestRelationship(uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New())
+	userID := uuid.New()
+	projectID := uuid.New()
+	existingRelationship := createTestRelationship(projectID, uuid.New(), uuid.New(), uuid.New(), uuid.New())
 	existingRelationship.ID = relationshipID
 
+	suite.mockAuthService.On("GetProjectIDFromRelationship", relationshipID).Return(projectID, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(existingRelationship, nil)
 	suite.mockRelationshipRepo.On("Delete", relationshipID).Return(assert.AnError)
 
-	err := suite.service.DeleteRelationship(relationshipID)
+	err := suite.service.DeleteRelationship(relationshipID, userID)
 
 	suite.Error(err)
 	suite.Equal(assert.AnError, err)
 
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
 }

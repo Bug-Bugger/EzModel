@@ -13,6 +13,41 @@ import (
 	"gorm.io/gorm"
 )
 
+// Mock authorization service for tests
+type mockAuthorizationService struct {
+	mock.Mock
+}
+
+func (m *mockAuthorizationService) CanUserAccessProject(userID, projectID uuid.UUID) (bool, error) {
+	args := m.Called(userID, projectID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockAuthorizationService) CanUserModifyProject(userID, projectID uuid.UUID) (bool, error) {
+	args := m.Called(userID, projectID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockAuthorizationService) CanUserDeleteCollaborationSession(userID, sessionID uuid.UUID) (bool, error) {
+	args := m.Called(userID, sessionID)
+	return args.Bool(0), args.Error(1)
+}
+
+func (m *mockAuthorizationService) GetProjectIDFromTable(tableID uuid.UUID) (uuid.UUID, error) {
+	args := m.Called(tableID)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
+func (m *mockAuthorizationService) GetProjectIDFromRelationship(relationshipID uuid.UUID) (uuid.UUID, error) {
+	args := m.Called(relationshipID)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
+func (m *mockAuthorizationService) GetProjectIDFromField(fieldID uuid.UUID) (uuid.UUID, error) {
+	args := m.Called(fieldID)
+	return args.Get(0).(uuid.UUID), args.Error(1)
+}
+
 // Test helper functions
 func createTestField(tableID uuid.UUID) *models.Field {
 	return &models.Field{
@@ -33,15 +68,17 @@ func fieldStringPtr(s string) *string {
 
 type FieldServiceTestSuite struct {
 	suite.Suite
-	mockFieldRepo *mockRepo.MockFieldRepository
-	mockTableRepo *mockRepo.MockTableRepository
-	service       *FieldService
+	mockFieldRepo   *mockRepo.MockFieldRepository
+	mockTableRepo   *mockRepo.MockTableRepository
+	mockAuthService *mockAuthorizationService
+	service         *FieldService
 }
 
 func (suite *FieldServiceTestSuite) SetupTest() {
 	suite.mockFieldRepo = new(mockRepo.MockFieldRepository)
 	suite.mockTableRepo = new(mockRepo.MockTableRepository)
-	suite.service = NewFieldService(suite.mockFieldRepo, suite.mockTableRepo)
+	suite.mockAuthService = new(mockAuthorizationService)
+	suite.service = NewFieldService(suite.mockFieldRepo, suite.mockTableRepo, suite.mockAuthService)
 }
 
 func TestFieldServiceSuite(t *testing.T) {
@@ -339,46 +376,74 @@ func (suite *FieldServiceTestSuite) TestUpdateField_InvalidDataType() {
 // Test DeleteField - Success
 func (suite *FieldServiceTestSuite) TestDeleteField_Success() {
 	fieldID := uuid.New()
+	userID := uuid.New()
+	projectID := uuid.New()
 	existingField := createTestField(uuid.New())
 	existingField.ID = fieldID
 
+	suite.mockAuthService.On("GetProjectIDFromField", fieldID).Return(projectID, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(existingField, nil)
 	suite.mockFieldRepo.On("Delete", fieldID).Return(nil)
 
-	err := suite.service.DeleteField(fieldID)
+	err := suite.service.DeleteField(fieldID, userID)
 
 	suite.NoError(err)
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 }
 
 // Test DeleteField - Not Found
 func (suite *FieldServiceTestSuite) TestDeleteField_NotFound() {
 	fieldID := uuid.New()
+	userID := uuid.New()
 
-	suite.mockFieldRepo.On("GetByID", fieldID).Return(nil, gorm.ErrRecordNotFound)
+	suite.mockAuthService.On("GetProjectIDFromField", fieldID).Return(uuid.Nil, ErrFieldNotFound)
 
-	err := suite.service.DeleteField(fieldID)
+	err := suite.service.DeleteField(fieldID, userID)
 
 	suite.Error(err)
 	suite.Equal(ErrFieldNotFound, err)
 
-	suite.mockFieldRepo.AssertExpectations(suite.T())
+	suite.mockAuthService.AssertExpectations(suite.T())
+}
+
+// Test DeleteField - Forbidden
+func (suite *FieldServiceTestSuite) TestDeleteField_Forbidden() {
+	fieldID := uuid.New()
+	userID := uuid.New()
+	projectID := uuid.New()
+
+	suite.mockAuthService.On("GetProjectIDFromField", fieldID).Return(projectID, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(false, nil)
+
+	err := suite.service.DeleteField(fieldID, userID)
+
+	suite.Error(err)
+	suite.Equal(ErrForbidden, err)
+
+	suite.mockAuthService.AssertExpectations(suite.T())
 }
 
 // Test DeleteField - Repository Error
 func (suite *FieldServiceTestSuite) TestDeleteField_RepositoryError() {
 	fieldID := uuid.New()
+	userID := uuid.New()
+	projectID := uuid.New()
 	existingField := createTestField(uuid.New())
 	existingField.ID = fieldID
 
+	suite.mockAuthService.On("GetProjectIDFromField", fieldID).Return(projectID, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(existingField, nil)
 	suite.mockFieldRepo.On("Delete", fieldID).Return(assert.AnError)
 
-	err := suite.service.DeleteField(fieldID)
+	err := suite.service.DeleteField(fieldID, userID)
 
 	suite.Error(err)
 	suite.Equal(assert.AnError, err)
 
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 }
 

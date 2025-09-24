@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files and coverage reports (in backend)
+backend/*_test.go
+backend/coverage.out
+backend/coverage.html
+backend/*.out
+backend/test/
+
+# Build artifacts
+backend/bin/
+backend/build/
+bin/
+build/
+
+# Temporary files
+tmp/
+temp/
+
+# Node modules (if frontend is added later)
+node_modules/
+npm-debug.log
+
+# Docker files (don't copy into image)
+Dockerfile*
+docker-compose*.yml
+.dockerignore

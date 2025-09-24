@@ -9,6 +9,11 @@ on:
 env:
   GO_VERSION: "1.24.1"
 
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
 jobs:
   test:
     name: Test & Quality Checks

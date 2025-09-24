@@ -15,10 +15,10 @@ const (
 )
 
 type AuthMiddleware struct {
-	jwtService *services.JWTService
+	jwtService services.JWTServiceInterface
 }
 
-func NewAuthMiddleware(jwtService *services.JWTService) *AuthMiddleware {
+func NewAuthMiddleware(jwtService services.JWTServiceInterface) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtService: jwtService,
 	}
@@ -52,7 +52,7 @@ func (m *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 		}
 
 		// Set the userID in the request context
-		ctx := context.WithValue(r.Context(), userIDKey, claims.UserID)
+		ctx := context.WithValue(r.Context(), userIDKey, claims.UserID.String())
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

@@ -1,16 +1,14 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/api/middleware"
 	"github.com/Bug-Bugger/ezmodel/internal/api/responses"
+	"github.com/Bug-Bugger/ezmodel/internal/api/utils"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
-	"github.com/Bug-Bugger/ezmodel/internal/validation"
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
@@ -39,17 +37,9 @@ func (h *ProjectHandler) Create() http.HandlerFunc {
 			return
 		}
 
-		// Parse request body
+		// Parse and validate request body
 		var req dto.CreateProjectRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate input
-		if err := validation.Validate(req); err != nil {
-			validationErrors := validation.ValidationErrors(err)
-			responses.RespondWithValidationErrors(w, validationErrors)
+		if !utils.DecodeAndValidate(w, r, &req) {
 			return
 		}
 
@@ -83,10 +73,8 @@ func (h *ProjectHandler) Create() http.HandlerFunc {
 
 func (h *ProjectHandler) GetByID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		idStr := chi.URLParam(r, "id")
-		id, err := uuid.Parse(idStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID")
+		id, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID")
+		if !ok {
 			return
 		}
 
@@ -131,23 +119,13 @@ func (h *ProjectHandler) GetByID() http.HandlerFunc {
 
 func (h *ProjectHandler) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		idStr := chi.URLParam(r, "id")
-		id, err := uuid.Parse(idStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID")
+		id, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID")
+		if !ok {
 			return
 		}
 
 		var req dto.UpdateProjectRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate the fields that were provided
-		if err := validation.Validate(req); err != nil {
-			validationErrors := validation.ValidationErrors(err)
-			responses.RespondWithValidationErrors(w, validationErrors)
+		if !utils.DecodeAndValidate(w, r, &req) {
 			return
 		}
 
@@ -185,10 +163,8 @@ func (h *ProjectHandler) Update() http.HandlerFunc {
 
 func (h *ProjectHandler) Delete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		idStr := chi.URLParam(r, "id")
-		id, err := uuid.Parse(idStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID")
+		id, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID")
+		if !ok {
 			return
 		}
 
@@ -297,26 +273,17 @@ func (h *ProjectHandler) GetMyProjects() http.HandlerFunc {
 
 func (h *ProjectHandler) AddCollaborator() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		idStr := chi.URLParam(r, "id")
-		projectID, err := uuid.Parse(idStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID")
+		if !ok {
 			return
 		}
 
 		var req dto.AddCollaboratorRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
+		if !utils.DecodeAndValidate(w, r, &req) {
 			return
 		}
 
-		if err := validation.Validate(req); err != nil {
-			validationErrors := validation.ValidationErrors(err)
-			responses.RespondWithValidationErrors(w, validationErrors)
-			return
-		}
-
-		err = h.projectService.AddCollaborator(projectID, req.CollaboratorID)
+		err := h.projectService.AddCollaborator(projectID, req.CollaboratorID)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrProjectNotFound):
@@ -335,21 +302,17 @@ func (h *ProjectHandler) AddCollaborator() http.HandlerFunc {
 
 func (h *ProjectHandler) RemoveCollaborator() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		projectIDStr := chi.URLParam(r, "id")
-		projectID, err := uuid.Parse(projectIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID")
+		if !ok {
 			return
 		}
 
-		collaboratorIDStr := chi.URLParam(r, "collaborator_id")
-		collaboratorID, err := uuid.Parse(collaboratorIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid collaborator ID")
+		collaboratorID, ok := utils.ParseUUIDParam(w, r, "collaborator_id")
+		if !ok {
 			return
 		}
 
-		err = h.projectService.RemoveCollaborator(projectID, collaboratorID)
+		err := h.projectService.RemoveCollaborator(projectID, collaboratorID)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrProjectNotFound):

@@ -6,13 +6,16 @@ import (
 	"github.com/google/uuid"
 )
 
+// User represents a user in the system
 type User struct {
-	ID                 uuid.UUID `json:"id" gorm:"primaryKey;type:uuid;default:gen_random_uuid()"`
-	Email              string    `json:"email" gorm:"type:varchar(255);unique;not null" validate:"required,email"`
-	PasswordHash       string    `json:"-" gorm:"type:varchar(255);not null" validate:"required"`
-	Username           string    `json:"username" gorm:"type:varchar(100);not null" validate:"required,min=3,max=100"`
-	OwnedProjects      []Project `json:"owned_projects,omitempty" gorm:"foreignKey:OwnerID"`
-	CollaboratedProjects []Project `json:"collaborated_projects,omitempty" gorm:"many2many:project_collaborators;"`
-	CreatedAt          time.Time `json:"created_at" gorm:"autoCreateTime;type:timestamp with time zone"`
-	UpdatedAt          time.Time `json:"updated_at" gorm:"autoUpdateTime;type:timestamp with time zone"`
+	ID           uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	Email        string    `gorm:"uniqueIndex;not null" json:"email"`
+	Username     string    `gorm:"uniqueIndex;not null" json:"username"`
+	PasswordHash string    `gorm:"not null" json:"-"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+
+	// Relationships
+	OwnedProjects        []Project `gorm:"foreignKey:OwnerID" json:"owned_projects,omitempty"`
+	CollaboratedProjects []Project `gorm:"many2many:project_collaborators;" json:"collaborated_projects,omitempty"`
 }

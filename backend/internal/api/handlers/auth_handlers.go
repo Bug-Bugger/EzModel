@@ -13,10 +13,10 @@ import (
 
 type AuthHandler struct {
 	userService services.UserServiceInterface
-	jwtService  *services.JWTService
+	jwtService  services.JWTServiceInterface
 }
 
-func NewAuthHandler(userService services.UserServiceInterface, jwtService *services.JWTService) *AuthHandler {
+func NewAuthHandler(userService services.UserServiceInterface, jwtService services.JWTServiceInterface) *AuthHandler {
 	return &AuthHandler{
 		userService: userService,
 		jwtService:  jwtService,

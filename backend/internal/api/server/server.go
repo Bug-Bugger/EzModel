@@ -14,15 +14,24 @@ import (
 )
 
 type Server struct {
-	config         *config.Config
-	router         *chi.Mux
-	db             *gorm.DB
-	userRepo       repository.UserRepositoryInterface
-	projectRepo    repository.ProjectRepositoryInterface
-	userService    services.UserServiceInterface
-	projectService services.ProjectServiceInterface
-	jwtService     *services.JWTService
-	authMiddleware *middleware.AuthMiddleware
+	config               *config.Config
+	router               *chi.Mux
+	db                   *gorm.DB
+	userRepo             repository.UserRepositoryInterface
+	projectRepo          repository.ProjectRepositoryInterface
+	tableRepo            repository.TableRepositoryInterface
+	fieldRepo            repository.FieldRepositoryInterface
+	relationshipRepo     repository.RelationshipRepositoryInterface
+	collaborationRepo    repository.CollaborationSessionRepositoryInterface
+	authService          services.AuthorizationServiceInterface
+	userService          services.UserServiceInterface
+	projectService       services.ProjectServiceInterface
+	tableService         services.TableServiceInterface
+	fieldService         services.FieldServiceInterface
+	relationshipService  services.RelationshipServiceInterface
+	collaborationService services.CollaborationSessionServiceInterface
+	jwtService           *services.JWTService
+	authMiddleware       *middleware.AuthMiddleware
 }
 
 func New(cfg *config.Config, db *gorm.DB) *Server {
@@ -39,17 +48,28 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 	// Initialize repositories
 	s.userRepo = repository.NewUserRepository(db)
 	s.projectRepo = repository.NewProjectRepository(db)
+	s.tableRepo = repository.NewTableRepository(db)
+	s.fieldRepo = repository.NewFieldRepository(db)
+	s.relationshipRepo = repository.NewRelationshipRepository(db)
+	s.collaborationRepo = repository.NewCollaborationSessionRepository(db)
 
-	// Initialize services
+	// Initialize authorization service first
+	s.authService = services.NewAuthorizationService(s.projectRepo, s.tableRepo, s.fieldRepo, s.relationshipRepo, s.collaborationRepo)
+
+	// Initialize services with authorization service
 	s.userService = services.NewUserService(s.userRepo)
 	s.projectService = services.NewProjectService(s.projectRepo, s.userRepo)
+	s.tableService = services.NewTableService(s.tableRepo, s.projectRepo, s.authService)
+	s.fieldService = services.NewFieldService(s.fieldRepo, s.tableRepo, s.authService)
+	s.relationshipService = services.NewRelationshipService(s.relationshipRepo, s.projectRepo, s.tableRepo, s.fieldRepo, s.authService)
+	s.collaborationService = services.NewCollaborationSessionService(s.collaborationRepo, s.projectRepo, s.userRepo, s.authService)
 	s.jwtService = services.NewJWTService(cfg)
 
 	// Initialize middleware
 	s.authMiddleware = middleware.NewAuthMiddleware(s.jwtService)
 
 	// Setup routes
-	routes.SetupRoutes(s.router, s.userService, s.projectService, s.jwtService, s.authMiddleware)
+	routes.SetupRoutes(s.router, s.userService, s.projectService, s.tableService, s.fieldService, s.relationshipService, s.collaborationService, s.jwtService, s.authMiddleware)
 
 	return s
 }

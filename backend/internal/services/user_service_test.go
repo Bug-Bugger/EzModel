@@ -14,7 +14,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 // Test helper functions
 func createTestUser() *models.User {
 	return &models.User{

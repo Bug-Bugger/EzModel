@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"time"
 )
 
@@ -24,8 +25,14 @@ type Config struct {
 }
 
 func New() *Config {
+	port := getEnv("PORT", "8080")
+	// Add colon if not present
+	if !strings.HasPrefix(port, ":") {
+		port = ":" + port
+	}
+
 	cfg := &Config{
-		Port: getEnv("PORT", ":8080"),
+		Port: port,
 		Env:  getEnv("ENV", "development"),
 	}
 

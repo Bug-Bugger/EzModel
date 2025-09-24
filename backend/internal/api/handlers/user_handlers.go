@@ -192,4 +192,3 @@ func (h *UserHandler) Delete() http.HandlerFunc {
 		responses.RespondWithSuccess(w, http.StatusOK, "User deleted successfully", nil)
 	}
 }
-

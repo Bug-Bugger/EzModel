@@ -66,12 +66,12 @@ func (r *ProjectRepository) AddCollaborator(projectID, userID uuid.UUID) error {
 	if err := r.db.First(&project, "id = ?", projectID).Error; err != nil {
 		return err
 	}
-	
+
 	var user models.User
 	if err := r.db.First(&user, "id = ?", userID).Error; err != nil {
 		return err
 	}
-	
+
 	return r.db.Model(&project).Association("Collaborators").Append(&user)
 }
 
@@ -80,11 +80,11 @@ func (r *ProjectRepository) RemoveCollaborator(projectID, userID uuid.UUID) erro
 	if err := r.db.First(&project, "id = ?", projectID).Error; err != nil {
 		return err
 	}
-	
+
 	var user models.User
 	if err := r.db.First(&user, "id = ?", userID).Error; err != nil {
 		return err
 	}
-	
+
 	return r.db.Model(&project).Association("Collaborators").Delete(&user)
 }

@@ -236,7 +236,7 @@ func (h *ProjectHandler) GetMyProjects() http.HandlerFunc {
 
 		// Combine and deduplicate
 		projectMap := make(map[uuid.UUID]*dto.ProjectSummaryResponse)
-		
+
 		for _, project := range ownedProjects {
 			projectMap[project.ID] = &dto.ProjectSummaryResponse{
 				ID:          project.ID,

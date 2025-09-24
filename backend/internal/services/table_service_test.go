@@ -91,8 +91,8 @@ func (suite *TableServiceTestSuite) TestCreateTable_Success() {
 	tableID := uuid.New()
 
 	project := &models.Project{
-		ID:     projectID,
-		Name:   "Test Project",
+		ID:      projectID,
+		Name:    "Test Project",
 		OwnerID: uuid.New(),
 	}
 
@@ -160,8 +160,8 @@ func (suite *TableServiceTestSuite) TestCreateTable_RepositoryError() {
 	name := "Test Table"
 
 	project := &models.Project{
-		ID:     projectID,
-		Name:   "Test Project",
+		ID:      projectID,
+		Name:    "Test Project",
 		OwnerID: uuid.New(),
 	}
 

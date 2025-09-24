@@ -75,7 +75,7 @@ func (suite *UserHandlerTestSuite) TestCreateUser_InvalidJSON() {
 func (suite *UserHandlerTestSuite) TestCreateUser_ValidationError() {
 	invalidRequest := dto.CreateUserRequest{
 		Email:    "invalid-email",
-		Username: "ab", // too short
+		Username: "ab",  // too short
 		Password: "123", // too short
 	}
 

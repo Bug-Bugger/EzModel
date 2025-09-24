@@ -11,7 +11,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 type ProjectService struct {
 	projectRepo repository.ProjectRepositoryInterface
 	userRepo    repository.UserRepositoryInterface

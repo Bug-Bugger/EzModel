@@ -12,7 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 type UserService struct {
 	userRepo repository.UserRepositoryInterface
 }
@@ -123,7 +122,6 @@ func (s *UserService) UpdateUser(id uuid.UUID, req *dto.UpdateUserRequest) (*mod
 		user.Email = email
 	}
 
-
 	if err := s.userRepo.Update(user); err != nil {
 		return nil, err
 	}
@@ -166,8 +164,6 @@ func (s *UserService) DeleteUser(id uuid.UUID) error {
 	return s.userRepo.Delete(id)
 }
 
-
-
 func (s *UserService) AuthenticateUser(email, password string) (*models.User, error) {
 	user, err := s.userRepo.GetByEmail(email)
 	if err != nil {
@@ -182,7 +178,6 @@ func (s *UserService) AuthenticateUser(email, password string) (*models.User, er
 	if err != nil {
 		return nil, ErrInvalidCredentials
 	}
-
 
 	return user, nil
 }

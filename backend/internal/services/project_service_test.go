@@ -13,7 +13,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 // Helper functions
 func createTestProjectUser() *models.User {
 	return &models.User{

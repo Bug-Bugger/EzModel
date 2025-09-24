@@ -211,7 +211,7 @@ func (suite *TableHandlerTestSuite) TestDeleteTable_Success() {
 	tableID := uuid.New()
 	userID := uuid.New()
 
-	suite.mockService.On("DeleteTable", tableID).Return(nil)
+	suite.mockService.On("DeleteTable", tableID, userID).Return(nil)
 
 	req := httptest.NewRequest(http.MethodDelete, "/tables/"+tableID.String(), nil)
 	req = testutil.WithUserContext(req, userID)
@@ -232,7 +232,7 @@ func (suite *TableHandlerTestSuite) TestDeleteTable_NotFound() {
 	tableID := uuid.New()
 	userID := uuid.New()
 
-	suite.mockService.On("DeleteTable", tableID).Return(services.ErrTableNotFound)
+	suite.mockService.On("DeleteTable", tableID, userID).Return(services.ErrTableNotFound)
 
 	req := httptest.NewRequest(http.MethodDelete, "/tables/"+tableID.String(), nil)
 	req = testutil.WithUserContext(req, userID)

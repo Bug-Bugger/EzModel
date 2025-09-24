@@ -480,7 +480,7 @@ func (suite *RelationshipHandlerTestSuite) TestDelete_Success() {
 	relationshipID := uuid.New()
 	userID := uuid.New()
 
-	suite.mockRelationshipService.On("DeleteRelationship", relationshipID).Return(nil)
+	suite.mockRelationshipService.On("DeleteRelationship", relationshipID, userID).Return(nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodDelete, "/relationships/"+relationshipID.String(), nil)
 	req = testutil.WithUserContext(req, userID) // Add user context
@@ -515,7 +515,7 @@ func (suite *RelationshipHandlerTestSuite) TestDelete_RelationshipNotFound() {
 	relationshipID := uuid.New()
 	userID := uuid.New()
 
-	suite.mockRelationshipService.On("DeleteRelationship", relationshipID).Return(services.ErrRelationshipNotFound)
+	suite.mockRelationshipService.On("DeleteRelationship", relationshipID, userID).Return(services.ErrRelationshipNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodDelete, "/relationships/"+relationshipID.String(), nil)
 	req = testutil.WithUserContext(req, userID) // Add user context
@@ -536,7 +536,7 @@ func (suite *RelationshipHandlerTestSuite) TestDelete_ServiceError() {
 	relationshipID := uuid.New()
 	userID := uuid.New()
 
-	suite.mockRelationshipService.On("DeleteRelationship", relationshipID).Return(assert.AnError)
+	suite.mockRelationshipService.On("DeleteRelationship", relationshipID, userID).Return(assert.AnError)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodDelete, "/relationships/"+relationshipID.String(), nil)
 	req = testutil.WithUserContext(req, userID) // Add user context

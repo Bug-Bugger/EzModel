@@ -497,7 +497,7 @@ func (suite *FieldHandlerTestSuite) TestDelete_Success() {
 	fieldID := uuid.New()
 	userID := uuid.New()
 
-	suite.mockFieldService.On("DeleteField", fieldID).Return(nil)
+	suite.mockFieldService.On("DeleteField", fieldID, userID).Return(nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodDelete, "/fields/"+fieldID.String(), nil)
 	req = testutil.WithUserContext(req, userID) // Add user context
@@ -551,7 +551,7 @@ func (suite *FieldHandlerTestSuite) TestDelete_FieldNotFound() {
 	fieldID := uuid.New()
 	userID := uuid.New()
 
-	suite.mockFieldService.On("DeleteField", fieldID).Return(services.ErrFieldNotFound)
+	suite.mockFieldService.On("DeleteField", fieldID, userID).Return(services.ErrFieldNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodDelete, "/fields/"+fieldID.String(), nil)
 	req = testutil.WithUserContext(req, userID)

@@ -45,9 +45,11 @@ func (s *ProjectService) CreateProject(name, description string, ownerID uuid.UU
 	}
 
 	project := &models.Project{
-		Name:        name,
-		Description: description,
-		OwnerID:     ownerID,
+		Name:         name,
+		Description:  description,
+		OwnerID:      ownerID,
+		DatabaseType: "postgresql", // Default to PostgreSQL
+		CanvasData:   "{}",         // Initialize with empty JSON object
 	}
 
 	id, err := s.projectRepo.Create(project)
@@ -106,6 +108,16 @@ func (s *ProjectService) UpdateProject(id uuid.UUID, req *dto.UpdateProjectReque
 			return nil, ErrInvalidInput
 		}
 		project.Description = description
+	}
+
+	if req.CanvasData != nil {
+		canvasData := strings.TrimSpace(*req.CanvasData)
+		// Validate that it's valid JSON (basic check)
+		if canvasData == "" {
+			canvasData = "{}"
+		}
+		// Note: For production, you might want to use json.Valid() for proper validation
+		project.CanvasData = canvasData
 	}
 
 	if err := s.projectRepo.Update(project); err != nil {

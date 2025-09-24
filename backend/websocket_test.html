@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EzModel WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .status.connected { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.disconnected { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .messages { height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #f8f9fa; }
+        .message { margin-bottom: 10px; padding: 5px; background: white; border-radius: 3px; }
+        .message-time { color: #666; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>EzModel WebSocket Test Client</h1>
+
+        <div class="status" style="background: #fff3cd; color: #856404; border: 1px solid #ffeaa7;">
+            <strong>⚠️ Browser Limitation:</strong> The native WebSocket API in browsers cannot set custom headers like <code>Authorization: Bearer</code>.
+            This client will demonstrate the connection but authentication will fail. For real testing, use:
+            <ul style="margin: 10px 0;">
+                <li><strong>Postman</strong>: Select "WebSocket Request" and add Authorization header</li>
+                <li><strong>wscat</strong>: <code>wscat -c "ws://localhost:8080/projects/{id}/collaborate" -H "Authorization: Bearer {token}"</code></li>
+                <li><strong>curl</strong>: <code>curl --include --no-buffer --header "Authorization: Bearer {token}" --header "Connection: Upgrade" --header "Upgrade: websocket" --header "Sec-WebSocket-Key: {key}" --header "Sec-WebSocket-Version: 13" http://localhost:8080/projects/{id}/collaborate</code></li>
+            </ul>
+        </div>
+
+        <div class="form-group">
+            <label for="serverUrl">Server URL:</label>
+            <input type="text" id="serverUrl" value="ws://localhost:8080/projects/PROJECT_ID/collaborate" placeholder="ws://localhost:8080/projects/{projectId}/collaborate">
+        </div>
+
+        <div class="form-group">
+            <label for="token">JWT Token:</label>
+            <input type="text" id="token" placeholder="Your JWT access token (won't work in browser - see note above)">
+        </div>
+
+        <div class="form-group">
+            <button id="connectBtn" onclick="connect()">Connect (Will Fail Auth)</button>
+            <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+        </div>
+
+        <div id="status" class="status disconnected">Disconnected</div>
+
+        <div class="form-group">
+            <h3>Send Messages</h3>
+            <label for="messageType">Message Type:</label>
+            <select id="messageType" onchange="updateMessageTemplate()">
+                <option value="user_cursor">User Cursor</option>
+                <option value="canvas_updated">Canvas Updated</option>
+                <option value="table_created">Table Created</option>
+                <option value="user_joined">User Joined</option>
+                <option value="custom">Custom Message</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="messageData">Message Data (JSON):</label>
+            <textarea id="messageData" rows="6" placeholder="Message payload"></textarea>
+        </div>
+
+        <div class="form-group">
+            <button onclick="sendMessage()" disabled id="sendBtn">Send Message</button>
+            <button onclick="clearMessages()">Clear Messages</button>
+        </div>
+
+        <div class="form-group">
+            <h3>Messages</h3>
+            <div id="messages" class="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let messageCount = 0;
+
+        const messageTemplates = {
+            user_cursor: {
+                cursor_x: 100.5,
+                cursor_y: 200.5
+            },
+            canvas_updated: {
+                canvas_data: '{"tables": [{"id": "1", "name": "users", "x": 100, "y": 200}], "relationships": []}'
+            },
+            table_created: {
+                table_id: "550e8400-e29b-41d4-a716-446655440000",
+                name: "users",
+                description: "User data table",
+                x: 150.0,
+                y: 250.0
+            },
+            user_joined: {
+                user_id: "550e8400-e29b-41d4-a716-446655440001",
+                username: "testuser",
+                user_color: "#FF6B6B"
+            }
+        };
+
+        function updateMessageTemplate() {
+            const type = document.getElementById('messageType').value;
+            const messageData = document.getElementById('messageData');
+
+            if (type !== 'custom' && messageTemplates[type]) {
+                messageData.value = JSON.stringify(messageTemplates[type], null, 2);
+            } else if (type === 'custom') {
+                messageData.value = '{\n  "example": "data"\n}';
+            }
+        }
+
+        function connect() {
+            const serverUrl = document.getElementById('serverUrl').value.replace('PROJECT_ID', generateUUID());
+            const token = document.getElementById('token').value;
+
+            addMessage('system', 'Attempting to connect to: ' + serverUrl);
+
+            if (token) {
+                addMessage('system', 'Token provided: ' + token.substring(0, 20) + '... (cannot be used in browser WebSocket)');
+            } else {
+                addMessage('warning', 'No JWT token provided');
+            }
+
+            addMessage('warning', 'Browser WebSocket API cannot set Authorization headers - connection will fail authentication');
+
+            try {
+                ws = new WebSocket(serverUrl);
+
+                ws.onopen = function(event) {
+                    addMessage('system', 'WebSocket connection opened (but will likely close due to auth failure)');
+                    updateStatus(true);
+                };
+
+                ws.onmessage = function(event) {
+                    try {
+                        const data = JSON.parse(event.data);
+                        addMessage('received', JSON.stringify(data, null, 2));
+                    } catch (e) {
+                        addMessage('received', event.data);
+                    }
+                };
+
+                ws.onerror = function(error) {
+                    addMessage('error', 'WebSocket error (likely authentication failure)');
+                    console.error('WebSocket error:', error);
+                };
+
+                ws.onclose = function(event) {
+                    addMessage('system', `Connection closed: Code ${event.code}, Reason: ${event.reason || 'Authentication required'}`);
+                    updateStatus(false);
+                };
+            } catch (error) {
+                addMessage('error', 'Failed to create WebSocket: ' + error.message);
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function sendMessage() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket is not connected');
+                return;
+            }
+
+            const messageType = document.getElementById('messageType').value;
+            const messageDataStr = document.getElementById('messageData').value;
+
+            try {
+                const messageData = JSON.parse(messageDataStr);
+                const message = {
+                    type: messageType,
+                    data: messageData
+                };
+
+                ws.send(JSON.stringify(message));
+                addMessage('sent', JSON.stringify(message, null, 2));
+            } catch (e) {
+                alert('Invalid JSON in message data: ' + e.message);
+            }
+        }
+
+        function addMessage(type, content) {
+            const messages = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+
+            const time = new Date().toLocaleTimeString();
+            const typeClass = type === 'error' ? 'color: red' :
+                            type === 'sent' ? 'color: blue' :
+                            type === 'system' ? 'color: green' : 'color: black';
+
+            messageDiv.innerHTML = `
+                <div class="message-time">[${time}] <span style="${typeClass}">${type.toUpperCase()}</span></div>
+                <pre style="white-space: pre-wrap; margin: 0;">${content}</pre>
+            `;
+
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+            messageCount++;
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+            messageCount = 0;
+        }
+
+        function updateStatus(connected) {
+            const status = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const sendBtn = document.getElementById('sendBtn');
+
+            if (connected) {
+                status.textContent = 'Connected';
+                status.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                sendBtn.disabled = false;
+            } else {
+                status.textContent = 'Disconnected';
+                status.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                sendBtn.disabled = true;
+            }
+        }
+
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // Initialize with cursor template
+        updateMessageTemplate();
+    </script>
+</body>
+</html>

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/api/responses"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
@@ -59,10 +60,12 @@ func NewWebSocketHandler(
 
 // HandleWebSocket upgrades HTTP connection to WebSocket for real-time collaboration
 func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
-	// Get project ID from URL
-	projectIDStr := chi.URLParam(r, "projectID")
+	// Get project ID from URL - the route parameter is "id", not "projectID"
+	projectIDStr := chi.URLParam(r, "id")
+	log.Printf("WebSocket: Extracted projectIDStr from 'id' param: '%s'", projectIDStr)
 	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
+		log.Printf("WebSocket: UUID parsing error for '%s': %v", projectIDStr, err)
 		responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID")
 		return
 	}
@@ -127,27 +130,22 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	go h.readPump(client)
 }
 
-// authenticateWebSocketRequest authenticates the WebSocket connection
+// authenticateWebSocketRequest authenticates the WebSocket connection using Authorization header
+// This maintains consistency with the standard REST API authentication middleware
 func (h *WebSocketHandler) authenticateWebSocketRequest(r *http.Request) (*models.User, error) {
-	// Try to get token from header first
+	// Extract token from Authorization header (consistent with AuthMiddleware)
 	authHeader := r.Header.Get("Authorization")
-	var token string
-
-	if authHeader != "" {
-		parts := strings.Split(authHeader, " ")
-		if len(parts) == 2 && parts[0] == "Bearer" {
-			token = parts[1]
-		}
+	if authHeader == "" {
+		return nil, fmt.Errorf("no authorization header provided")
 	}
 
-	// If no token in header, try query parameter
-	if token == "" {
-		token = r.URL.Query().Get("token")
+	// Check if the format is "Bearer <token>"
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return nil, fmt.Errorf("invalid authorization format")
 	}
 
-	if token == "" {
-		return nil, fmt.Errorf("no authentication token provided")
-	}
+	token := parts[1]
 
 	// Validate token
 	claims, err := h.jwtService.ValidateToken(token)
@@ -333,16 +331,11 @@ func (h *WebSocketHandler) handleCanvasUpdate(client *websocketPkg.Client, messa
 
 // updateProjectCanvasData updates the canvas data in the database
 func (h *WebSocketHandler) updateProjectCanvasData(projectID uuid.UUID, canvasData string) error {
-	// For now, we'll create a simple update request that only updates canvas data
-	// Note: The current UpdateProjectRequest doesn't include CanvasData
-	// This would need to be added to the DTO or handled differently
-
-	// This is a placeholder implementation
-	// In a production system, you'd want to add CanvasData to UpdateProjectRequest
-	// or create a separate method for updating canvas data
-
-	log.Printf("Canvas update for project %s: %s", projectID, canvasData)
-	return nil
+	// Use the project service to update canvas data
+	_, err := h.projectService.UpdateProject(projectID, &dto.UpdateProjectRequest{
+		CanvasData: &canvasData,
+	})
+	return err
 }
 
 // generateRandomColor generates a random hex color for user identification

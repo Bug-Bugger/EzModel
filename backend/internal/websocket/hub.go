@@ -70,7 +70,7 @@ func NewHub() *Hub {
 func (h *Hub) Run() {
 	defer func() {
 		h.ticker.Stop()
-		close(h.done)
+		h.safeCloseDoneChannel()
 	}()
 
 	for {
@@ -156,7 +156,8 @@ func (h *Hub) unregisterClient(client *Client) {
 	if clients, exists := h.projects[client.ProjectID]; exists {
 		if _, exists := clients[client]; exists {
 			delete(clients, client)
-			close(client.Send)
+			// Safely close the channel
+			h.safeCloseChannel(client.Send)
 
 			// Clean up empty project maps
 			if len(clients) == 0 {
@@ -183,8 +184,8 @@ func (h *Hub) unregisterClient(client *Client) {
 
 // broadcastMessage handles message broadcasting
 func (h *Hub) broadcastMessage(broadcastMsg *BroadcastMessage) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	h.broadcastToProjectExcept(broadcastMsg.ProjectID, broadcastMsg.Message, broadcastMsg.Sender)
 }
@@ -204,7 +205,7 @@ func (h *Hub) broadcastToProjectExcept(projectID uuid.UUID, message *WebSocketMe
 				case client.Send <- messageBytes:
 				default:
 					// Client's send channel is full, close it
-					close(client.Send)
+					h.safeCloseChannel(client.Send)
 					delete(clients, client)
 				}
 			}
@@ -254,12 +255,11 @@ func (h *Hub) sendPresenceToClient(targetClient *Client) {
 
 // pingClients sends ping messages to all clients for heartbeat
 func (h *Hub) pingClients() {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
-
 	now := time.Now()
 	pingPayload := PingPayload{Timestamp: now}
+	clientsToUnregister := make(map[*Client]struct{})
 
+	h.mu.RLock()
 	for projectID, clients := range h.projects {
 		message, err := NewWebSocketMessage(MessageTypePing, pingPayload, uuid.Nil, projectID)
 		if err != nil {
@@ -276,17 +276,21 @@ func (h *Hub) pingClients() {
 		for client := range clients {
 			// Check if client is stale (no pong for 2 minutes)
 			if now.Sub(client.LastPing) > 2*time.Minute {
-				h.unregister <- client
+				clientsToUnregister[client] = struct{}{}
 				continue
 			}
 
 			select {
 			case client.Send <- messageBytes:
 			default:
-				close(client.Send)
-				delete(clients, client)
+				clientsToUnregister[client] = struct{}{}
 			}
 		}
+	}
+	h.mu.RUnlock()
+
+	for client := range clientsToUnregister {
+		h.unregisterClient(client)
 	}
 }
 
@@ -328,10 +332,36 @@ func (h *Hub) Shutdown() {
 	// Close all client connections
 	for _, clients := range h.projects {
 		for client := range clients {
-			close(client.Send)
-			client.Conn.Close()
+			h.safeCloseChannel(client.Send)
+			if client.Conn != nil {
+				client.Conn.Close()
+			}
 		}
 	}
 
+	// Clear all projects
+	h.projects = make(map[uuid.UUID]map[*Client]bool)
+
+	// Safely close the done channel
+	h.safeCloseDoneChannel()
+}
+
+// safeCloseChannel safely closes a channel if it's not already closed
+func (h *Hub) safeCloseChannel(ch chan []byte) {
+	defer func() {
+		if recover() != nil {
+			// Channel was already closed, ignore the panic
+		}
+	}()
+	close(ch)
+}
+
+// safeCloseDoneChannel safely closes the done channel
+func (h *Hub) safeCloseDoneChannel() {
+	defer func() {
+		if recover() != nil {
+			// Channel was already closed, ignore the panic
+		}
+	}()
 	close(h.done)
 }

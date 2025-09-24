@@ -20,9 +20,8 @@ func (suite *HubTestSuite) SetupTest() {
 }
 
 func (suite *HubTestSuite) TearDownTest() {
-	if suite.hub != nil {
-		suite.hub.Shutdown()
-	}
+	// Hub shutdown is handled by individual tests if needed
+	// This prevents double shutdowns which cause channel close panics
 }
 
 func TestHubSuite(t *testing.T) {
@@ -110,6 +109,18 @@ func (suite *HubTestSuite) TestBroadcastToProject() {
 	suite.hub.RegisterClient(client2)
 	time.Sleep(10 * time.Millisecond)
 
+	// Drain any presence messages that are sent to clients upon registration
+	select {
+	case <-client1.Send:
+		// Ignore presence message
+	default:
+	}
+	select {
+	case <-client2.Send:
+		// Ignore presence message
+	default:
+	}
+
 	// Create test message
 	payload := UserCursorPayload{
 		UserID:    client1.UserID,
@@ -137,10 +148,18 @@ func (suite *HubTestSuite) TestBroadcastToProject() {
 
 	// Check that client1 did not receive its own message
 	select {
-	case <-client1.Send:
-		suite.T().Error("Client should not receive its own message")
+	case msg := <-client1.Send:
+		// If client1 receives a message, it should be a presence message, not the cursor message
+		var receivedMessage WebSocketMessage
+		err := json.Unmarshal(msg, &receivedMessage)
+		assert.NoError(suite.T(), err)
+		// If it's the cursor message we sent, that's an error
+		if receivedMessage.Type == MessageTypeUserCursor {
+			suite.T().Error("Client should not receive its own message")
+		}
+		// If it's a presence message, that's okay
 	case <-time.After(50 * time.Millisecond):
-		// This is expected
+		// This is expected - no messages received
 	}
 }
 
@@ -161,6 +180,18 @@ func (suite *HubTestSuite) TestProjectIsolation() {
 	suite.hub.RegisterClient(client2)
 	time.Sleep(10 * time.Millisecond)
 
+	// Drain any presence messages that are sent to clients upon registration
+	select {
+	case <-client1.Send:
+		// Ignore presence message
+	default:
+	}
+	select {
+	case <-client2.Send:
+		// Ignore presence message
+	default:
+	}
+
 	// Create test message for project1
 	payload := UserCursorPayload{
 		UserID:    client1.UserID,
@@ -177,10 +208,18 @@ func (suite *HubTestSuite) TestProjectIsolation() {
 
 	// Client2 (in different project) should not receive the message
 	select {
-	case <-client2.Send:
-		suite.T().Error("Client in different project should not receive message")
+	case msg := <-client2.Send:
+		// If client2 receives a message, check if it's our cursor message (which should not happen)
+		var receivedMessage WebSocketMessage
+		err := json.Unmarshal(msg, &receivedMessage)
+		assert.NoError(suite.T(), err)
+		// If it's the cursor message we sent to project1, that's an error
+		if receivedMessage.Type == MessageTypeUserCursor {
+			suite.T().Error("Client in different project should not receive message")
+		}
+		// If it's some other message type (like presence), that might be okay
 	case <-time.After(50 * time.Millisecond):
-		// This is expected
+		// This is expected - no messages received
 	}
 
 	// Verify project client counts
@@ -233,6 +272,25 @@ func (suite *HubTestSuite) TestHubShutdown() {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify client count is 0 after shutdown
+	assert.Equal(suite.T(), 0, suite.hub.GetActiveClients(projectID))
+}
+
+// Test stale clients are removed during ping checks
+func (suite *HubTestSuite) TestPingRemovesStaleClients() {
+	projectID := uuid.New()
+	client := suite.createTestClient(projectID, uuid.New())
+
+	// Directly register client without running the main loop
+	suite.hub.registerClient(client)
+	assert.Equal(suite.T(), 1, suite.hub.GetActiveClients(projectID))
+
+	// Make client stale
+	client.LastPing = time.Now().Add(-3 * time.Minute)
+
+	// Trigger ping processing
+	suite.hub.pingClients()
+
+	// Client should be removed after being detected as stale
 	assert.Equal(suite.T(), 0, suite.hub.GetActiveClients(projectID))
 }
 

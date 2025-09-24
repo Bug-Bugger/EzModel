@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -139,20 +138,18 @@ func ConnectWebSocket(t *testing.T, serverURL string) *websocket.Conn {
 	return conn
 }
 
-// ConnectWebSocketWithAuth creates a WebSocket connection with authentication
+// ConnectWebSocketWithAuth creates a WebSocket connection with authentication via Authorization header
 func ConnectWebSocketWithAuth(t *testing.T, serverURL, token string) *websocket.Conn {
 	// Convert http:// to ws://
 	wsURL := strings.Replace(serverURL, "http://", "ws://", 1)
 
-	// Add token as query parameter
-	u, err := url.Parse(wsURL)
-	require.NoError(t, err)
+	// Create headers with Authorization Bearer token
+	headers := http.Header{}
+	if token != "" {
+		headers.Set("Authorization", "Bearer "+token)
+	}
 
-	q := u.Query()
-	q.Set("token", token)
-	u.RawQuery = q.Encode()
-
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
 	require.NoError(t, err)
 
 	return conn

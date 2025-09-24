@@ -248,8 +248,10 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsOwner() {
 	suite.mockUserService.On("GetUserByID", userID).Return(user, nil)
 	suite.mockProjService.On("GetProjectByID", projectID).Return(project, nil)
 
-	// Create test server for WebSocket upgrade
-	server := httptest.NewServer(http.HandlerFunc(suite.handler.HandleWebSocket))
+	// Create test server with proper routing
+	router := chi.NewRouter()
+	router.Get("/projects/{projectID}/collaborate", suite.handler.HandleWebSocket)
+	server := httptest.NewServer(router)
 	defer server.Close()
 
 	// Connect to WebSocket
@@ -291,8 +293,10 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsCollaborato
 	suite.mockUserService.On("GetUserByID", userID).Return(user, nil)
 	suite.mockProjService.On("GetProjectByID", projectID).Return(project, nil)
 
-	// Create test server for WebSocket upgrade
-	server := httptest.NewServer(http.HandlerFunc(suite.handler.HandleWebSocket))
+	// Create test server with proper routing
+	router := chi.NewRouter()
+	router.Get("/projects/{projectID}/collaborate", suite.handler.HandleWebSocket)
+	server := httptest.NewServer(router)
 	defer server.Close()
 
 	// Connect to WebSocket
@@ -327,34 +331,33 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_InvalidProjectID() {
 	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
 }
 
-// Test authentication from query parameter
-func (suite *WebSocketHandlerTestSuite) TestAuthenticateWebSocketRequest_QueryParam() {
-	userID := uuid.New()
-	token := "query-token"
-
-	// Setup test data
-	user := testutil.CreateTestUser()
-	user.ID = userID
-
-	// Setup mocks
-	claims := &services.CustomClaims{
-		UserID: userID,
-		Email:  user.Email,
-	}
-	suite.mockJWTService.On("ValidateToken", token).Return(claims, nil)
-	suite.mockUserService.On("GetUserByID", userID).Return(user, nil)
-
-	// Create request with token in query
-	req := httptest.NewRequest(http.MethodGet, "/collaborate?token="+token, nil)
+// Test authentication with invalid authorization header format
+func (suite *WebSocketHandlerTestSuite) TestAuthenticateWebSocketRequest_InvalidFormat() {
+	// Create request with invalid authorization header format
+	req := httptest.NewRequest(http.MethodGet, "/collaborate", nil)
+	req.Header.Set("Authorization", "InvalidFormat token")
 
 	// Execute
 	result, err := suite.handler.authenticateWebSocketRequest(req)
 
 	// Assert
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), userID, result.ID)
-	suite.mockJWTService.AssertExpectations(suite.T())
-	suite.mockUserService.AssertExpectations(suite.T())
+	assert.Error(suite.T(), err)
+	assert.Nil(suite.T(), result)
+	assert.Contains(suite.T(), err.Error(), "invalid authorization format")
+}
+
+// Test authentication with missing authorization header
+func (suite *WebSocketHandlerTestSuite) TestAuthenticateWebSocketRequest_MissingHeader() {
+	// Create request without authorization header
+	req := httptest.NewRequest(http.MethodGet, "/collaborate", nil)
+
+	// Execute
+	result, err := suite.handler.authenticateWebSocketRequest(req)
+
+	// Assert
+	assert.Error(suite.T(), err)
+	assert.Nil(suite.T(), result)
+	assert.Contains(suite.T(), err.Error(), "no authorization header provided")
 }
 
 // Test authentication from header

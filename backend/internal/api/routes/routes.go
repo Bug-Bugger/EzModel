@@ -4,6 +4,7 @@ import (
 	"github.com/Bug-Bugger/ezmodel/internal/api/handlers"
 	"github.com/Bug-Bugger/ezmodel/internal/api/middleware"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
+	websocketPkg "github.com/Bug-Bugger/ezmodel/internal/websocket"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -17,6 +18,7 @@ func SetupRoutes(
 	collaborationService services.CollaborationSessionServiceInterface,
 	jwtService *services.JWTService,
 	authMiddleware *middleware.AuthMiddleware,
+	websocketHub *websocketPkg.Hub,
 ) {
 	// Basic routes
 	r.Get("/", handlers.HomeHandler())
@@ -30,6 +32,7 @@ func SetupRoutes(
 	fieldHandler := handlers.NewFieldHandler(fieldService)
 	relationshipHandler := handlers.NewRelationshipHandler(relationshipService)
 	collaborationHandler := handlers.NewCollaborationHandler(collaborationService)
+	websocketHandler := handlers.NewWebSocketHandler(websocketHub, jwtService, userService, projectService)
 
 	// Public auth routes
 	r.Post("/login", authHandler.Login())
@@ -118,6 +121,9 @@ func SetupRoutes(
 						r.Put("/inactive", collaborationHandler.SetInactive()) // Set session inactive
 					})
 				})
+
+				// WebSocket collaboration route
+				r.Get("/collaborate", websocketHandler.HandleWebSocket) // WebSocket endpoint for real-time collaboration
 			})
 		})
 

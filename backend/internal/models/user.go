@@ -16,6 +16,6 @@ type User struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 
 	// Relationships
-	Projects      []Project `gorm:"foreignKey:OwnerID" json:"projects,omitempty"`
-	Collaborating []Project `gorm:"many2many:project_collaborators;" json:"collaborating,omitempty"`
+	OwnedProjects        []Project `gorm:"foreignKey:OwnerID" json:"owned_projects,omitempty"`
+	CollaboratedProjects []Project `gorm:"many2many:project_collaborators;" json:"collaborated_projects,omitempty"`
 }

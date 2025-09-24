@@ -1,6 +1,8 @@
 package services
 
 import (
+	"time"
+
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
 	"github.com/google/uuid"
@@ -65,4 +67,11 @@ type CollaborationSessionServiceInterface interface {
 	UpdateSession(id uuid.UUID, req *dto.UpdateSessionRequest) (*models.CollaborationSession, error)
 	SetSessionInactive(sessionID uuid.UUID) error
 	DeleteSession(sessionID uuid.UUID) error
+}
+
+type JWTServiceInterface interface {
+	GenerateTokenPair(user *models.User) (*TokenPair, error)
+	RefreshTokens(refreshToken string) (*TokenPair, error)
+	GetAccessTokenExpiration() time.Duration
+	ValidateToken(tokenString string) (*CustomClaims, error)
 }

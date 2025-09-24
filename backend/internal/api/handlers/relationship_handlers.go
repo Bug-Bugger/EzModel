@@ -1,16 +1,14 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/api/middleware"
 	"github.com/Bug-Bugger/ezmodel/internal/api/responses"
+	"github.com/Bug-Bugger/ezmodel/internal/api/utils"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
-	"github.com/Bug-Bugger/ezmodel/internal/validation"
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
@@ -28,24 +26,14 @@ func NewRelationshipHandler(relationshipService services.RelationshipServiceInte
 func (h *RelationshipHandler) Create() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectIDStr := chi.URLParam(r, "id")
-		projectID, err := uuid.Parse(projectIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		if !ok {
 			return
 		}
 
-		// Parse request body
+		// Parse and validate request body
 		var req dto.CreateRelationshipRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate input
-		if err := validation.Validate(req); err != nil {
-			validationErrors := validation.ValidationErrors(err)
-			responses.RespondWithValidationErrors(w, validationErrors)
+		if !utils.DecodeAndValidate(w, r, &req) {
 			return
 		}
 
@@ -88,10 +76,8 @@ func (h *RelationshipHandler) Create() http.HandlerFunc {
 func (h *RelationshipHandler) GetByID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get relationship ID from URL
-		relationshipIDStr := chi.URLParam(r, "relationship_id")
-		relationshipID, err := uuid.Parse(relationshipIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid relationship ID format")
+		relationshipID, ok := utils.ParseUUIDParam(w, r, "relationship_id")
+		if !ok {
 			return
 		}
 
@@ -128,10 +114,8 @@ func (h *RelationshipHandler) GetByID() http.HandlerFunc {
 func (h *RelationshipHandler) GetByProjectID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectIDStr := chi.URLParam(r, "id")
-		projectID, err := uuid.Parse(projectIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		if !ok {
 			return
 		}
 
@@ -166,10 +150,8 @@ func (h *RelationshipHandler) GetByProjectID() http.HandlerFunc {
 func (h *RelationshipHandler) GetByTableID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get table ID from URL
-		tableIDStr := chi.URLParam(r, "table_id")
-		tableID, err := uuid.Parse(tableIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid table ID format")
+		tableID, ok := utils.ParseUUIDParam(w, r, "table_id")
+		if !ok {
 			return
 		}
 
@@ -204,24 +186,14 @@ func (h *RelationshipHandler) GetByTableID() http.HandlerFunc {
 func (h *RelationshipHandler) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get relationship ID from URL
-		relationshipIDStr := chi.URLParam(r, "relationship_id")
-		relationshipID, err := uuid.Parse(relationshipIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid relationship ID format")
+		relationshipID, ok := utils.ParseUUIDParam(w, r, "relationship_id")
+		if !ok {
 			return
 		}
 
-		// Parse request body
+		// Parse and validate request body
 		var req dto.UpdateRelationshipRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate input
-		if err := validation.Validate(req); err != nil {
-			validationErrors := validation.ValidationErrors(err)
-			responses.RespondWithValidationErrors(w, validationErrors)
+		if !utils.DecodeAndValidate(w, r, &req) {
 			return
 		}
 
@@ -264,10 +236,8 @@ func (h *RelationshipHandler) Update() http.HandlerFunc {
 func (h *RelationshipHandler) Delete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get relationship ID from URL
-		relationshipIDStr := chi.URLParam(r, "relationship_id")
-		relationshipID, err := uuid.Parse(relationshipIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid relationship ID format")
+		relationshipID, ok := utils.ParseUUIDParam(w, r, "relationship_id")
+		if !ok {
 			return
 		}
 

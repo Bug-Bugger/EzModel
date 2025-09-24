@@ -1,16 +1,14 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
 	"github.com/Bug-Bugger/ezmodel/internal/api/middleware"
 	"github.com/Bug-Bugger/ezmodel/internal/api/responses"
+	"github.com/Bug-Bugger/ezmodel/internal/api/utils"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
-	"github.com/Bug-Bugger/ezmodel/internal/validation"
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
@@ -28,10 +26,8 @@ func NewCollaborationHandler(collaborationService services.CollaborationSessionS
 func (h *CollaborationHandler) Create() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectIDStr := chi.URLParam(r, "id")
-		projectID, err := uuid.Parse(projectIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		if !ok {
 			return
 		}
 
@@ -48,17 +44,9 @@ func (h *CollaborationHandler) Create() http.HandlerFunc {
 			return
 		}
 
-		// Parse request body
+		// Parse and validate request body
 		var req dto.CreateSessionRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate input
-		if err := validation.Validate(req); err != nil {
-			validationErrors := validation.ValidationErrors(err)
-			responses.RespondWithValidationErrors(w, validationErrors)
+		if !utils.DecodeAndValidate(w, r, &req) {
 			return
 		}
 
@@ -100,10 +88,8 @@ func (h *CollaborationHandler) Create() http.HandlerFunc {
 func (h *CollaborationHandler) GetByID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get session ID from URL
-		sessionIDStr := chi.URLParam(r, "session_id")
-		sessionID, err := uuid.Parse(sessionIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid session ID format")
+		sessionID, ok := utils.ParseUUIDParam(w, r, "session_id")
+		if !ok {
 			return
 		}
 
@@ -141,10 +127,8 @@ func (h *CollaborationHandler) GetByID() http.HandlerFunc {
 func (h *CollaborationHandler) GetByProjectID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectIDStr := chi.URLParam(r, "id")
-		projectID, err := uuid.Parse(projectIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		if !ok {
 			return
 		}
 
@@ -180,10 +164,8 @@ func (h *CollaborationHandler) GetByProjectID() http.HandlerFunc {
 func (h *CollaborationHandler) GetActiveByProjectID() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get project ID from URL
-		projectIDStr := chi.URLParam(r, "id")
-		projectID, err := uuid.Parse(projectIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID format")
+		projectID, ok := utils.ParseUUIDParamWithError(w, r, "id", "Invalid project ID format")
+		if !ok {
 			return
 		}
 
@@ -219,24 +201,14 @@ func (h *CollaborationHandler) GetActiveByProjectID() http.HandlerFunc {
 func (h *CollaborationHandler) UpdateCursor() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get session ID from URL
-		sessionIDStr := chi.URLParam(r, "session_id")
-		sessionID, err := uuid.Parse(sessionIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid session ID format")
+		sessionID, ok := utils.ParseUUIDParam(w, r, "session_id")
+		if !ok {
 			return
 		}
 
-		// Parse request body
+		// Parse and validate request body
 		var req dto.UpdateCursorRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate input
-		if err := validation.Validate(req); err != nil {
-			validationErrors := validation.ValidationErrors(err)
-			responses.RespondWithValidationErrors(w, validationErrors)
+		if !utils.DecodeAndValidate(w, r, &req) {
 			return
 		}
 
@@ -259,24 +231,14 @@ func (h *CollaborationHandler) UpdateCursor() http.HandlerFunc {
 func (h *CollaborationHandler) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get session ID from URL
-		sessionIDStr := chi.URLParam(r, "session_id")
-		sessionID, err := uuid.Parse(sessionIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid session ID format")
+		sessionID, ok := utils.ParseUUIDParam(w, r, "session_id")
+		if !ok {
 			return
 		}
 
-		// Parse request body
+		// Parse and validate request body
 		var req dto.UpdateSessionRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
-			return
-		}
-
-		// Validate input
-		if err := validation.Validate(req); err != nil {
-			validationErrors := validation.ValidationErrors(err)
-			responses.RespondWithValidationErrors(w, validationErrors)
+		if !utils.DecodeAndValidate(w, r, &req) {
 			return
 		}
 
@@ -316,10 +278,8 @@ func (h *CollaborationHandler) Update() http.HandlerFunc {
 func (h *CollaborationHandler) SetInactive() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get session ID from URL
-		sessionIDStr := chi.URLParam(r, "session_id")
-		sessionID, err := uuid.Parse(sessionIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid session ID format")
+		sessionID, ok := utils.ParseUUIDParam(w, r, "session_id")
+		if !ok {
 			return
 		}
 
@@ -342,10 +302,8 @@ func (h *CollaborationHandler) SetInactive() http.HandlerFunc {
 func (h *CollaborationHandler) Delete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Get session ID from URL
-		sessionIDStr := chi.URLParam(r, "session_id")
-		sessionID, err := uuid.Parse(sessionIDStr)
-		if err != nil {
-			responses.RespondWithError(w, http.StatusBadRequest, "Invalid session ID format")
+		sessionID, ok := utils.ParseUUIDParam(w, r, "session_id")
+		if !ok {
 			return
 		}
 

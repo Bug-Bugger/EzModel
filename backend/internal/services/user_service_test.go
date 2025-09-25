@@ -512,14 +512,18 @@ func (suite *UserServiceTestSuite) TestUpdatePassword_UserNotFound() {
 // Test UpdatePassword - Repository Error
 func (suite *UserServiceTestSuite) TestUpdatePassword_RepositoryError() {
 	userID := uuid.New()
+	currentPassword := "password123"
 	newPassword := "newpassword123"
 	existingUser := createTestUser()
 	existingUser.ID = userID
+	// Hash the current password for the user
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(currentPassword), bcrypt.DefaultCost)
+	existingUser.PasswordHash = string(hashedPassword)
 
 	suite.mockRepo.On("GetByID", userID).Return(existingUser, nil)
 	suite.mockRepo.On("Update", mock.AnythingOfType("*models.User")).Return(assert.AnError)
 
-	err := suite.service.UpdatePassword(userID, "password123", newPassword)
+	err := suite.service.UpdatePassword(userID, currentPassword, newPassword)
 
 	suite.Error(err)
 	suite.Equal(assert.AnError, err)

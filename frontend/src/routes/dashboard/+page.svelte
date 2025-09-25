@@ -238,7 +238,6 @@
 			<div class="space-y-2">
 				<label for="database" class="text-sm font-medium">Database Type</label>
 				<Select
-					id="database"
 					bind:value={databaseType}
 					options={databaseOptions}
 					disabled={isCreating}

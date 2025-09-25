@@ -86,7 +86,8 @@
 		</div>
 
 		<Card class="p-6">
-			<form on:submit|preventDefault={handleLogin} class="space-y-4">
+			<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+			<form on:submit|preventDefault={handleLogin} on:keydown={handleKeydown} class="space-y-4">
 				<div class="space-y-2">
 					<label for="email" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
 						Email
@@ -98,7 +99,6 @@
 						bind:value={email}
 						required
 						disabled={isLoading}
-						onkeydown={handleKeydown}
 						class={emailError ? 'border-destructive' : ''}
 					/>
 					{#if emailError}
@@ -117,7 +117,6 @@
 						bind:value={password}
 						required
 						disabled={isLoading}
-						onkeydown={handleKeydown}
 						class={passwordError ? 'border-destructive' : ''}
 					/>
 					{#if passwordError}

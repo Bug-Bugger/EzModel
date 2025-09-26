@@ -10,6 +10,7 @@
 	import Input from '$lib/components/ui/input.svelte';
 	import Select from '$lib/components/ui/select.svelte';
 	import Dialog from '$lib/components/ui/dialog.svelte';
+	import AlertDialog from '$lib/components/ui/alert-dialog.svelte';
 	import { Plus, Database, Calendar, MoreHorizontal, Trash2, Edit } from 'lucide-svelte';
 	import type { CreateProjectRequest } from '$lib/types/models';
 
@@ -21,6 +22,10 @@
 	let projectDescription = '';
 	let databaseType = 'postgresql';
 	let isCreating = false;
+
+	// Delete confirmation dialog
+	let showDeleteDialog = false;
+	let projectToDelete: { id: string; name: string } | null = null;
 
 	// Database type options
 	const databaseOptions = [
@@ -85,14 +90,17 @@
 		}
 	}
 
-	async function deleteProject(projectId: string) {
-		if (!confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
-			return;
-		}
+	function openDeleteDialog(project: { id: string; name: string }) {
+		projectToDelete = project;
+		showDeleteDialog = true;
+	}
+
+	async function confirmDeleteProject() {
+		if (!projectToDelete) return;
 
 		try {
-			await projectService.deleteProject(projectId);
-			projectStore.removeProject(projectId);
+			await projectService.deleteProject(projectToDelete.id);
+			projectStore.removeProject(projectToDelete.id);
 			uiStore.success('Project deleted successfully');
 		} catch (error: any) {
 			uiStore.error('Failed to delete project', error.message);
@@ -176,7 +184,7 @@
 							</div>
 						</div>
 						<div class="opacity-0 group-hover:opacity-100 transition-opacity">
-							<Button variant="ghost" size="icon" onclick={() => deleteProject(project.id)}>
+							<Button variant="ghost" size="icon" onclick={() => openDeleteDialog({ id: project.id, name: project.name })}>
 								<Trash2 class="h-4 w-4" />
 							</Button>
 						</div>
@@ -269,3 +277,13 @@
 		</div>
 	</div>
 </Dialog>
+
+<!-- Delete Project Alert Dialog -->
+<AlertDialog
+	bind:open={showDeleteDialog}
+	title="Delete Project"
+	description={`Are you sure you want to delete "${projectToDelete?.name}"? This action cannot be undone and all data associated with this project will be permanently deleted.`}
+	actionText="Delete Project"
+	actionVariant="destructive"
+	onAction={confirmDeleteProject}
+/>

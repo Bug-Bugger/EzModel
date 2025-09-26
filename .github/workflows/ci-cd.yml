@@ -154,10 +154,10 @@ jobs:
           path: frontend/build/
           retention-days: 7
 
-  build-docker:
-    name: Build Docker Image
+  build-backend-docker:
+    name: Build Backend Docker Image
     runs-on: ubuntu-latest
-    needs: [test, test-frontend]
+    needs: [test-backend]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -174,20 +174,63 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Extract backend metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/${{ github.repository }}-backend
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image
+      - name: Build and push backend Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./backend
+          file: ./backend/Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  build-frontend-docker:
+    name: Build Frontend Docker Image
+    runs-on: ubuntu-latest
+    needs: [test-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract frontend metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-frontend
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile.prod
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -198,7 +241,7 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [test, test-frontend, build-docker]
+    needs: [test-backend, test-frontend, build-backend-docker, build-frontend-docker]
     if: false # Disable deployment for now
     environment: production
 
@@ -233,8 +276,9 @@ jobs:
             # Pull latest docker-compose files
             git pull origin main
 
-            # Pull latest Docker image
-            docker pull ghcr.io/${{ github.repository }}:latest
+            # Pull latest Docker images
+            docker pull ghcr.io/${{ github.repository }}-backend:latest
+            docker pull ghcr.io/${{ github.repository }}-frontend:latest
 
             # Update and restart services
             docker-compose -f docker-compose.prod.yml down
@@ -244,7 +288,7 @@ jobs:
             sleep 10
 
             # Health check
-            curl -f http://localhost:8080/health || exit 1
+            curl -f http://localhost/api/health || exit 1
 
             echo "✅ Deployment completed successfully"
           EOF

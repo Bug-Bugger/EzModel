@@ -1,0 +1,35 @@
+# Frontend Dockerfile with nginx
+FROM node:20-alpine AS builder
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Build the frontend
+RUN pnpm build
+
+# Production stage with nginx
+FROM nginx:alpine
+
+# Copy nginx configuration
+COPY nginx.prod.conf /etc/nginx/nginx.conf
+
+# Copy built frontend
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Expose port 80
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

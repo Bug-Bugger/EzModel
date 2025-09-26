@@ -1,9 +1,10 @@
 
 services:
-  app:
+  # Backend API service
+  backend:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile.prod
     ports:
       - "8080:8080"
     environment:
@@ -21,6 +22,22 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - ezmodel-network
+    restart: unless-stopped
+
+  # Frontend development service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     networks:
       - ezmodel-network
     restart: unless-stopped

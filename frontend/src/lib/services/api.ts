@@ -6,8 +6,13 @@ class ApiClient {
 	private client: AxiosInstance;
 
 	constructor() {
+		// Use environment variables or fallback to development defaults
+		const apiUrl = browser
+			? (import.meta.env.VITE_API_URL || 'http://localhost:8080')
+			: 'http://backend:8080';
+
 		this.client = axios.create({
-			baseURL: browser ? 'http://localhost:8080' : 'http://localhost:8080',
+			baseURL: apiUrl,
 			headers: {
 				'Content-Type': 'application/json'
 			},

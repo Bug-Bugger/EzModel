@@ -22,7 +22,6 @@ func SetupRoutes(
 ) {
 	// Basic routes
 	r.Get("/", handlers.HomeHandler())
-	r.Get("/api", handlers.APIHandler())
 
 	// Handlers
 	userHandler := handlers.NewUserHandler(userService)
@@ -34,13 +33,21 @@ func SetupRoutes(
 	collaborationHandler := handlers.NewCollaborationHandler(collaborationService)
 	websocketHandler := handlers.NewWebSocketHandler(websocketHub, jwtService, userService, projectService)
 
-	// Public auth routes
-	r.Post("/login", authHandler.Login())
-	r.Post("/refresh-token", authHandler.RefreshToken())
-	r.Post("/register", userHandler.Create())
+	// Mount all API routes under /api prefix
+	r.Route("/api", func(r chi.Router) {
+		// API info route
+		r.Get("/", handlers.APIHandler())
 
-	// Protected routes
-	r.Group(func(r chi.Router) {
+		// Public auth routes
+		r.Post("/login", authHandler.Login())
+		r.Post("/refresh-token", authHandler.RefreshToken())
+		r.Post("/register", userHandler.Create())
+
+		// WebSocket routes (handle authentication internally)
+		r.Get("/projects/{project_id}/collaborate", websocketHandler.HandleWebSocket) // WebSocket endpoint for real-time collaboration
+
+		// Protected routes
+		r.Group(func(r chi.Router) {
 		// Apply JWT authentication middleware
 		r.Use(authMiddleware.Authenticate)
 
@@ -124,11 +131,9 @@ func SetupRoutes(
 						r.Put("/inactive", collaborationHandler.SetInactive()) // Set session inactive
 					})
 				})
-
-				// WebSocket collaboration route
-				r.Get("/collaborate", websocketHandler.HandleWebSocket) // WebSocket endpoint for real-time collaboration
 			})
 		})
 
+		})
 	})
 }

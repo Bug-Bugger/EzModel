@@ -6,7 +6,6 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
@@ -60,6 +59,8 @@ func NewWebSocketHandler(
 
 // HandleWebSocket upgrades HTTP connection to WebSocket for real-time collaboration
 func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	log.Printf("WebSocket: Connection attempt from %s to %s", r.RemoteAddr, r.URL.String())
+
 	// Get project ID from URL - now using standardized "project_id" parameter
 	projectIDStr := chi.URLParam(r, "project_id")
 	log.Printf("WebSocket: Extracted projectIDStr from 'project_id' param: '%s'", projectIDStr)
@@ -130,31 +131,35 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	go h.readPump(client)
 }
 
-// authenticateWebSocketRequest authenticates the WebSocket connection using Authorization header
-// This maintains consistency with the standard REST API authentication middleware
+// authenticateWebSocketRequest authenticates the WebSocket connection using token from query parameter
+// Browser WebSocket API doesn't support custom headers, so we use query parameters
 func (h *WebSocketHandler) authenticateWebSocketRequest(r *http.Request) (*models.User, error) {
-	// Extract token from Authorization header (consistent with AuthMiddleware)
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return nil, fmt.Errorf("no authorization header provided")
+	// Extract token from query parameter
+	token := r.URL.Query().Get("token")
+	if token == "" {
+		log.Printf("WebSocket: No token provided in query parameter")
+		return nil, fmt.Errorf("no token provided in query parameter")
 	}
 
-	// Check if the format is "Bearer <token>"
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return nil, fmt.Errorf("invalid authorization format")
+	tokenLength := len(token)
+	previewLength := 50
+	if tokenLength < previewLength {
+		previewLength = tokenLength
 	}
-
-	token := parts[1]
+	log.Printf("WebSocket: Received token (first 50 chars): %s...", token[:previewLength])
+	log.Printf("WebSocket: Token length: %d", tokenLength)
 
 	// Validate token
 	claims, err := h.jwtService.ValidateToken(token)
 	if err != nil {
+		log.Printf("WebSocket: Token validation failed: %v", err)
 		if err == services.ErrExpiredToken {
 			return nil, fmt.Errorf("token has expired")
 		}
 		return nil, fmt.Errorf("invalid token")
 	}
+
+	log.Printf("WebSocket: Token validation successful for user: %s", claims.UserID)
 
 	// Get user information
 	user, err := h.userService.GetUserByID(claims.UserID)

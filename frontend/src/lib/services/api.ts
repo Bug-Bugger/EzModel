@@ -8,8 +8,8 @@ class ApiClient {
 	constructor() {
 		// Use environment variables or fallback to development defaults
 		const apiUrl = browser
-			? (import.meta.env.VITE_API_URL || 'http://localhost:8080')
-			: 'http://backend:8080';
+			? (import.meta.env.VITE_API_URL || 'http://localhost:8080/api')
+			: 'http://backend:8080/api';
 
 		this.client = axios.create({
 			baseURL: apiUrl,

@@ -36,16 +36,15 @@ export class WebSocketClient {
 	connect(): Promise<void> {
 		return new Promise((resolve, reject) => {
 			try {
-				this.ws = new WebSocket(this.config.url);
+				// Browser WebSocket API doesn't support headers parameter
+				// We need to pass the token as a query parameter instead
+				const urlWithAuth = `${this.config.url}?token=${encodeURIComponent(this.config.token)}`;
+				console.log('WebSocket: Final URL with auth:', urlWithAuth);
+				console.log('WebSocket: Token in URL (first 100 chars):', urlWithAuth.match(/token=([^&]*)/)?.[1]?.substring(0, 100) + '...');
+				this.ws = new WebSocket(urlWithAuth);
 
 				this.ws.onopen = () => {
 					console.log('WebSocket connected');
-
-					// Send authentication immediately
-					this.send({
-						type: 'authenticate',
-						token: this.config.token
-					});
 
 					this.reconnectAttempts = 0;
 					this.config.onOpen?.();
@@ -152,7 +151,15 @@ export class WebSocketClient {
 }
 
 // Factory function to create WebSocket client for collaboration
-export function createCollaborationClient(projectId: string): Promise<WebSocketClient> {
+export function createCollaborationClient(
+	projectId: string,
+	callbacks?: {
+		onMessage?: (message: WebSocketMessage) => void;
+		onOpen?: () => void;
+		onClose?: () => void;
+		onError?: (error: Event) => void;
+	}
+): Promise<WebSocketClient> {
 	return new Promise((resolve, reject) => {
 		// Get auth token from localStorage (same pattern as API client)
 		let token: string | null = null;
@@ -165,30 +172,40 @@ export function createCollaborationClient(projectId: string): Promise<WebSocketC
 			return;
 		}
 
+		console.log('WebSocket: Token from localStorage:', token.substring(0, 50) + '...');
+		console.log('WebSocket: Token length:', token.length);
+
 		// Create WebSocket URL
 		let wsUrl: string;
+		let protocol: string;
+		let host: string;
 
 		if (browser) {
-			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-			const host = window.location.hostname;
+			protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+			host = window.location.hostname;
 			const port = window.location.port ? `:${window.location.port}` : '';
 			wsUrl = `${protocol}//${host}${port}/api/projects/${projectId}/collaborate`;
 		} else {
+			protocol = 'ws:';
+			host = 'backend';
 			wsUrl = `ws://backend:8080/api/projects/${projectId}/collaborate`;
 		}
 
-		// For development, use localhost backend
+		// For development, use dev server which will proxy to backend
 		if (dev) {
-			wsUrl = `ws://localhost:8080/api/projects/${projectId}/collaborate`;
+			wsUrl = `${protocol}//${host}:5173/api/projects/${projectId}/collaborate`;
 		}
+
+		console.log('WebSocket: Base URL:', wsUrl);
+		console.log('WebSocket: Encoded token:', encodeURIComponent(token));
 
 		const client = new WebSocketClient({
 			url: wsUrl,
 			token,
-			onMessage: () => {}, // Will be set by collaboration store
-			onOpen: () => console.log('Collaboration WebSocket connected'),
-			onClose: () => console.log('Collaboration WebSocket disconnected'),
-			onError: (error) => console.error('Collaboration WebSocket error:', error)
+			onMessage: callbacks?.onMessage || (() => {}),
+			onOpen: callbacks?.onOpen || (() => console.log('Collaboration WebSocket connected')),
+			onClose: callbacks?.onClose || (() => console.log('Collaboration WebSocket disconnected')),
+			onError: callbacks?.onError || ((error) => console.error('Collaboration WebSocket error:', error))
 		});
 
 		resolve(client);

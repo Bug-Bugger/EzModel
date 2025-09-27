@@ -55,14 +55,11 @@ function createCollaborationStore() {
 			update(state => ({ ...state, connectionStatus: 'connecting' }));
 
 			try {
-				wsClient = await createCollaborationClient(projectId);
-
-				// Set up message handler using public method
-				wsClient.setMessageHandler(handleWebSocketMessage);
-
-				// Set up connection callbacks using public method
-				wsClient.setCallbacks({
+				// Create WebSocket client with callbacks set up front
+				wsClient = await createCollaborationClient(projectId, {
+					onMessage: handleWebSocketMessage,
 					onOpen: () => {
+						console.log('Collaboration WebSocket connected - updating store');
 						update(state => ({
 							...state,
 							isConnected: true,
@@ -71,6 +68,7 @@ function createCollaborationStore() {
 						}));
 					},
 					onClose: () => {
+						console.log('Collaboration WebSocket disconnected - updating store');
 						update(state => ({
 							...state,
 							isConnected: false,
@@ -79,6 +77,7 @@ function createCollaborationStore() {
 						}));
 					},
 					onError: (error) => {
+						console.error('Collaboration WebSocket error - updating store:', error);
 						update(state => ({
 							...state,
 							connectionStatus: 'error',

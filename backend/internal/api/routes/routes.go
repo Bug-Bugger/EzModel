@@ -44,6 +44,9 @@ func SetupRoutes(
 		// Apply JWT authentication middleware
 		r.Use(authMiddleware.Authenticate)
 
+		// Current user route
+		r.Get("/me", userHandler.GetMe())
+
 		// User routes
 		r.Route("/users", func(r chi.Router) {
 			r.Get("/", userHandler.GetAll())

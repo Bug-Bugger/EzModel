@@ -11,6 +11,7 @@ import (
 	websocketPkg "github.com/Bug-Bugger/ezmodel/internal/websocket"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"gorm.io/gorm"
 )
 
@@ -46,6 +47,16 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 	// Apply global middleware
 	s.router.Use(chiMiddleware.Logger)
 	s.router.Use(chiMiddleware.Recoverer)
+
+	// CORS middleware
+	s.router.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000", "http://localhost:8080"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
 
 	// Initialize WebSocket hub
 	s.websocketHub = websocketPkg.NewHub()

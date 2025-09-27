@@ -51,8 +51,8 @@ func (m *MockUserService) UpdateUser(id uuid.UUID, req *dto.UpdateUserRequest) (
 	return args.Get(0).(*models.User), args.Error(1)
 }
 
-func (m *MockUserService) UpdatePassword(id uuid.UUID, password string) error {
-	args := m.Called(id, password)
+func (m *MockUserService) UpdatePassword(id uuid.UUID, currentPassword, newPassword string) error {
+	args := m.Called(id, currentPassword, newPassword)
 	return args.Error(0)
 }
 

@@ -14,7 +14,7 @@ type UserServiceInterface interface {
 	GetUserByEmail(email string) (*models.User, error)
 	GetAllUsers() ([]*models.User, error)
 	UpdateUser(id uuid.UUID, req *dto.UpdateUserRequest) (*models.User, error)
-	UpdatePassword(id uuid.UUID, password string) error
+	UpdatePassword(id uuid.UUID, currentPassword, newPassword string) error
 	DeleteUser(id uuid.UUID) error
 	AuthenticateUser(email, password string) (*models.User, error)
 }

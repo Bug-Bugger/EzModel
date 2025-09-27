@@ -16,7 +16,8 @@ type UpdateUserRequest struct {
 }
 
 type UpdatePasswordRequest struct {
-	Password string `json:"password" validate:"required,min=6"`
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required,min=6"`
 }
 
 type UserResponse struct {

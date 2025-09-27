@@ -1,0 +1,60 @@
+services:
+  # Backend API service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ezmodel-network
+    restart: unless-stopped
+
+  # Frontend development service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    env_file:
+      - .env.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - ezmodel-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=ezmodel
+      - POSTGRES_PASSWORD=ezmodel_password
+      - POSTGRES_DB=ezmodel
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ezmodel -d ezmodel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ezmodel-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  ezmodel-network:
+    driver: bridge

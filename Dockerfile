@@ -1,5 +1,26 @@
-# Build stage
-FROM golang:1.24.1-alpine AS builder
+# Frontend build stage
+FROM node:20-alpine AS frontend-builder
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Set working directory for frontend
+WORKDIR /app/frontend
+
+# Copy frontend package files
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+
+# Install frontend dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy frontend source code
+COPY frontend/ .
+
+# Build frontend
+RUN pnpm build
+
+# Backend build stage
+FROM golang:1.24.1-alpine AS backend-builder
 
 # Install git and ca-certificates for dependencies
 RUN apk add --no-cache git ca-certificates tzdata
@@ -28,13 +49,16 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
 FROM scratch
 
 # Copy ca-certificates for HTTPS requests
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=backend-builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Copy timezone data
-COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=backend-builder /usr/share/zoneinfo /usr/share/zoneinfo
 
-# Copy the binary
-COPY --from=builder /app/ezmodel /ezmodel
+# Copy the backend binary
+COPY --from=backend-builder /app/ezmodel /ezmodel
+
+# Copy the frontend build
+COPY --from=frontend-builder /app/frontend/build /static
 
 # Expose port
 EXPOSE 8080

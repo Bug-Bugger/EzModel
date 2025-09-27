@@ -8,6 +8,7 @@ on:
 
 env:
   GO_VERSION: "1.24.1"
+  NODE_VERSION: "20"
 
 permissions:
   contents: read
@@ -15,8 +16,8 @@ permissions:
   id-token: write
 
 jobs:
-  test:
-    name: Test & Quality Checks
+  test-backend:
+    name: Backend Test & Quality Checks
     runs-on: ubuntu-latest
 
     services:
@@ -114,10 +115,49 @@ jobs:
           path: backend/bin/ezmodel
           retention-days: 7
 
-  build-docker:
-    name: Build Docker Image
+  test-frontend:
+    name: Frontend Test & Quality Checks
     runs-on: ubuntu-latest
-    needs: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        working-directory: ./frontend
+        run: pnpm check
+
+      - name: Build frontend
+        working-directory: ./frontend
+        run: pnpm build
+
+      - name: Upload frontend build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/build/
+          retention-days: 7
+
+  build-backend-docker:
+    name: Build Backend Docker Image
+    runs-on: ubuntu-latest
+    needs: [test-backend]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
@@ -134,20 +174,63 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
+      - name: Extract backend metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/${{ github.repository }}-backend
           tags: |
             type=ref,event=branch
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image
+      - name: Build and push backend Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./backend
+          file: ./backend/Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  build-frontend-docker:
+    name: Build Frontend Docker Image
+    runs-on: ubuntu-latest
+    needs: [test-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract frontend metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-frontend
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push frontend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile.prod
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -158,7 +241,8 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [test, build-docker]
+    needs:
+      [test-backend, test-frontend, build-backend-docker, build-frontend-docker]
     if: false # Disable deployment for now
     environment: production
 
@@ -193,8 +277,24 @@ jobs:
             # Pull latest docker-compose files
             git pull origin main
 
-            # Pull latest Docker image
-            docker pull ghcr.io/${{ github.repository }}:latest
+            # Create production environment file with Supabase credentials
+            cat > .env.prod << 'ENVEOF'
+            DB_HOST=${{ secrets.SUPABASE_DB_HOST }}
+            DB_PORT=5432
+            DB_USER=postgres
+            DB_PASSWORD=${{ secrets.SUPABASE_DB_PASSWORD }}
+            DB_NAME=postgres
+            DB_SSLMODE=require
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_ACCESS_TOKEN_EXP=15m
+            JWT_REFRESH_TOKEN_EXP=168h
+            PORT=8080
+            ENV=production
+            ENVEOF
+
+            # Pull latest Docker images
+            docker pull ghcr.io/${{ github.repository }}-backend:latest
+            docker pull ghcr.io/${{ github.repository }}-frontend:latest
 
             # Update and restart services
             docker-compose -f docker-compose.prod.yml down
@@ -204,7 +304,7 @@ jobs:
             sleep 10
 
             # Health check
-            curl -f http://localhost:8080/health || exit 1
+            curl -f http://localhost/api/health || exit 1
 
             echo "✅ Deployment completed successfully"
           EOF

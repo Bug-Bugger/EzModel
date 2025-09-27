@@ -292,18 +292,22 @@ func (suite *UserServiceTestSuite) TestUpdateUser_EmailAlreadyExists() {
 // Test UpdatePassword - Success
 func (suite *UserServiceTestSuite) TestUpdatePassword_Success() {
 	userID := uuid.New()
+	currentPassword := "password123"
 	newPassword := "newpassword123"
 	existingUser := createTestUser()
 	existingUser.ID = userID
+	// Hash the current password for the user
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(currentPassword), bcrypt.DefaultCost)
+	existingUser.PasswordHash = string(hashedPassword)
 
 	suite.mockRepo.On("GetByID", userID).Return(existingUser, nil)
 	suite.mockRepo.On("Update", mock.MatchedBy(func(user *models.User) bool {
-		// Verify password was hashed
+		// Verify new password was hashed
 		err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(newPassword))
 		return err == nil
 	})).Return(nil)
 
-	err := suite.service.UpdatePassword(userID, newPassword)
+	err := suite.service.UpdatePassword(userID, currentPassword, newPassword)
 
 	suite.NoError(err)
 	suite.mockRepo.AssertExpectations(suite.T())
@@ -312,12 +316,34 @@ func (suite *UserServiceTestSuite) TestUpdatePassword_Success() {
 // Test UpdatePassword - Invalid Password
 func (suite *UserServiceTestSuite) TestUpdatePassword_InvalidPassword() {
 	userID := uuid.New()
+	currentPassword := "password123"
 	shortPassword := "12345"
 
-	err := suite.service.UpdatePassword(userID, shortPassword)
+	err := suite.service.UpdatePassword(userID, currentPassword, shortPassword)
 
 	suite.Error(err)
 	suite.Equal(ErrInvalidInput, err)
+}
+
+// Test UpdatePassword - Invalid Current Password
+func (suite *UserServiceTestSuite) TestUpdatePassword_InvalidCurrentPassword() {
+	userID := uuid.New()
+	currentPassword := "password123"
+	wrongCurrentPassword := "wrongpassword"
+	newPassword := "newpassword123"
+	existingUser := createTestUser()
+	existingUser.ID = userID
+	// Hash the correct current password
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(currentPassword), bcrypt.DefaultCost)
+	existingUser.PasswordHash = string(hashedPassword)
+
+	suite.mockRepo.On("GetByID", userID).Return(existingUser, nil)
+
+	err := suite.service.UpdatePassword(userID, wrongCurrentPassword, newPassword)
+
+	suite.Error(err)
+	suite.Equal(ErrInvalidCredentials, err)
+	suite.mockRepo.AssertExpectations(suite.T())
 }
 
 // Test DeleteUser - Success
@@ -475,7 +501,7 @@ func (suite *UserServiceTestSuite) TestUpdatePassword_UserNotFound() {
 
 	suite.mockRepo.On("GetByID", userID).Return(nil, gorm.ErrRecordNotFound)
 
-	err := suite.service.UpdatePassword(userID, newPassword)
+	err := suite.service.UpdatePassword(userID, "password123", newPassword)
 
 	suite.Error(err)
 	suite.Equal(ErrUserNotFound, err)
@@ -486,14 +512,18 @@ func (suite *UserServiceTestSuite) TestUpdatePassword_UserNotFound() {
 // Test UpdatePassword - Repository Error
 func (suite *UserServiceTestSuite) TestUpdatePassword_RepositoryError() {
 	userID := uuid.New()
+	currentPassword := "password123"
 	newPassword := "newpassword123"
 	existingUser := createTestUser()
 	existingUser.ID = userID
+	// Hash the current password for the user
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(currentPassword), bcrypt.DefaultCost)
+	existingUser.PasswordHash = string(hashedPassword)
 
 	suite.mockRepo.On("GetByID", userID).Return(existingUser, nil)
 	suite.mockRepo.On("Update", mock.AnythingOfType("*models.User")).Return(assert.AnError)
 
-	err := suite.service.UpdatePassword(userID, newPassword)
+	err := suite.service.UpdatePassword(userID, currentPassword, newPassword)
 
 	suite.Error(err)
 	suite.Equal(assert.AnError, err)

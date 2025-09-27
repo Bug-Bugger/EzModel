@@ -47,6 +47,11 @@ function createProjectStore() {
 			}
 		},
 
+		// Load project (alias for setCurrentProject for consistency)
+		async loadProject(projectId: string) {
+			return await this.setCurrentProject(projectId);
+		},
+
 		// Add new project to list
 		addProject(project: Project) {
 			update(state => ({

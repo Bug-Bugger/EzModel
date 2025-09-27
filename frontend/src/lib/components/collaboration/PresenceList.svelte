@@ -17,12 +17,17 @@
 
 	// Get user initials for avatar
 	function getUserInitials(name: string): string {
+		if (!name || name.trim() === '') {
+			return 'U';
+		}
 		return name
 			.split(' ')
+			.map(word => word.trim())
+			.filter(word => word.length > 0)
 			.map(word => word.charAt(0))
 			.join('')
 			.slice(0, 2)
-			.toUpperCase();
+			.toUpperCase() || 'U';
 	}
 
 	// Check if user is currently active (moved cursor recently)
@@ -39,20 +44,20 @@
 			{#each $collaborationStore.connectedUsers as user}
 				<div
 					class="user-avatar relative"
-					title={user.name}
+					title={user.username || 'Unknown User'}
 				>
 					<!-- Avatar -->
 					{#if user.avatar}
 						<img
 							src={user.avatar}
-							alt={user.name}
+							alt={user.username || 'Unknown User'}
 							class="w-8 h-8 rounded-full border-2 border-white shadow-sm"
 						/>
 					{:else}
 						<div
 							class="w-8 h-8 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-medium {getUserColor(user.id)}"
 						>
-							{getUserInitials(user.name)}
+							{getUserInitials(user.username || 'Unknown User')}
 						</div>
 					{/if}
 
@@ -92,21 +97,21 @@
 						{#if user.avatar}
 							<img
 								src={user.avatar}
-								alt={user.name}
+								alt={user.username || 'Unknown User'}
 								class="w-6 h-6 rounded-full"
 							/>
 						{:else}
 							<div
 								class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium {getUserColor(user.id)}"
 							>
-								{getUserInitials(user.name)}
+								{getUserInitials(user.username || 'Unknown User')}
 							</div>
 						{/if}
 
 						<!-- User Info -->
 						<div class="flex-1 min-w-0">
-							<div class="text-sm font-medium text-gray-900 truncate">{user.name}</div>
-							<div class="text-xs text-gray-500 truncate">{user.email}</div>
+							<div class="text-sm font-medium text-gray-900 truncate">{user.username || 'Unknown User'}</div>
+							<div class="text-xs text-gray-500 truncate">{user.email || 'No email'}</div>
 						</div>
 
 						<!-- Activity Status -->

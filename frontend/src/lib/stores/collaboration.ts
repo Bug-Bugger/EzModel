@@ -150,8 +150,8 @@ function createCollaborationStore() {
 				addActivityEvent({
 					type: 'user_joined',
 					userId: message.user.id,
-					userName: message.user.name,
-					message: `${message.user.name} joined the collaboration`
+					userName: message.user.username || 'Unknown User',
+					message: `${message.user.username || 'Unknown User'} joined the collaboration`
 				});
 				break;
 

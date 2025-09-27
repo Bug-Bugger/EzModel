@@ -40,6 +40,22 @@ export class ProjectService {
 			throw new Error(response.message || 'Failed to delete project');
 		}
 	}
+
+	async addCollaborator(projectId: string, collaboratorId: string): Promise<void> {
+		const response = await apiClient.post(`/projects/${projectId}/collaborators`, {
+			collaborator_id: collaboratorId
+		});
+		if (!response.success) {
+			throw new Error(response.message || 'Failed to add collaborator');
+		}
+	}
+
+	async removeCollaborator(projectId: string, collaboratorId: string): Promise<void> {
+		const response = await apiClient.delete(`/projects/${projectId}/collaborators/${collaboratorId}`);
+		if (!response.success) {
+			throw new Error(response.message || 'Failed to remove collaborator');
+		}
+	}
 }
 
 export const projectService = new ProjectService();

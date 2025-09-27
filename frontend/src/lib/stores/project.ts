@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { Project } from '$lib/types/models';
+import type { Project, User } from '$lib/types/models';
 import { projectService } from '$lib/services/project';
 
 interface ProjectState {
@@ -82,6 +82,40 @@ function createProjectStore() {
 					? null
 					: state.currentProject
 			}));
+		},
+
+		// Add collaborator to current project
+		async addCollaborator(collaboratorId: string) {
+			const currentProject = this.getCurrentProject();
+			if (!currentProject) {
+				throw new Error('No current project');
+			}
+
+			await projectService.addCollaborator(currentProject.id, collaboratorId);
+			// Refresh project to get updated collaborators list
+			await this.setCurrentProject(currentProject.id);
+		},
+
+		// Remove collaborator from current project
+		async removeCollaborator(collaboratorId: string) {
+			const currentProject = this.getCurrentProject();
+			if (!currentProject) {
+				throw new Error('No current project');
+			}
+
+			await projectService.removeCollaborator(currentProject.id, collaboratorId);
+			// Refresh project to get updated collaborators list
+			await this.setCurrentProject(currentProject.id);
+		},
+
+		// Get current project (helper method)
+		getCurrentProject(): Project | null {
+			let current: Project | null = null;
+			update(state => {
+				current = state.currentProject;
+				return state;
+			});
+			return current;
 		},
 
 		// Clear all state

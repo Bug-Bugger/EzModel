@@ -49,7 +49,7 @@
 			class="user-label ml-6 -mt-1 px-2 py-1 rounded text-xs font-medium text-white shadow-lg max-w-24 truncate"
 			style="background-color: {userColor}"
 		>
-			{user.name}
+			{user.username || 'Unknown User'}
 		</div>
 	</div>
 {/if}

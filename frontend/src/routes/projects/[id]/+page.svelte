@@ -4,14 +4,35 @@
 	import { goto } from '$app/navigation';
 	import { projectStore } from '$lib/stores/project';
 	import Button from '$lib/components/ui/button.svelte';
+	import AddCollaboratorModal from '$lib/components/project/AddCollaboratorModal.svelte';
 
 	const projectId = $page.params.id;
+
+	let showAddCollaboratorModal = $state(false);
+	let removingCollaboratorId = $state<string | null>(null);
 
 	onMount(async () => {
 		if (projectId) {
 			await projectStore.setCurrentProject(projectId);
 		}
 	});
+
+	async function removeCollaborator(collaboratorId: string) {
+		if (removingCollaboratorId) return;
+
+		const confirmed = confirm('Are you sure you want to remove this collaborator?');
+		if (!confirmed) return;
+
+		removingCollaboratorId = collaboratorId;
+		try {
+			await projectStore.removeCollaborator(collaboratorId);
+		} catch (error) {
+			console.error('Failed to remove collaborator:', error);
+			alert('Failed to remove collaborator. Please try again.');
+		} finally {
+			removingCollaboratorId = null;
+		}
+	}
 
 	function editSchema() {
 		goto(`/projects/${projectId}/edit`);
@@ -59,7 +80,7 @@
 		<!-- Navigation -->
 		<div class="project-nav mb-6">
 			<button
-				on:click={backToProjects}
+				onclick={backToProjects}
 				class="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
 			>
 				<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -263,12 +284,29 @@
 							{#each $projectStore.currentProject.collaborators as collaborator}
 								<div class="collaborator-item flex items-center space-x-3">
 									<div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-										{collaborator.name.charAt(0).toUpperCase()}
+										{(collaborator.username || 'U').charAt(0).toUpperCase()}
 									</div>
 									<div class="flex-1 min-w-0">
-										<p class="text-sm font-medium text-gray-900 truncate">{collaborator.name}</p>
-										<p class="text-xs text-gray-500 truncate">{collaborator.email}</p>
+										<p class="text-sm font-medium text-gray-900 truncate">{collaborator.username || 'Unknown User'}</p>
+										<p class="text-xs text-gray-500 truncate">{collaborator.email || 'No email'}</p>
 									</div>
+									<button
+										class="p-1 text-gray-400 hover:text-red-500 transition-colors"
+										onclick={() => removeCollaborator(collaborator.id)}
+										disabled={removingCollaboratorId === collaborator.id}
+										title="Remove collaborator"
+									>
+										{#if removingCollaboratorId === collaborator.id}
+											<svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+												<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+												<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+											</svg>
+										{:else}
+											<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+											</svg>
+										{/if}
+									</button>
 								</div>
 							{/each}
 						</div>
@@ -276,7 +314,12 @@
 						<p class="text-gray-500 text-sm">No collaborators yet</p>
 					{/if}
 
-					<Button variant="outline" size="sm" class="w-full mt-4">
+					<Button
+						variant="outline"
+						size="sm"
+						class="w-full mt-4"
+						onclick={() => showAddCollaboratorModal = true}
+					>
 						<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
 						</svg>
@@ -300,6 +343,12 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Add Collaborator Modal -->
+<AddCollaboratorModal
+	bind:open={showAddCollaboratorModal}
+	onOpenChange={(open) => showAddCollaboratorModal = open}
+/>
 
 <style>
 	.metadata-item {

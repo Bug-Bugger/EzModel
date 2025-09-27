@@ -218,9 +218,17 @@ type ProjectRepositoryInterface interface {
 
 ## Environment Configuration
 
+EzModel uses centralized environment variable management with all configuration stored in the project root.
+
+### Environment Files
+- **`.env.dev`**: Development environment configuration
+- **`.env.prod`**: Production environment configuration
+
+Both backend and frontend read from these root-level files for consistent configuration across the entire application.
+
 ### Required Environment Variables
 ```bash
-# Database
+# Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
@@ -228,15 +236,22 @@ DB_PASSWORD=your_password
 DB_NAME=ezmodel
 DB_SSLMODE=disable
 
-# JWT
+# JWT Configuration
 JWT_SECRET=your_jwt_secret
 JWT_ACCESS_TOKEN_EXP=15m
 JWT_REFRESH_TOKEN_EXP=168h
 
-# Server
+# Server Configuration
 PORT=8080
 ENV=development
+
+# Frontend Configuration (Vite prefixed)
+VITE_API_URL=http://localhost:8080/api
 ```
+
+### Environment Loading
+- **Backend**: Uses `godotenv.Load("../.env")` to load from project root
+- **Frontend**: Uses Vite's `envDir: '../'` configuration to read from project root
 
 ## Future Development
 

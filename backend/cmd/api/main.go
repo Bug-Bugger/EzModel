@@ -10,8 +10,8 @@ import (
 )
 
 func main() {
-	// Load .env file
-	err := godotenv.Load()
+	// Load .env file from project root
+	err := godotenv.Load("../.env")
 	if err != nil {
 		log.Println("Warning: No .env file found or error loading it. Using default values or environment variables.")
 	}

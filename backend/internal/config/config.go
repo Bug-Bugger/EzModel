@@ -45,8 +45,8 @@ func New() *Config {
 
 	// JWT Configuration
 	cfg.JWT.Secret = getEnv("JWT_SECRET", "")
-	accessExp, _ := time.ParseDuration(getEnv("JWT_ACCESS_EXP", "15m"))
-	refreshExp, _ := time.ParseDuration(getEnv("JWT_REFRESH_EXP", "7d"))
+	accessExp, _ := time.ParseDuration(getEnv("JWT_ACCESS_TOKEN_EXP", "15m"))
+	refreshExp, _ := time.ParseDuration(getEnv("JWT_REFRESH_TOKEN_EXP", "7d"))
 	cfg.JWT.AccessTokenExp = accessExp
 	cfg.JWT.RefreshTokenExp = refreshExp
 

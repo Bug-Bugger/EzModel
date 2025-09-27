@@ -9,6 +9,7 @@ const backendUrl = isDocker ? 'http://backend:8080' : 'http://localhost:8080';
 
 export default defineConfig({
 	plugins: [sveltekit()],
+	envDir: '../', // Load environment variables from project root
 	server: {
 		host: '0.0.0.0',
 		port: 5173,

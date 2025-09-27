@@ -2,15 +2,81 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { projectStore } from '$lib/stores/project';
+	import { projectService } from '$lib/services/project';
+	import { uiStore } from '$lib/stores/ui';
 	import Button from '$lib/components/ui/button.svelte';
+	import AlertDialog from '$lib/components/ui/alert-dialog.svelte';
+	import Dialog from '$lib/components/ui/dialog.svelte';
+	import Input from '$lib/components/ui/input.svelte';
+	import Select from '$lib/components/ui/select.svelte';
+	import type { CreateProjectRequest } from '$lib/types/models';
+
+	// Create project dialog state
+	let showCreateDialog = false;
+	let projectName = '';
+	let projectDescription = '';
+	let databaseType = 'postgresql';
+	let isCreating = false;
+
+	// Delete confirmation dialog state
+	let showDeleteDialog = false;
+	let projectToDelete: { id: string; name: string } | null = null;
+
+	// Database type options
+	const databaseOptions = [
+		{ value: 'postgresql', label: 'PostgreSQL' },
+		{ value: 'mysql', label: 'MySQL' },
+		{ value: 'sqlite', label: 'SQLite' },
+		{ value: 'sqlserver', label: 'SQL Server' }
+	];
 
 	onMount(() => {
 		projectStore.loadProjects();
 	});
 
 	function createNewProject() {
-		// TODO: Implement create project modal/page
-		console.log('Create new project');
+		openCreateDialog();
+	}
+
+	function openCreateDialog() {
+		showCreateDialog = true;
+		projectName = '';
+		projectDescription = '';
+		databaseType = 'postgresql';
+		isCreating = false;
+	}
+
+	function closeCreateDialog() {
+		showCreateDialog = false;
+		projectName = '';
+		projectDescription = '';
+		databaseType = 'postgresql';
+		isCreating = false;
+	}
+
+	async function createProject() {
+		if (!projectName.trim()) {
+			uiStore.error('Project name is required');
+			return;
+		}
+
+		isCreating = true;
+		try {
+			const projectData: CreateProjectRequest = {
+				name: projectName.trim(),
+				description: projectDescription.trim() || undefined,
+				database_type: databaseType as any
+			};
+
+			const newProject = await projectService.createProject(projectData);
+			projectStore.addProject(newProject);
+			uiStore.success('Project created successfully!');
+			closeCreateDialog();
+		} catch (error: any) {
+			uiStore.error('Failed to create project', error.message);
+		} finally {
+			isCreating = false;
+		}
 	}
 
 	function openProject(projectId: string) {
@@ -19,6 +85,25 @@
 
 	function editProject(projectId: string) {
 		goto(`/projects/${projectId}/edit`);
+	}
+
+	function openDeleteDialog(project: { id: string; name: string }) {
+		projectToDelete = project;
+		showDeleteDialog = true;
+	}
+
+	async function confirmDeleteProject() {
+		if (!projectToDelete) return;
+
+		try {
+			await projectService.deleteProject(projectToDelete.id);
+			projectStore.removeProject(projectToDelete.id);
+			uiStore.success('Project deleted successfully');
+			showDeleteDialog = false;
+			projectToDelete = null;
+		} catch (error: any) {
+			uiStore.error('Failed to delete project', error.message);
+		}
 	}
 
 	function formatDate(dateString: string) {
@@ -136,6 +221,18 @@
 									Edit Schema
 								{/snippet}
 							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								onclick={() => openDeleteDialog({ id: project.id, name: project.name })}
+								class="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 hover:border-red-300"
+							>
+								{#snippet children()}
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+									</svg>
+								{/snippet}
+							</Button>
 						</div>
 					</div>
 				</div>
@@ -143,6 +240,86 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Create Project Dialog -->
+<Dialog bind:open={showCreateDialog} onOpenChange={closeCreateDialog}>
+	<div class="space-y-4">
+		<div>
+			<h2 class="text-lg font-semibold">Create New Project</h2>
+			<p class="text-sm text-gray-600">
+				Set up a new database schema project
+			</p>
+		</div>
+
+		<div class="space-y-4">
+			<div class="space-y-2">
+				<label for="name" class="text-sm font-medium">Project Name</label>
+				<Input
+					id="name"
+					placeholder="My Database Schema"
+					bind:value={projectName}
+					disabled={isCreating}
+					required
+				/>
+			</div>
+
+			<div class="space-y-2">
+				<label for="description" class="text-sm font-medium">Description (optional)</label>
+				<Input
+					id="description"
+					placeholder="Describe your project..."
+					bind:value={projectDescription}
+					disabled={isCreating}
+				/>
+			</div>
+
+			<div class="space-y-2">
+				<label for="database" class="text-sm font-medium">Database Type</label>
+				<Select
+					bind:value={databaseType}
+					options={databaseOptions}
+					disabled={isCreating}
+				/>
+			</div>
+		</div>
+
+		<div class="flex gap-2 pt-4">
+			<Button
+				variant="outline"
+				class="flex-1"
+				onclick={closeCreateDialog}
+				disabled={isCreating}
+			>
+				Cancel
+			</Button>
+			<Button
+				class="flex-1"
+				onclick={createProject}
+				disabled={isCreating || !projectName.trim()}
+			>
+				{#if isCreating}
+					<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+					</svg>
+					Creating...
+				{:else}
+					Create Project
+				{/if}
+			</Button>
+		</div>
+	</div>
+</Dialog>
+
+<!-- Delete Project Confirmation Dialog -->
+<AlertDialog
+	bind:open={showDeleteDialog}
+	title="Delete Project"
+	description={`Are you sure you want to delete "${projectToDelete?.name}"? This action cannot be undone and all data associated with this project will be permanently deleted.`}
+	actionText="Delete Project"
+	actionVariant="destructive"
+	onAction={confirmDeleteProject}
+/>
 
 <style>
 	.line-clamp-2 {

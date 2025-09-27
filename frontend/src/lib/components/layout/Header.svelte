@@ -25,8 +25,8 @@
 
 		<nav class="flex items-center gap-4">
 			{#if $authStore.isAuthenticated}
-				<a href="/dashboard" class="text-sm font-medium hover:text-primary">
-					Dashboard
+				<a href="/projects" class="text-sm font-medium hover:text-primary">
+					Projects
 				</a>
 				<div class="flex items-center gap-2">
 					<span class="text-sm text-muted-foreground">

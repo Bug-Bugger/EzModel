@@ -21,7 +21,7 @@
 	// Redirect if already authenticated
 	onMount(() => {
 		if ($authStore.isAuthenticated) {
-			goto('/dashboard');
+			goto('/projects');
 		}
 	});
 
@@ -54,7 +54,7 @@
 
 			authStore.setUser(user);
 			uiStore.success('Welcome back!', `Logged in as ${user.username}`);
-			goto('/dashboard');
+			goto('/projects');
 		} catch (error: any) {
 			uiStore.error('Login Failed', error.message || 'Invalid credentials');
 			console.error('Login error:', error);

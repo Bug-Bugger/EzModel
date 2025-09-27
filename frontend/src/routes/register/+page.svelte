@@ -25,7 +25,7 @@
 	// Redirect if already authenticated
 	onMount(() => {
 		if ($authStore.isAuthenticated) {
-			goto('/dashboard');
+			goto('/projects');
 		}
 	});
 

@@ -1,7 +1,94 @@
 <script lang="ts">
 	import type { ConnectedUser } from '$lib/stores/collaboration';
+	import { flowStore } from '$lib/stores/flow';
+	import { useSvelteFlow } from '@xyflow/svelte';
+	import { onMount } from 'svelte';
 
 	export let user: ConnectedUser;
+
+	// Use SvelteFlow hooks for coordinate conversion
+	const { flowToScreenPosition } = useSvelteFlow();
+
+	let cursorPosition = { x: 0, y: 0 };
+	let targetPosition = { x: 0, y: 0 };
+	let smoothingInterval: ReturnType<typeof setInterval> | null = null;
+
+	// Smoothing configuration
+	const SMOOTHING_FACTOR = 0.3; // How much to move towards target each frame (increased for responsiveness)
+	const SMOOTHING_FPS = 60; // Target smoothing frame rate
+	const SMOOTHING_INTERVAL = 1000 / SMOOTHING_FPS; // ~16ms
+
+	// Update target position when user cursor data changes
+	$: if (user.cursor) {
+		updateTargetPosition();
+	}
+
+	function updateTargetPosition() {
+		if (!user.cursor) return;
+
+		if (!flowToScreenPosition) {
+			console.warn('SvelteFlow flowToScreenPosition not available');
+			return;
+		}
+
+		try {
+			// Convert flow coordinates (received from other user) to screen coordinates
+			const screenCoords = flowToScreenPosition({
+				x: user.cursor.x,
+				y: user.cursor.y
+			});
+
+			targetPosition = {
+				x: screenCoords.x,
+				y: screenCoords.y
+			};
+
+			// Start smoothing if not already running
+			startSmoothing();
+		} catch (error) {
+			console.warn('Error converting cursor coordinates:', error);
+		}
+	}
+
+	function startSmoothing() {
+		if (smoothingInterval !== null) return; // Already running
+
+		smoothingInterval = setInterval(() => {
+			// Calculate distance to target
+			const dx = targetPosition.x - cursorPosition.x;
+			const dy = targetPosition.y - cursorPosition.y;
+			const distance = Math.sqrt(dx * dx + dy * dy);
+
+			// If we're close enough, snap to target and stop smoothing
+			if (distance < 0.5) {
+				cursorPosition = { ...targetPosition };
+				stopSmoothing();
+				return;
+			}
+
+			// Smooth movement towards target using lerp
+			cursorPosition = {
+				x: cursorPosition.x + dx * SMOOTHING_FACTOR,
+				y: cursorPosition.y + dy * SMOOTHING_FACTOR
+			};
+		}, SMOOTHING_INTERVAL);
+	}
+
+	function stopSmoothing() {
+		if (smoothingInterval !== null) {
+			clearInterval(smoothingInterval);
+			smoothingInterval = null;
+		}
+	}
+
+	onMount(() => {
+		updateTargetPosition();
+
+		return () => {
+			// Clean up smoothing interval on unmount
+			stopSmoothing();
+		};
+	});
 
 	// Generate a consistent color for each user based on their ID
 	function getUserColor(userId: string): string {
@@ -28,12 +115,13 @@
 
 	$: userColor = getUserColor(user.id);
 	$: isActive = user.cursor && (Date.now() - user.cursor.timestamp) < 5000; // Show cursor for 5 seconds after last movement
+
 </script>
 
 {#if isActive && user.cursor}
 	<div
-		class="user-cursor absolute pointer-events-none z-50 transition-all duration-100 ease-out"
-		style="left: {user.cursor.x}px; top: {user.cursor.y}px; color: {userColor}"
+		class="user-cursor absolute pointer-events-none z-50"
+		style="left: {cursorPosition.x}px; top: {cursorPosition.y}px; color: {userColor}; transform: translateZ(0);"
 	>
 		<!-- Cursor Arrow -->
 		<svg

@@ -4,7 +4,8 @@
 	import '@xyflow/svelte/dist/style.css';
 
 	import TableNode from './TableNode.svelte';
-	import RelationshipEdge from './RelationshipEdge.svelte';
+		import MouseTracker from './MouseTracker.svelte';
+	import UserCursor from '../collaboration/UserCursor.svelte';
 
 	import { flowStore, type TableNode as TableNodeType, type RelationshipEdge as RelationshipEdgeType } from '$lib/stores/flow';
 	import { designerStore } from '$lib/stores/designer';
@@ -21,7 +22,7 @@
 	// };
 
 	let flowElement: HTMLElement;
-	let mousePosition = { x: 0, y: 0 };
+	let containerRect: DOMRect | null = null;
 
 	// Reactive flow data
 	$: nodes = $flowStore.nodes;
@@ -48,13 +49,14 @@
 		designerStore.closePropertyPanel();
 	}
 
-	// Handle mouse move for collaboration cursors
-	function onMouseMove(event: MouseEvent) {
-		mousePosition = { x: event.clientX, y: event.clientY };
 
-		// Throttle cursor updates to avoid spam
-		if (Date.now() % 100 === 0) {
-			collaborationStore.sendCursorPosition(event.clientX, event.clientY);
+
+
+
+	// Update container bounds when element or viewport changes
+	function updateContainerBounds() {
+		if (flowElement) {
+			containerRect = flowElement.getBoundingClientRect();
 		}
 	}
 
@@ -63,6 +65,9 @@
 		const viewport = event.detail.viewport;
 		flowStore.updateViewport(viewport);
 		designerStore.setZoom(viewport.zoom);
+
+		// Update container bounds when viewport changes (pan/zoom)
+		updateContainerBounds();
 	}
 
 	// Handle canvas double-click to create table
@@ -111,7 +116,17 @@
 		});
 	}
 
+
 	onMount(() => {
+		// Initialize container bounds
+		updateContainerBounds();
+
+
+		// Update bounds on window resize
+		function handleResize() {
+			updateContainerBounds();
+		}
+
 		// Set up keyboard shortcuts
 		function handleKeydown(event: KeyboardEvent) {
 			if (event.key === 'Delete' || event.key === 'Backspace') {
@@ -131,9 +146,12 @@
 		}
 
 		window.addEventListener('keydown', handleKeydown);
+		window.addEventListener('resize', handleResize);
 
 		return () => {
 			window.removeEventListener('keydown', handleKeydown);
+			window.removeEventListener('resize', handleResize);
+
 		};
 	});
 </script>
@@ -141,7 +159,6 @@
 <div
 	class="database-canvas w-full h-full"
 	bind:this={flowElement}
-	on:mousemove={onMouseMove}
 	role="application"
 	aria-label="Database schema designer canvas"
 >
@@ -151,7 +168,23 @@
 		{nodeTypes}
 		fitView
 		snapGrid={[$designerStore.gridSize, $designerStore.gridSize]}
+		onnodeclick={onNodeClick}
+		onedgeclick={onEdgeClick}
+		onpaneclick={onPaneClick}
+		onmove={onMove}
+		ondblclick={onPaneDoubleClick}
+		onnodedragstop={onNodeDragStop}
 	>
+		<!-- Mouse tracking component - must be inside SvelteFlow for hook access -->
+		<MouseTracker />
+
+		<!-- Live Cursors - inside SvelteFlow context for hook access -->
+		{#each $collaborationStore.connectedUsers as user}
+			{#if user.cursor}
+				<UserCursor {user} />
+			{/if}
+		{/each}
+
 		<!-- Background with grid -->
 		<Background
 			gap={$designerStore.gridSize}

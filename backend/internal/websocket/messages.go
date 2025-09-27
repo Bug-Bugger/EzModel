@@ -63,8 +63,8 @@ type UserCursorPayload struct {
 	UserID    uuid.UUID `json:"user_id"`
 	Username  string    `json:"username"`
 	UserColor string    `json:"user_color"`
-	CursorX   float64   `json:"cursor_x"`
-	CursorY   float64   `json:"cursor_y"`
+	CursorX   float64   `json:"cursor_x"` // Global coordinates in SvelteFlow space
+	CursorY   float64   `json:"cursor_y"` // Global coordinates in SvelteFlow space
 }
 
 type UserPresencePayload struct {
@@ -75,8 +75,8 @@ type ActiveUser struct {
 	UserID    uuid.UUID `json:"user_id"`
 	Username  string    `json:"username"`
 	UserColor string    `json:"user_color"`
-	CursorX   *float64  `json:"cursor_x,omitempty"`
-	CursorY   *float64  `json:"cursor_y,omitempty"`
+	CursorX   *float64  `json:"cursor_x,omitempty"` // Global coordinates in SvelteFlow space
+	CursorY   *float64  `json:"cursor_y,omitempty"` // Global coordinates in SvelteFlow space
 	LastSeen  time.Time `json:"last_seen"`
 }
 

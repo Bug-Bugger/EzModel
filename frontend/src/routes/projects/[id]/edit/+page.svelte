@@ -10,8 +10,7 @@
 	import CollaborationStatus from '$lib/components/collaboration/CollaborationStatus.svelte';
 	import PresenceList from '$lib/components/collaboration/PresenceList.svelte';
 	import ActivityFeed from '$lib/components/collaboration/ActivityFeed.svelte';
-	import UserCursor from '$lib/components/collaboration/UserCursor.svelte';
-
+	
 	import { projectStore } from '$lib/stores/project.js';
 	import { collaborationStore } from '$lib/stores/collaboration.js';
 	import { flowStore } from '$lib/stores/flow.js';
@@ -129,12 +128,19 @@
 				{/if}
 			</button>
 
-			<!-- Live Cursors -->
-			{#each $collaborationStore.connectedUsers as user}
-				{#if user.cursor}
-					<UserCursor {user} />
-				{/if}
-			{/each}
+			<!-- Live Cursors are now rendered inside DatabaseCanvas/SvelteFlow -->
+
+			<!-- Debug Info -->
+			<div class="absolute top-4 left-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs font-mono z-50">
+				<div>Connected Users: {$collaborationStore.connectedUsers.length}</div>
+				<div>Users with cursors: {$collaborationStore.connectedUsers.filter(u => u.cursor).length}</div>
+				{#each $collaborationStore.connectedUsers as user}
+					<div class="mt-1">
+						{user.username || 'Unknown'}:
+						{user.cursor ? `(${user.cursor.x.toFixed(1)}, ${user.cursor.y.toFixed(1)})` : 'No cursor'}
+					</div>
+				{/each}
+			</div>
 		</main>
 
 		<!-- Right Sidebar -->

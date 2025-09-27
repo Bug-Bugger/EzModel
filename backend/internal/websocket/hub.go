@@ -218,15 +218,14 @@ func (h *Hub) sendPresenceToClient(targetClient *Client) {
 	if clients, exists := h.projects[targetClient.ProjectID]; exists {
 		var activeUsers []ActiveUser
 
+		// Include ALL users in the project (including the target client)
 		for client := range clients {
-			if client != targetClient {
-				activeUsers = append(activeUsers, ActiveUser{
-					UserID:    client.UserID,
-					Username:  client.Username,
-					UserColor: client.UserColor,
-					LastSeen:  client.LastPing,
-				})
-			}
+			activeUsers = append(activeUsers, ActiveUser{
+				UserID:    client.UserID,
+				Username:  client.Username,
+				UserColor: client.UserColor,
+				LastSeen:  client.LastPing,
+			})
 		}
 
 		presencePayload := UserPresencePayload{

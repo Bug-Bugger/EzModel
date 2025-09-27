@@ -114,9 +114,11 @@ function createCollaborationStore() {
 		sendCursorPosition(x: number, y: number) {
 			if (wsClient && wsClient.isConnected()) {
 				wsClient.send({
-					type: 'cursor_move',
-					x,
-					y
+					type: 'user_cursor',
+					data: {
+						cursor_x: x,
+						cursor_y: y
+					}
 				});
 			}
 		},
@@ -138,40 +140,67 @@ function createCollaborationStore() {
 	};
 
 	function handleWebSocketMessage(message: any) {
+		console.log('WebSocket message received:', message);
+
 		switch (message.type) {
 			case 'user_joined':
+				// Handle backend UserJoinedPayload structure
+				const joinedUser = {
+					id: message.data.user_id,
+					name: message.data.username || 'Unknown User',
+					email: '', // Not provided in the payload
+					username: message.data.username || 'Unknown User',
+					lastActivity: Date.now()
+				};
+
 				update(state => ({
 					...state,
-					connectedUsers: [...state.connectedUsers, {
-						...message.user,
-						lastActivity: Date.now()
-					}]
+					connectedUsers: [...state.connectedUsers, joinedUser]
 				}));
+
 				addActivityEvent({
 					type: 'user_joined',
-					userId: message.user.id,
-					userName: message.user.username || 'Unknown User',
-					message: `${message.user.username || 'Unknown User'} joined the collaboration`
+					userId: message.data.user_id,
+					userName: message.data.username || 'Unknown User',
+					message: `${message.data.username || 'Unknown User'} joined the collaboration`
 				});
 				break;
 
 			case 'user_left':
+				// Handle backend UserLeftPayload structure
 				update(state => ({
 					...state,
-					connectedUsers: state.connectedUsers.filter(u => u.id !== message.user_id)
+					connectedUsers: state.connectedUsers.filter(u => u.id !== message.data.user_id)
 				}));
 				break;
 
-			case 'cursor_move':
+			case 'user_presence':
+				// Handle backend UserPresencePayload structure - this sets the complete user list
+				const activeUsers = message.data.active_users?.map((user: any) => ({
+					id: user.user_id,
+					name: user.username || 'Unknown User',
+					email: '', // Not provided in the payload
+					username: user.username || 'Unknown User',
+					lastActivity: Date.now()
+				})) || [];
+
+				update(state => ({
+					...state,
+					connectedUsers: activeUsers
+				}));
+				break;
+
+			case 'user_cursor':
+				// Handle backend UserCursorPayload structure
 				update(state => ({
 					...state,
 					connectedUsers: state.connectedUsers.map(user =>
-						user.id === message.user_id
+						user.id === message.data.user_id
 							? {
 								...user,
 								cursor: {
-									x: message.x,
-									y: message.y,
+									x: message.data.cursor_x,
+									y: message.data.cursor_y,
 									timestamp: Date.now()
 								},
 								lastActivity: Date.now()

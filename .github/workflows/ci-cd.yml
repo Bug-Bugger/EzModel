@@ -16,8 +16,8 @@ permissions:
   id-token: write
 
 jobs:
-  test:
-    name: Test & Quality Checks
+  test-backend:
+    name: Backend Test & Quality Checks
     runs-on: ubuntu-latest
 
     services:
@@ -116,7 +116,7 @@ jobs:
           retention-days: 7
 
   test-frontend:
-    name: Test Frontend & Quality Checks
+    name: Frontend Test & Quality Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -241,7 +241,8 @@ jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend, build-backend-docker, build-frontend-docker]
+    needs:
+      [test-backend, test-frontend, build-backend-docker, build-frontend-docker]
     if: false # Disable deployment for now
     environment: production
 

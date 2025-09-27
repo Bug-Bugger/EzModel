@@ -18,11 +18,8 @@ export interface RegisterRequest {
 export interface LoginResponse {
 	access_token: string;
 	refresh_token: string;
-	user: {
-		id: string;
-		email: string;
-		username: string;
-	};
+	token_type: string;
+	expires_in: number;
 }
 
 export interface RefreshTokenRequest {

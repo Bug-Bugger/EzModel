@@ -1,9 +1,15 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
 import { browser } from '$app/environment';
-import type { ApiResponse, ApiError } from '$lib/types/api';
+import type { ApiResponse, ApiError, LoginResponse } from '$lib/types/api';
+import { authStore } from '$lib/stores/auth';
 
 class ApiClient {
 	private client: AxiosInstance;
+	private isRefreshing = false;
+	private failedQueue: Array<{
+		resolve: (value: any) => void;
+		reject: (error: any) => void;
+	}> = [];
 
 	constructor() {
 		// Use environment variables or fallback to development defaults
@@ -37,32 +43,55 @@ class ApiClient {
 		this.client.interceptors.response.use(
 			(response: AxiosResponse<ApiResponse>) => response,
 			async (error) => {
-				if (error.response?.status === 401 && browser) {
-					// Token expired, try to refresh
+				const originalRequest = error.config;
+
+				if (error.response?.status === 401 && browser && !originalRequest._retry) {
+					if (this.isRefreshing) {
+						// Another request is already refreshing tokens, queue this request
+						return new Promise((resolve, reject) => {
+							this.failedQueue.push({ resolve, reject });
+						}).then((token) => {
+							originalRequest.headers.Authorization = `Bearer ${token}`;
+							return this.client(originalRequest);
+						}).catch((err) => {
+							return Promise.reject(err);
+						});
+					}
+
+					originalRequest._retry = true;
+					this.isRefreshing = true;
+
 					const refreshToken = localStorage.getItem('refresh_token');
 					if (refreshToken) {
 						try {
-							const response = await this.client.post('/refresh-token', {
+							const response = await this.client.post<ApiResponse<LoginResponse>>('/refresh-token', {
 								refresh_token: refreshToken
 							});
 
 							if (response.data.success && response.data.data) {
-								localStorage.setItem('access_token', response.data.data.access_token);
-								localStorage.setItem('refresh_token', response.data.data.refresh_token);
+								const newTokens = response.data.data;
+								localStorage.setItem('access_token', newTokens.access_token);
+								localStorage.setItem('refresh_token', newTokens.refresh_token);
+
+								// Process the failed queue
+								this.processQueue(null, newTokens.access_token);
 
 								// Retry the original request
-								error.config.headers.Authorization = `Bearer ${response.data.data.access_token}`;
-								return this.client.request(error.config);
+								originalRequest.headers.Authorization = `Bearer ${newTokens.access_token}`;
+								return this.client(originalRequest);
 							}
 						} catch (refreshError) {
-							// Refresh failed, clear tokens and redirect to login
-							localStorage.removeItem('access_token');
-							localStorage.removeItem('refresh_token');
-							window.location.href = '/login';
+							// Refresh failed, clear tokens and logout
+							this.processQueue(refreshError, null);
+							this.logout();
+							return Promise.reject(refreshError);
+						} finally {
+							this.isRefreshing = false;
 						}
 					} else {
-						// No refresh token, redirect to login
-						window.location.href = '/login';
+						// No refresh token, logout immediately
+						this.logout();
+						return Promise.reject(error);
 					}
 				}
 
@@ -75,6 +104,28 @@ class ApiClient {
 				return Promise.reject(apiError);
 			}
 		);
+	}
+
+	private processQueue(error: any, token: string | null) {
+		this.failedQueue.forEach(({ resolve, reject }) => {
+			if (error) {
+				reject(error);
+			} else {
+				resolve(token);
+			}
+		});
+
+		this.failedQueue = [];
+	}
+
+	private logout() {
+		localStorage.removeItem('access_token');
+		localStorage.removeItem('refresh_token');
+		localStorage.removeItem('user');
+		authStore.clear();
+		if (browser) {
+			window.location.href = '/login';
+		}
 	}
 
 	async get<T>(url: string): Promise<ApiResponse<T>> {

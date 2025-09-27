@@ -348,7 +348,7 @@ func (suite *WebSocketHandlerTestSuite) TestAuthenticateWebSocketRequest_Invalid
 
 // Test authentication with missing authorization header
 func (suite *WebSocketHandlerTestSuite) TestAuthenticateWebSocketRequest_MissingHeader() {
-	// Create request without authorization header
+	// Create request without authorization header or query parameter
 	req := httptest.NewRequest(http.MethodGet, "/collaborate", nil)
 
 	// Execute
@@ -357,7 +357,7 @@ func (suite *WebSocketHandlerTestSuite) TestAuthenticateWebSocketRequest_Missing
 	// Assert
 	assert.Error(suite.T(), err)
 	assert.Nil(suite.T(), result)
-	assert.Contains(suite.T(), err.Error(), "no authorization header provided")
+	assert.Contains(suite.T(), err.Error(), "no token provided in query parameter")
 }
 
 // Test authentication from header
@@ -386,6 +386,7 @@ func (suite *WebSocketHandlerTestSuite) TestAuthenticateWebSocketRequest_Header(
 
 	// Assert
 	assert.NoError(suite.T(), err)
+	assert.NotNil(suite.T(), result)
 	assert.Equal(suite.T(), userID, result.ID)
 	suite.mockJWTService.AssertExpectations(suite.T())
 	suite.mockUserService.AssertExpectations(suite.T())

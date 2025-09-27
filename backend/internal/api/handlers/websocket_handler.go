@@ -6,10 +6,10 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
-	"github.com/Bug-Bugger/ezmodel/internal/api/responses"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
 	websocketPkg "github.com/Bug-Bugger/ezmodel/internal/websocket"
@@ -67,21 +67,21 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
 		log.Printf("WebSocket: UUID parsing error for '%s': %v", projectIDStr, err)
-		responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID")
+		http.Error(w, "Invalid project ID", http.StatusBadRequest)
 		return
 	}
 
 	// Authenticate user from token
 	user, err := h.authenticateWebSocketRequest(r)
 	if err != nil {
-		responses.RespondWithError(w, http.StatusUnauthorized, err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	// Verify user has access to the project
 	project, err := h.projectService.GetProjectByID(projectID)
 	if err != nil {
-		responses.RespondWithError(w, http.StatusNotFound, "Project not found")
+		http.Error(w, "Project not found", http.StatusNotFound)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	}
 
 	if !hasAccess {
-		responses.RespondWithError(w, http.StatusForbidden, "Access denied to project")
+		http.Error(w, "Access denied to project", http.StatusForbidden)
 		return
 	}
 
@@ -131,14 +131,31 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	go h.readPump(client)
 }
 
-// authenticateWebSocketRequest authenticates the WebSocket connection using token from query parameter
-// Browser WebSocket API doesn't support custom headers, so we use query parameters
+// authenticateWebSocketRequest authenticates the WebSocket connection using token from query parameter or Authorization header
+// Browser WebSocket API doesn't support custom headers, so we primarily use query parameters, but support headers for testing
 func (h *WebSocketHandler) authenticateWebSocketRequest(r *http.Request) (*models.User, error) {
-	// Extract token from query parameter
-	token := r.URL.Query().Get("token")
+	var token string
+
+	// First try to get token from query parameter (preferred for WebSocket)
+	token = r.URL.Query().Get("token")
 	if token == "" {
-		log.Printf("WebSocket: No token provided in query parameter")
-		return nil, fmt.Errorf("no token provided in query parameter")
+		// Fallback to Authorization header (for testing purposes)
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			log.Printf("WebSocket: No token provided in query parameter")
+			return nil, fmt.Errorf("no token provided in query parameter")
+		}
+
+		// Check if it's a Bearer token
+		const bearerPrefix = "Bearer "
+		if !strings.HasPrefix(authHeader, bearerPrefix) {
+			return nil, fmt.Errorf("invalid authorization format")
+		}
+
+		token = authHeader[len(bearerPrefix):]
+		if token == "" {
+			return nil, fmt.Errorf("no authorization header provided")
+		}
 	}
 
 	tokenLength := len(token)

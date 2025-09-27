@@ -1,24 +1,9 @@
-version: '3.8'
-
 services:
-  # Backend API service
+  # Backend API service (connects to Supabase)
   backend:
     image: ghcr.io/bug-bugger/ezmodel-backend:latest
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_NAME=${DB_NAME}
-      - DB_SSLMODE=require
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_ACCESS_TOKEN_EXP=15m
-      - JWT_REFRESH_TOKEN_EXP=168h
-      - PORT=8080
-      - ENV=production
-    depends_on:
-      postgres:
-        condition: service_healthy
+    env_file:
+      - .env.prod
     networks:
       - ezmodel-network
     restart: always
@@ -44,36 +29,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_DB=${DB_NAME}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - ezmodel-network
-    restart: always
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-
-volumes:
-  postgres_data:
-    driver: local
 
 networks:
   ezmodel-network:

@@ -276,6 +276,21 @@ jobs:
             # Pull latest docker-compose files
             git pull origin main
 
+            # Create production environment file with Supabase credentials
+            cat > .env.prod << 'ENVEOF'
+            DB_HOST=${{ secrets.SUPABASE_DB_HOST }}
+            DB_PORT=5432
+            DB_USER=postgres
+            DB_PASSWORD=${{ secrets.SUPABASE_DB_PASSWORD }}
+            DB_NAME=postgres
+            DB_SSLMODE=require
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_ACCESS_TOKEN_EXP=15m
+            JWT_REFRESH_TOKEN_EXP=168h
+            PORT=8080
+            ENV=production
+            ENVEOF
+
             # Pull latest Docker images
             docker pull ghcr.io/${{ github.repository }}-backend:latest
             docker pull ghcr.io/${{ github.repository }}-frontend:latest

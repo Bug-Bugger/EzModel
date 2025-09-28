@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
@@ -99,10 +100,12 @@ func (h *ProjectHandler) GetByID() http.HandlerFunc {
 		}
 
 		projectResponse := dto.ProjectResponse{
-			ID:          project.ID,
-			Name:        project.Name,
-			Description: project.Description,
-			OwnerID:     project.OwnerID,
+			ID:           project.ID,
+			Name:         project.Name,
+			Description:  project.Description,
+			OwnerID:      project.OwnerID,
+			DatabaseType: project.DatabaseType,
+			CanvasData:   project.CanvasData,
 			Owner: dto.UserResponse{
 				ID:       project.Owner.ID,
 				Email:    project.Owner.Email,
@@ -112,6 +115,10 @@ func (h *ProjectHandler) GetByID() http.HandlerFunc {
 			CreatedAt:     project.CreatedAt,
 			UpdatedAt:     project.UpdatedAt,
 		}
+
+		// Debug logging for project retrieval
+		log.Printf("CANVAS DEBUG: Returning project %s with canvas data length: %d",
+			project.ID.String(), len(project.CanvasData))
 
 		responses.RespondWithSuccess(w, http.StatusOK, "Project retrieved successfully", projectResponse)
 	}
@@ -130,7 +137,7 @@ func (h *ProjectHandler) Update() http.HandlerFunc {
 		}
 
 		// Empty update request
-		if req.Name == nil && req.Description == nil {
+		if req.Name == nil && req.Description == nil && req.CanvasData == nil {
 			responses.RespondWithError(w, http.StatusBadRequest, "No fields to update provided")
 			return
 		}

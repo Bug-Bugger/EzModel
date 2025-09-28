@@ -17,7 +17,9 @@ Whether you're a beginner learning database design or a seasoned developer archi
 ## Tech Stack
 
 ### Backend (Golang)
+
 **Why Golang was chosen:**
+
 - **WebSocket Excellence**: Perfect for handling real-time collaboration with excellent concurrent processing
 - **Code Generation**: Strong template system and reflection capabilities for generating SQL/ORM code
 - **Performance**: Compiled language with strict typing prevents bugs in critical schema generation
@@ -25,6 +27,7 @@ Whether you're a beginner learning database design or a seasoned developer archi
 - **Database Integration**: Excellent ORM support with GORM
 
 **Current Stack:**
+
 - **Framework**: Chi router for HTTP handling
 - **Database**: PostgreSQL with GORM ORM
 - **Authentication**: JWT tokens (access + refresh)
@@ -34,6 +37,7 @@ Whether you're a beginner learning database design or a seasoned developer archi
 ## Project Architecture
 
 ### Clean Architecture Pattern
+
 ```
 backend/
 ├── cmd/api/                    # Application entry point
@@ -48,6 +52,7 @@ backend/
 ```
 
 ### Core Design Patterns
+
 - **Dependency Injection**: Services receive dependencies through constructors
 - **Repository Pattern**: Abstract data access behind interfaces
 - **Interface Segregation**: Services depend on interfaces, not implementations
@@ -56,6 +61,7 @@ backend/
 ## Development Commands
 
 ### Essential Commands
+
 ```bash
 # Start development server
 cd backend && go run cmd/api/main.go
@@ -74,6 +80,7 @@ cd backend && go mod tidy
 ```
 
 ### Code Quality
+
 ```bash
 # Format code
 go fmt ./...
@@ -88,6 +95,7 @@ go run -race cmd/api/main.go
 ## Core Domain Models
 
 ### Project Management
+
 ```go
 type Project struct {
     ID           uuid.UUID     `json:"id"`
@@ -106,6 +114,7 @@ type Project struct {
 ```
 
 ### Database Design Entities
+
 - **Table**: Database table definitions with fields
 - **Field**: Column definitions with types, constraints, and validation
 - **Relationship**: Foreign key relationships between tables
@@ -114,6 +123,7 @@ type Project struct {
 ## API Architecture
 
 ### Authentication System
+
 - **JWT-based**: Access tokens (15min) + Refresh tokens (7 days)
 - **Middleware Protection**: Route-level authentication
 - **Context-based**: User info passed through request context
@@ -121,6 +131,7 @@ type Project struct {
 ### Core API Endpoints
 
 #### Authentication
+
 ```
 POST /register          # User registration
 POST /login             # User authentication
@@ -128,6 +139,7 @@ POST /refresh-token     # Token refresh
 ```
 
 #### Project Management
+
 ```
 GET    /projects        # List user's projects
 POST   /projects        # Create new project
@@ -140,6 +152,7 @@ DELETE /projects/{id}/collaborators/{user_id}    # Remove collaborator
 ```
 
 #### User Management
+
 ```
 GET    /users          # List users (admin)
 GET    /users/{id}     # Get user profile
@@ -148,18 +161,23 @@ DELETE /users/{id}     # Delete user
 ```
 
 ### Response Format
+
 All API responses follow consistent structure:
+
 ```json
 {
   "success": true,
   "message": "Operation completed successfully",
-  "data": { /* response payload */ }
+  "data": {
+    /* response payload */
+  }
 }
 ```
 
 ## Database Schema
 
 ### Key Features
+
 - **UUID Primary Keys**: Enhanced security and distribution support
 - **JSONB Storage**: Canvas visual data stored efficiently in PostgreSQL
 - **Audit Trails**: CreatedAt/UpdatedAt timestamps on all entities
@@ -167,6 +185,7 @@ All API responses follow consistent structure:
 - **Referential Integrity**: Proper foreign key constraints
 
 ### Database Configuration
+
 ```go
 // Support for multiple database types
 DatabaseType: "postgresql" | "mysql" | "sqlite" | "sqlserver"
@@ -175,12 +194,14 @@ DatabaseType: "postgresql" | "mysql" | "sqlite" | "sqlserver"
 ## Real-time Collaboration
 
 ### WebSocket Architecture (Planned)
+
 - **Live Cursors**: See collaborators' cursors in real-time
 - **Schema Updates**: Broadcast table/field changes instantly
 - **Conflict Resolution**: Handle simultaneous edits gracefully
 - **Session Management**: Track active collaboration sessions
 
 ### Current State
+
 - Models and database schema ready for WebSocket integration
 - CollaborationSession entity tracks active sessions
 - Project-based collaboration permissions established
@@ -188,12 +209,14 @@ DatabaseType: "postgresql" | "mysql" | "sqlite" | "sqlserver"
 ## Development Guidelines
 
 ### Code Conventions
+
 - **Error Handling**: Custom error types for different scenarios
 - **Validation**: Multi-layer validation (struct tags + business rules)
 - **Security**: Password hashing, SQL injection prevention, input sanitization
 - **Testing**: Unit tests for services, integration tests for repositories
 
 ### Service Layer Pattern
+
 ```go
 type ProjectService struct {
     projectRepo repository.ProjectRepositoryInterface
@@ -206,6 +229,7 @@ func (s *ProjectService) CreateProject(name, description string, ownerID uuid.UU
 ```
 
 ### Repository Interface Pattern
+
 ```go
 type ProjectRepositoryInterface interface {
     Create(project *models.Project) (uuid.UUID, error)
@@ -221,12 +245,14 @@ type ProjectRepositoryInterface interface {
 EzModel uses centralized environment variable management with all configuration stored in the project root.
 
 ### Environment Files
+
 - **`.env.dev`**: Development environment configuration
 - **`.env.prod`**: Production environment configuration
 
 Both backend and frontend read from these root-level files for consistent configuration across the entire application.
 
 ### Required Environment Variables
+
 ```bash
 # Database Configuration
 DB_HOST=localhost
@@ -250,12 +276,14 @@ VITE_API_URL=http://localhost:8080/api
 ```
 
 ### Environment Loading
+
 - **Backend**: Uses `godotenv.Load("../.env")` to load from project root
 - **Frontend**: Uses Vite's `envDir: '../'` configuration to read from project root
 
 ## Future Development
 
 ### Planned Features
+
 1. **WebSocket Integration**: Real-time collaboration implementation
 2. **SQL Generation**: Export complete database schemas
 3. **ORM Code Generation**: Generate model classes for various frameworks
@@ -264,6 +292,7 @@ VITE_API_URL=http://localhost:8080/api
 6. **Team Management**: Advanced role-based permissions
 
 ### Code Generation Targets
+
 - **SQL Scripts**: DDL statements for schema creation
 - **GORM Models**: Go struct generation
 - **Database Migrations**: Migration file generation
@@ -272,11 +301,13 @@ VITE_API_URL=http://localhost:8080/api
 ## Testing Strategy
 
 ### Current Test Structure
+
 - **Unit Tests**: Service layer business logic
 - **Integration Tests**: Repository database operations
 - **Handler Tests**: HTTP endpoint testing
 
 ### Test Commands
+
 ```bash
 # Run all tests
 go test ./...
@@ -300,9 +331,12 @@ go test ./internal/services/
 ## Documentation
 
 ### Additional Resources
+
 - `ARCHITECTURE.md`: Detailed architecture documentation
 - `API_GUIDELINES.md`: API development standards
 - `DATABASE_GUIDE.md`: Database design guidelines
 - `DEVELOPMENT_GUIDE.md`: Setup and development instructions
 
 This project follows clean architecture principles with a focus on maintainability, testability, and scalability. The modular design enables easy extension and modification as features are added.
+
+Frontend uses pnpm as the package manager. Run pnpm build and pnpm check when finish implementing.

@@ -1,5 +1,7 @@
 import { writable } from 'svelte/store';
 import type { Node, Edge } from '@xyflow/svelte';
+import { projectService } from '$lib/services/project';
+import type { Table } from '$lib/types/models';
 
 export interface Position {
 	x: number;
@@ -32,11 +34,11 @@ export interface TableField {
 	id: string;
 	name: string;
 	type: string;
-	isPrimary: boolean;
-	isForeign: boolean;
-	isRequired: boolean;
-	isUnique: boolean;
-	defaultValue?: string;
+	is_primary: boolean;
+	is_foreign: boolean;
+	is_required: boolean;
+	is_unique: boolean;
+	default_value?: string;
 	constraints?: string[];
 }
 
@@ -92,8 +94,48 @@ function createFlowStore() {
 			});
 		},
 
-		// Add new table node
-		addTableNode(table: Omit<TableNode['data'], 'position'>, position: Position) {
+		// Add new table node with API integration
+		async addTableNode(
+			projectId: string,
+			table: Omit<TableNode['data'], 'position' | 'id'>,
+			position: Position
+		): Promise<TableNode> {
+			try {
+				// First, persist to backend
+				const backendTable: Table = await projectService.createTable(projectId, {
+					name: table.name,
+					pos_x: position.x,
+					pos_y: position.y
+				});
+
+				// Create the flow node with backend-generated ID
+				const newNode: TableNode = {
+					id: backendTable.id,
+					type: 'table',
+					position,
+					data: {
+						id: backendTable.id,
+						name: backendTable.name,
+						fields: table.fields || [],
+						position
+					}
+				};
+
+				// Add to local store
+				update(state => ({
+					...state,
+					nodes: [...state.nodes, newNode]
+				}));
+
+				return newNode;
+			} catch (error) {
+				console.error('Failed to create table:', error);
+				throw error;
+			}
+		},
+
+		// Add table node without API (for loading existing data)
+		addLocalTableNode(table: Omit<TableNode['data'], 'position'>, position: Position) {
 			const newNode: TableNode = {
 				id: table.id,
 				type: 'table',
@@ -112,7 +154,7 @@ function createFlowStore() {
 			return newNode;
 		},
 
-		// Update table node
+		// Update table node locally
 		updateTableNode(nodeId: string, updates: Partial<TableNode['data']>) {
 			update(state => ({
 				...state,
@@ -124,8 +166,57 @@ function createFlowStore() {
 			}));
 		},
 
-		// Remove table node
-		removeTableNode(nodeId: string) {
+		// Update table position with API integration
+		async updateTablePosition(projectId: string, nodeId: string, position: Position): Promise<void> {
+			try {
+				// Update backend first
+				await projectService.updateTablePosition(projectId, nodeId, {
+					pos_x: position.x,
+					pos_y: position.y
+				});
+
+				// Update local store
+				update(state => ({
+					...state,
+					nodes: state.nodes.map(node =>
+						node.id === nodeId
+							? {
+								...node,
+								position,
+								data: { ...node.data, position }
+							}
+							: node
+					)
+				}));
+			} catch (error) {
+				console.error('Failed to update table position:', error);
+				throw error;
+			}
+		},
+
+		// Remove table node with API integration
+		async removeTableNode(projectId: string, nodeId: string): Promise<void> {
+			try {
+				// Delete from backend first
+				await projectService.deleteTable(projectId, nodeId);
+
+				// Remove from local store
+				update(state => ({
+					...state,
+					nodes: state.nodes.filter(node => node.id !== nodeId),
+					edges: state.edges.filter(edge =>
+						edge.source !== nodeId && edge.target !== nodeId
+					),
+					selectedNode: state.selectedNode?.id === nodeId ? null : state.selectedNode
+				}));
+			} catch (error) {
+				console.error('Failed to delete table:', error);
+				throw error;
+			}
+		},
+
+		// Remove table node locally (for optimistic updates)
+		removeLocalTableNode(nodeId: string) {
 			update(state => ({
 				...state,
 				nodes: state.nodes.filter(node => node.id !== nodeId),
@@ -199,6 +290,11 @@ function createFlowStore() {
 				...state,
 				viewport
 			}));
+		},
+
+		// Get current canvas data for saving
+		getCurrentCanvasData(): string {
+			return this.getCanvasData();
 		},
 
 		// Clear all data

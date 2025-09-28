@@ -8,6 +8,8 @@ export interface Table {
 	id: string;
 	name: string;
 	project_id: string;
+	pos_x: number;
+	pos_y: number;
 	fields?: Field[];
 	created_at: string;
 	updated_at: string;
@@ -66,4 +68,39 @@ export interface UpdateProjectRequest {
 	name?: string;
 	description?: string;
 	database_type?: 'postgresql' | 'mysql' | 'sqlite' | 'sqlserver';
+}
+
+export interface CreateTableRequest {
+	name: string;
+	pos_x: number;
+	pos_y: number;
+}
+
+export interface UpdateTableRequest {
+	name?: string;
+	pos_x?: number;
+	pos_y?: number;
+}
+
+export interface UpdateTablePositionRequest {
+	pos_x: number;
+	pos_y: number;
+}
+
+export interface CreateRelationshipRequest {
+	name: string;
+	from_table_id: string;
+	to_table_id: string;
+	from_field_id: string;
+	to_field_id: string;
+	relationship_type: 'one-to-one' | 'one-to-many' | 'many-to-many';
+}
+
+export interface UpdateRelationshipRequest {
+	name?: string;
+	from_table_id?: string;
+	to_table_id?: string;
+	from_field_id?: string;
+	to_field_id?: string;
+	relationship_type?: 'one-to-one' | 'one-to-many' | 'many-to-many';
 }

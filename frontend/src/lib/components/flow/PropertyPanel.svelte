@@ -65,11 +65,11 @@
 				id: crypto.randomUUID(),
 				name: fieldName.trim(),
 				type: fieldType,
-				isPrimary,
-				isForeign,
-				isRequired,
-				isUnique,
-				defaultValue: defaultValue || undefined
+				is_primary: isPrimary,
+				is_foreign: isForeign,
+				is_required: isRequired,
+				is_unique: isUnique,
+				default_value: defaultValue || undefined
 			};
 
 			const updatedFields = [...selectedNode.data.fields, newField];
@@ -162,16 +162,16 @@
 							</div>
 							<div class="flex items-center space-x-2 text-xs text-gray-600">
 								<span class="bg-white px-2 py-1 rounded">{field.type}</span>
-								{#if field.isPrimary}
+								{#if field.is_primary}
 									<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">PK</span>
 								{/if}
-								{#if field.isForeign}
+								{#if field.is_foreign}
 									<span class="bg-green-100 text-green-800 px-2 py-1 rounded">FK</span>
 								{/if}
-								{#if field.isRequired}
+								{#if field.is_required}
 									<span class="bg-red-100 text-red-800 px-2 py-1 rounded">Required</span>
 								{/if}
-								{#if field.isUnique}
+								{#if field.is_unique}
 									<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">Unique</span>
 								{/if}
 							</div>

@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"log"
 	"strings"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
@@ -118,6 +119,10 @@ func (s *ProjectService) UpdateProject(id uuid.UUID, req *dto.UpdateProjectReque
 		}
 		// Note: For production, you might want to use json.Valid() for proper validation
 		project.CanvasData = canvasData
+
+		// Debug logging for canvas data updates
+		log.Printf("CANVAS DEBUG: Updating canvas data for project %s, data length: %d",
+			project.ID.String(), len(canvasData))
 	}
 
 	if err := s.projectRepo.Update(project); err != nil {

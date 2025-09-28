@@ -15,6 +15,8 @@
 	import { collaborationStore } from '$lib/stores/collaboration.js';
 	import { flowStore } from '$lib/stores/flow.js';
 	import { designerStore } from '$lib/stores/designer.js';
+	import { authStore } from '$lib/stores/auth.js';
+	import { projectService } from '$lib/services/project.js';
 
 	const projectId = $page.params.id;
 
@@ -25,17 +27,127 @@
 	onMount(async () => {
 		// Load project data
 		if (projectId) {
+			// Ensure project loads first and canvas_data is available
 			await projectStore.loadProject(projectId);
+
+			// Wait for project store to be fully populated (reactive store might need time)
+			let retryCount = 0;
+			while (!$projectStore.currentProject && retryCount < 10) {
+				await new Promise(resolve => setTimeout(resolve, 50));
+				retryCount++;
+			}
+
+			if (!$projectStore.currentProject) {
+				console.error('Failed to load project after retries');
+				return;
+			}
 
 			// Initialize WebSocket connection for collaboration
 			await collaborationStore.connect(projectId);
 
-			// Load existing canvas data if available
-			if ($projectStore.currentProject?.canvas_data) {
-				flowStore.loadCanvasData($projectStore.currentProject.canvas_data);
-			}
+			// Load tables and relationships from backend
+			await loadProjectData(projectId);
 		}
 	});
+
+	async function loadProjectData(projectId: string) {
+		try {
+			// Load tables and relationships from backend
+			const [tables, relationships] = await Promise.all([
+				projectService.getProjectTables(projectId),
+				projectService.getProjectRelationships(projectId)
+			]);
+
+			// Parse existing canvas data to get positioning information
+			let savedPositions: Record<string, { x: number; y: number }> = {};
+			console.log('DEBUG: Raw canvas_data from project:', $projectStore.currentProject?.canvas_data);
+
+			if ($projectStore.currentProject?.canvas_data) {
+				try {
+					const canvasData = JSON.parse($projectStore.currentProject.canvas_data);
+					console.log('DEBUG: Parsed canvas data object:', canvasData);
+
+					// Extract positions from saved nodes
+					if (canvasData.nodes) {
+						console.log('DEBUG: Found nodes in canvas data:', canvasData.nodes.length);
+						savedPositions = canvasData.nodes.reduce((acc: any, node: any) => {
+							console.log(`DEBUG: Extracting position for node ${node.id}:`, node.position);
+							acc[node.id] = node.position;
+							return acc;
+						}, {});
+						console.log('DEBUG: Extracted positions:', savedPositions);
+					} else {
+						console.log('DEBUG: No nodes found in canvas data');
+					}
+				} catch (error) {
+					console.warn('Failed to parse saved canvas data:', error);
+				}
+			} else {
+				console.log('DEBUG: No canvas_data found in project');
+			}
+
+			// Clear existing flow state
+			flowStore.clear();
+
+			// Reconstruct table nodes from backend data
+			console.log('DEBUG: Starting table reconstruction...');
+			for (const table of tables) {
+				const savedPosition = savedPositions[table.id];
+
+				// For debugging: use fixed position if no saved position found
+				const position = savedPosition || {
+					x: 100 + (Object.keys(savedPositions).length * 200), // Fixed position based on index
+					y: 100
+				};
+
+				console.log(`DEBUG: Reconstructing table "${table.name}" (${table.id}):`, {
+					tableFromBackend: table,
+					savedPosition,
+					finalPosition: position,
+					usingRandomPosition: !savedPosition
+				});
+
+				// Convert backend table to frontend table node format
+				const tableData = {
+					id: table.id,
+					name: table.name,
+					fields: table.fields || [] // Use fields from backend if available
+				};
+
+				flowStore.addLocalTableNode(tableData, position);
+			}
+
+			// Reconstruct relationship edges from backend data
+			for (const relationship of relationships) {
+				flowStore.addRelationshipEdge({
+					id: relationship.id,
+					fromTable: relationship.from_table_id,
+					toTable: relationship.to_table_id,
+					fromField: relationship.from_field_id,
+					toField: relationship.to_field_id,
+					type: relationship.relationship_type
+				});
+			}
+
+			// Apply viewport settings if available
+			if ($projectStore.currentProject?.canvas_data) {
+				try {
+					const canvasData = JSON.parse($projectStore.currentProject.canvas_data);
+					if (canvasData.viewport) {
+						flowStore.updateViewport(canvasData.viewport);
+					}
+				} catch (error) {
+					console.warn('Failed to apply saved viewport:', error);
+				}
+			}
+
+			console.log(`DEBUG: Loaded ${tables.length} tables and ${relationships.length} relationships`);
+			console.log('DEBUG: Final saved positions used:', savedPositions);
+			console.log('DEBUG: Current project canvas_data length:', $projectStore.currentProject?.canvas_data?.length || 0);
+		} catch (error) {
+			console.error('Failed to load project data:', error);
+		}
+	}
 
 	onDestroy(() => {
 		collaborationStore.disconnect();
@@ -134,6 +246,14 @@
 			<div class="absolute top-4 left-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs font-mono z-50">
 				<div>Connected Users: {$collaborationStore.connectedUsers.length}</div>
 				<div>Users with cursors: {$collaborationStore.connectedUsers.filter(u => u.cursor).length}</div>
+
+				<!-- Current User -->
+				<div class="mt-1 text-yellow-300">
+					{$authStore.user?.username || 'You'} (current):
+					{$collaborationStore.currentUserCursor ? `(${$collaborationStore.currentUserCursor.x.toFixed(1)}, ${$collaborationStore.currentUserCursor.y.toFixed(1)})` : 'No cursor'}
+				</div>
+
+				<!-- Other Users -->
 				{#each $collaborationStore.connectedUsers as user}
 					<div class="mt-1">
 						{user.username || 'Unknown'}:

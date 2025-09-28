@@ -1,17 +1,18 @@
 <script lang="ts">
 	import type { ConnectedUser } from '$lib/stores/collaboration';
 	import { flowStore } from '$lib/stores/flow';
-	import { useSvelteFlow } from '@xyflow/svelte';
+	import { useSvelteFlow, type Viewport } from '@xyflow/svelte';
 	import { onMount } from 'svelte';
 
 	export let user: ConnectedUser;
 
-	// Use SvelteFlow hooks for coordinate conversion
-	const { flowToScreenPosition } = useSvelteFlow();
+	// Use SvelteFlow hooks for coordinate conversion and viewport tracking
+	const { flowToScreenPosition, getViewport } = useSvelteFlow();
 
 	let cursorPosition = { x: 0, y: 0 };
 	let targetPosition = { x: 0, y: 0 };
 	let smoothingInterval: ReturnType<typeof setInterval> | null = null;
+	let currentViewport: Viewport | null = null;
 
 	// Smoothing configuration
 	const SMOOTHING_FACTOR = 0.3; // How much to move towards target each frame (increased for responsiveness)
@@ -21,6 +22,17 @@
 	// Update target position when user cursor data changes
 	$: if (user.cursor) {
 		updateTargetPosition();
+	}
+
+	// Track viewport changes and update cursor position accordingly
+	$: if (user.cursor && getViewport) {
+		// Get current viewport to make this reactive to viewport changes
+		const newViewport = getViewport();
+		// Only update if viewport actually changed (avoid infinite loops)
+		if (JSON.stringify(newViewport) !== JSON.stringify(currentViewport)) {
+			currentViewport = newViewport;
+			updateTargetPosition();
+		}
 	}
 
 	function updateTargetPosition() {
@@ -37,6 +49,12 @@
 				x: user.cursor.x,
 				y: user.cursor.y
 			});
+
+			// Validate that the converted coordinates are valid
+			if (!isFinite(screenCoords.x) || !isFinite(screenCoords.y)) {
+				console.warn('Invalid screen coordinates after conversion:', screenCoords);
+				return;
+			}
 
 			targetPosition = {
 				x: screenCoords.x,
@@ -82,6 +100,10 @@
 	}
 
 	onMount(() => {
+		// Initialize viewport tracking
+		if (getViewport) {
+			currentViewport = getViewport();
+		}
 		updateTargetPosition();
 
 		return () => {

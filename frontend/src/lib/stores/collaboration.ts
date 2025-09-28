@@ -45,6 +45,7 @@ interface CollaborationState {
   activityEvents: ActivityEvent[];
   connectionStatus: "connecting" | "connected" | "disconnected" | "error";
   lastError?: string;
+  currentUserCursor?: CollaboratorCursor; // Track current user's cursor position locally
 }
 
 function createCollaborationStore() {
@@ -128,6 +129,17 @@ function createCollaborationStore() {
 
     // Send cursor position
     sendCursorPosition(x: number, y: number) {
+      // Update local current user cursor position
+      update((state) => ({
+        ...state,
+        currentUserCursor: {
+          x,
+          y,
+          timestamp: Date.now(),
+        },
+      }));
+
+      // Send to other users via WebSocket
       if (wsClient && wsClient.isConnected()) {
         const message = {
           type: "user_cursor",

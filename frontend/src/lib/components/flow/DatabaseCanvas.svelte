@@ -1,15 +1,23 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { SvelteFlow, Controls, Background, MiniMap } from '@xyflow/svelte';
+	import {
+		SvelteFlow,
+		Controls,
+		Background,
+		MiniMap
+	} from '@xyflow/svelte';
 	import '@xyflow/svelte/dist/style.css';
 
 	import TableNode from './TableNode.svelte';
-		import MouseTracker from './MouseTracker.svelte';
+	import MouseTracker from './MouseTracker.svelte';
 	import UserCursor from '../collaboration/UserCursor.svelte';
+	import CanvasHookManager from './CanvasHookManager.svelte';
 
 	import { flowStore, type TableNode as TableNodeType, type RelationshipEdge as RelationshipEdgeType } from '$lib/stores/flow';
 	import { designerStore } from '$lib/stores/designer';
 	import { collaborationStore } from '$lib/stores/collaboration';
+	import { projectStore } from '$lib/stores/project';
+	import { projectService } from '$lib/services/project';
 
 	// Custom node and edge types
 	const nodeTypes = {
@@ -23,16 +31,52 @@
 
 	let flowElement: HTMLElement;
 	let containerRect: DOMRect | null = null;
+	let canvasHookManager: CanvasHookManager;
 
-	// Reactive flow data
-	$: nodes = $flowStore.nodes;
-	$: edges = $flowStore.edges;
+	// Relationship creation state
+	let relationshipCreation = {
+		isActive: false,
+		firstTableId: null as string | null,
+		firstTableName: null as string | null
+	};
+
+	// Reactive flow data from store
+	$: displayNodes = $flowStore.nodes;
+	$: displayEdges = $flowStore.edges;
+
+	// Dynamic CSS classes based on tool state
+	$: canvasClasses = `database-canvas w-full h-full tool-${$designerStore.toolbar.selectedTool}${relationshipCreation.isActive ? ' relationship-active' : ''}`;
+
+	// Instructions text based on current tool and state
+	$: instructionText = getInstructionText($designerStore.toolbar.selectedTool, relationshipCreation.isActive, relationshipCreation.firstTableName);
+
+	function getInstructionText(tool: string, relationshipActive: boolean, firstTableName: string | null): string | null {
+		switch (tool) {
+			case 'table':
+				return 'Click anywhere on the canvas to place a new table';
+			case 'relationship':
+				if (relationshipActive && firstTableName) {
+					return `Click on another table to create a relationship from "${firstTableName}"`;
+				}
+				return 'Click on a table to start creating a relationship';
+			default:
+				return null;
+		}
+	}
 
 	// Handle node selection
 	function onNodeClick(event: any) {
 		const node = event.detail.node as TableNodeType;
-		flowStore.selectNode(node);
-		designerStore.openPropertyPanel('table', node);
+		const currentTool = $designerStore.toolbar.selectedTool;
+
+		if (currentTool === 'relationship') {
+			// Handle relationship creation workflow
+			handleRelationshipNodeClick(node);
+		} else {
+			// Default select tool behavior
+			flowStore.selectNode(node);
+			designerStore.openPropertyPanel('table', node);
+		}
 	}
 
 	// Handle edge selection
@@ -42,12 +86,25 @@
 		designerStore.openPropertyPanel('relationship', edge);
 	}
 
-	// Handle canvas click (deselect)
-	function onPaneClick() {
-		flowStore.selectNode(null);
-		flowStore.selectEdge(null);
-		designerStore.closePropertyPanel();
+	// Handle canvas click based on selected tool
+	async function onPaneClick(event: any) {
+		const currentTool = $designerStore.toolbar.selectedTool;
+
+		if (currentTool === 'table') {
+			// Create table when table tool is selected
+			await handleTableCreation(event);
+		} else if (currentTool === 'relationship') {
+			// Handle relationship creation workflow
+			handleRelationshipClick(event);
+		} else {
+			// Default select tool behavior - deselect all
+			flowStore.selectNode(null);
+			flowStore.selectEdge(null);
+			designerStore.closePropertyPanel();
+		}
 	}
+
+	// Selection change handling is now done via onNodeClick/onEdgeClick events
 
 
 
@@ -70,50 +127,276 @@
 		updateContainerBounds();
 	}
 
-	// Handle canvas double-click to create table
-	function onPaneDoubleClick(event: any) {
-		if ($designerStore.toolbar.selectedTool === 'table' || $designerStore.toolbar.isCreatingTable) {
-			const position = event.detail.position;
+	// Handle table creation (extracted from double-click)
+	async function handleTableCreation(event: any) {
+		if (!$projectStore.currentProject) {
+			console.error('No current project');
+			return;
+		}
 
-			// Create new table
-			const newTable = {
-				id: crypto.randomUUID(),
+		// Check if flow is ready for table creation
+		if (!flowElement || !canvasHookManager) {
+			console.warn('Flow not ready for table creation, skipping');
+			return;
+		}
+
+		// Check if nodes are initialized
+		if (!canvasHookManager.getNodesInitialized()) {
+			console.warn('Nodes not yet initialized, skipping table creation');
+			return;
+		}
+
+		// Get mouse coordinates from the event
+		let screenPosition = { x: 0, y: 0 };
+
+		// Try to extract coordinates from various event properties
+		if (event.detail && typeof event.detail.clientX === 'number' && typeof event.detail.clientY === 'number') {
+			// Some SvelteFlow versions provide clientX/clientY in detail
+			screenPosition = { x: event.detail.clientX, y: event.detail.clientY };
+		} else if (event.clientX !== undefined && event.clientY !== undefined) {
+			// Standard mouse event coordinates
+			screenPosition = { x: event.clientX, y: event.clientY };
+		} else if (event.detail && event.detail.event) {
+			// Event wrapped in detail.event
+			const mouseEvent = event.detail.event;
+			screenPosition = { x: mouseEvent.clientX, y: mouseEvent.clientY };
+		} else {
+			// Fallback: use center of canvas if available
+			if (containerRect) {
+				screenPosition = {
+					x: containerRect.left + containerRect.width / 2,
+					y: containerRect.top + containerRect.height / 2
+				};
+			}
+		}
+
+		// Debug logging to understand coordinate issues
+		console.log('Table creation clicked:', {
+			eventDetail: event.detail,
+			screenPosition: screenPosition,
+			containerRect: containerRect,
+			canvasHookManager: !!canvasHookManager,
+			flowElement: !!flowElement
+		});
+
+		// Convert screen coordinates to flow coordinates
+		let finalPosition = screenPosition;
+		if (canvasHookManager && screenPosition) {
+			try {
+				// Use the hook manager for proper coordinate conversion
+				const converted = canvasHookManager.convertScreenToFlow(screenPosition.x, screenPosition.y);
+				finalPosition = converted;
+				console.log('Converted coordinates:', { original: screenPosition, converted: finalPosition });
+			} catch (error) {
+				console.warn('Coordinate conversion failed, using screen position:', error);
+				// Fallback to screen position if conversion fails
+				finalPosition = screenPosition;
+			}
+		}
+
+		try {
+			// Create new table data (without ID, backend will generate)
+			const newTableData = {
 				name: 'New Table',
 				fields: [
 					{
 						id: crypto.randomUUID(),
 						name: 'id',
 						type: 'UUID',
-						isPrimary: true,
-						isForeign: false,
-						isRequired: true,
-						isUnique: true
+						is_primary: true,
+						is_foreign: false,
+						is_required: true,
+						is_unique: true
 					}
 				]
 			};
 
-			const tableNode = flowStore.addTableNode(newTable, position);
+			// Create table via API-integrated store method
+			const tableNode = await flowStore.addTableNode(
+				$projectStore.currentProject.id,
+				newTableData,
+				finalPosition
+			);
 
-			// Send collaboration event
-			collaborationStore.sendSchemaEvent('table_create', newTable);
+			// Send collaboration event with the created table
+			collaborationStore.sendSchemaEvent('table_create', {
+				id: tableNode.id,
+				name: tableNode.data.name,
+				pos_x: finalPosition.x,
+				pos_y: finalPosition.y
+			});
 
 			// Select the new table for editing
 			flowStore.selectNode(tableNode);
 			designerStore.openPropertyPanel('table', tableNode);
-			designerStore.finishTableCreation();
+
+			// Auto-save canvas data
+			const canvasData = flowStore.getCurrentCanvasData();
+			projectStore.autoSaveCanvasData(canvasData);
+
+			// Switch back to select tool after creating table
+			designerStore.selectTool('select');
+		} catch (error) {
+			console.error('Failed to create table:', error);
+			// TODO: Show error message to user
 		}
 	}
 
-	// Handle node drag end to save position
-	function onNodeDragStop(event: any) {
-		const node = event.detail.node;
-		flowStore.updateTableNode(node.id, { position: node.position });
+	// Handle clicking on canvas when relationship tool is selected
+	function handleRelationshipClick(event: any) {
+		// Cancel relationship creation if user clicks on empty canvas
+		if (relationshipCreation.isActive) {
+			cancelRelationshipCreation();
+		}
+	}
 
-		// Send collaboration event
-		collaborationStore.sendSchemaEvent('table_update', {
+	// Handle clicking on a table node when relationship tool is selected
+	async function handleRelationshipNodeClick(node: TableNodeType) {
+		if (!$projectStore.currentProject) {
+			console.error('No current project');
+			return;
+		}
+
+		if (!relationshipCreation.isActive) {
+			// First click - select the source table
+			relationshipCreation.isActive = true;
+			relationshipCreation.firstTableId = node.id;
+			relationshipCreation.firstTableName = node.data.name;
+
+			console.log(`Started relationship from table: ${node.data.name}`);
+			// TODO: Add visual feedback to highlight the selected table
+		} else {
+			// Second click - create the relationship
+			if (node.id === relationshipCreation.firstTableId) {
+				// User clicked the same table - cancel creation
+				console.warn('Cannot create relationship to the same table');
+				cancelRelationshipCreation();
+				return;
+			}
+
+			await createRelationship(relationshipCreation.firstTableId!, node.id);
+		}
+	}
+
+	// Create relationship between two tables
+	async function createRelationship(fromTableId: string, toTableId: string) {
+		if (!$projectStore.currentProject) return;
+
+		try {
+			// For now, create a basic relationship
+			// TODO: Let user choose field mappings and relationship type
+			const relationshipData = {
+				name: `${relationshipCreation.firstTableName}_to_${displayNodes.find(n => n.id === toTableId)?.data.name}`,
+				from_table_id: fromTableId,
+				to_table_id: toTableId,
+				from_field_id: 'id', // Default to primary key
+				to_field_id: 'id',   // Default to primary key
+				relationship_type: 'one-to-many' as const
+			};
+
+			// Create relationship via API
+			const relationship = await projectService.createRelationship(
+				$projectStore.currentProject.id,
+				relationshipData
+			);
+
+			// Add to flow store
+			flowStore.addRelationshipEdge({
+				id: relationship.id,
+				fromTable: fromTableId,
+				toTable: toTableId,
+				fromField: relationshipData.from_field_id,
+				toField: relationshipData.to_field_id,
+				type: relationshipData.relationship_type
+			});
+
+			// Send collaboration event
+			collaborationStore.sendSchemaEvent('relationship_create', relationship);
+
+			// Auto-save canvas data
+			const canvasData = flowStore.getCurrentCanvasData();
+			projectStore.autoSaveCanvasData(canvasData);
+
+			console.log('Relationship created successfully');
+		} catch (error) {
+			console.error('Failed to create relationship:', error);
+			// TODO: Show error message to user
+		} finally {
+			// Reset state and switch back to select tool
+			cancelRelationshipCreation();
+			designerStore.selectTool('select');
+		}
+	}
+
+	// Cancel relationship creation
+	function cancelRelationshipCreation() {
+		relationshipCreation.isActive = false;
+		relationshipCreation.firstTableId = null;
+		relationshipCreation.firstTableName = null;
+		console.log('Relationship creation cancelled');
+	}
+
+	// Handle node drag end to save position
+	async function onNodeDragStop(event: any) {
+		if (!$projectStore.currentProject) {
+			console.error('No current project');
+			return;
+		}
+
+		// SvelteFlow drag events use targetNode structure
+		const node = event.targetNode;
+
+		if (!node) {
+			console.error('targetNode is missing in drag event:', event);
+			return;
+		}
+
+		if (!node.id) {
+			console.error('targetNode.id is missing:', { event, targetNode: node });
+			return;
+		}
+
+		if (!node.position) {
+			console.error('targetNode.position is missing:', { event, targetNode: node });
+			return;
+		}
+
+		const position = node.position;
+		console.log('Drag successful - updating position for table:', {
 			id: node.id,
-			position: node.position
+			position: position
 		});
+
+		try {
+			console.log('SAVE DEBUG: Starting position save process...');
+
+			// Update position in backend and local store
+			console.log('SAVE DEBUG: Calling updateTablePosition...');
+			await flowStore.updateTablePosition(
+				$projectStore.currentProject.id,
+				node.id,
+				position
+			);
+			console.log('SAVE DEBUG: updateTablePosition completed');
+
+			// Send collaboration event
+			collaborationStore.sendSchemaEvent('table_update', {
+				id: node.id,
+				position: position
+			});
+
+			// Auto-save canvas data
+			console.log('SAVE DEBUG: Getting canvas data...');
+			const canvasData = flowStore.getCurrentCanvasData();
+			console.log('SAVE DEBUG: Canvas data to save:', canvasData);
+
+			console.log('SAVE DEBUG: Calling autoSaveCanvasData...');
+			projectStore.autoSaveCanvasData(canvasData);
+			console.log('SAVE DEBUG: autoSaveCanvasData called (debounced)');
+		} catch (error) {
+			console.error('Failed to update table position:', error);
+			// TODO: Show error message to user
+		}
 	}
 
 
@@ -128,14 +411,36 @@
 		}
 
 		// Set up keyboard shortcuts
-		function handleKeydown(event: KeyboardEvent) {
+		async function handleKeydown(event: KeyboardEvent) {
+			if (!$projectStore.currentProject) return;
+
+			if (event.key === 'Escape') {
+				// Cancel relationship creation if active
+				if (relationshipCreation.isActive) {
+					cancelRelationshipCreation();
+					event.preventDefault();
+					return;
+				}
+			}
+
 			if (event.key === 'Delete' || event.key === 'Backspace') {
 				if ($flowStore.selectedNode) {
-					flowStore.removeTableNode($flowStore.selectedNode.id);
-					collaborationStore.sendSchemaEvent('table_delete', {
-						id: $flowStore.selectedNode.id,
-						name: $flowStore.selectedNode.data.name
-					});
+					try {
+						await flowStore.removeTableNode(
+							$projectStore.currentProject.id,
+							$flowStore.selectedNode.id
+						);
+						collaborationStore.sendSchemaEvent('table_delete', {
+							id: $flowStore.selectedNode.id,
+							name: $flowStore.selectedNode.data.name
+						});
+
+						// Auto-save canvas data
+						const canvasData = flowStore.getCurrentCanvasData();
+						projectStore.autoSaveCanvasData(canvasData);
+					} catch (error) {
+						console.error('Failed to delete table:', error);
+					}
 				} else if ($flowStore.selectedEdge) {
 					flowStore.removeRelationshipEdge($flowStore.selectedEdge.id);
 					collaborationStore.sendSchemaEvent('relationship_delete', {
@@ -157,14 +462,14 @@
 </script>
 
 <div
-	class="database-canvas w-full h-full"
+	class={canvasClasses}
 	bind:this={flowElement}
 	role="application"
 	aria-label="Database schema designer canvas"
 >
 	<SvelteFlow
-		{nodes}
-		{edges}
+		nodes={displayNodes}
+		edges={displayEdges}
 		{nodeTypes}
 		fitView
 		snapGrid={[$designerStore.gridSize, $designerStore.gridSize]}
@@ -172,9 +477,11 @@
 		onedgeclick={onEdgeClick}
 		onpaneclick={onPaneClick}
 		onmove={onMove}
-		ondblclick={onPaneDoubleClick}
 		onnodedragstop={onNodeDragStop}
 	>
+		<!-- Hook manager component - provides hook access to parent -->
+		<CanvasHookManager bind:this={canvasHookManager} />
+
 		<!-- Mouse tracking component - must be inside SvelteFlow for hook access -->
 		<MouseTracker />
 
@@ -202,6 +509,16 @@
 			/>
 		{/if}
 	</SvelteFlow>
+
+	<!-- Tool Instructions Overlay -->
+	{#if instructionText && ($designerStore.toolbar.selectedTool !== 'select')}
+		<div class="tool-instructions">
+			{instructionText}
+			{#if $designerStore.toolbar.selectedTool === 'relationship' && relationshipCreation.isActive}
+				<div class="text-xs mt-2 opacity-75">Press Escape to cancel</div>
+			{/if}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -226,5 +543,55 @@
 	.database-canvas :global(.svelte-flow__edge-relationship.selected) {
 		stroke: #3b82f6;
 		stroke-width: 3;
+	}
+
+	/* Tool-specific cursor styles */
+	.database-canvas.tool-select {
+		cursor: default;
+	}
+
+	.database-canvas.tool-table {
+		cursor: crosshair;
+	}
+
+	.database-canvas.tool-relationship {
+		cursor: crosshair;
+	}
+
+	.database-canvas.tool-relationship.relationship-active {
+		cursor: copy;
+	}
+
+	/* Table highlighting during relationship creation */
+	.database-canvas :global(.svelte-flow__node-table.relationship-source) {
+		border-color: #10b981;
+		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+		animation: pulse 2s infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.8;
+		}
+	}
+
+	/* Instructions overlay */
+	.tool-instructions {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		background: rgba(0, 0, 0, 0.8);
+		color: white;
+		padding: 1rem 1.5rem;
+		border-radius: 8px;
+		pointer-events: none;
+		z-index: 1000;
+		font-size: 0.875rem;
+		text-align: center;
+		max-width: 300px;
 	}
 </style>

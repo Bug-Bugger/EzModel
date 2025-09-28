@@ -46,8 +46,10 @@
 	let defaultValue = '';
 
 	// Update form when selection changes
-	$: if (selectedNode) {
-		tableName = selectedNode.data.name;
+	$: if (selectedNode && selectedNode.data) {
+		tableName = selectedNode.data.name || '';
+	} else {
+		tableName = '';
 	}
 
 	// Helper function to prepare field data for backend API
@@ -58,13 +60,13 @@
 			is_primary_key: field.is_primary_key,
 			is_nullable: field.is_nullable,
 			default_value: field.default_value || '',
-			position: selectedNode ? selectedNode.data.fields.length : 0
+			position: (selectedNode && selectedNode.data) ? selectedNode.data.fields.length : 0
 		};
 	}
 
 	// Update table name
 	function updateTableName() {
-		if (selectedNode && tableName !== selectedNode.data.name) {
+		if (selectedNode && selectedNode.data && tableName !== selectedNode.data.name) {
 			flowStore.updateTableNode(selectedNode.id, { name: tableName });
 			collaborationStore.sendSchemaEvent('table_update', {
 				id: selectedNode.id,
@@ -75,7 +77,7 @@
 
 	// Add new field to table
 	async function addField() {
-		if (!selectedNode || !fieldName.trim() || !$projectStore.currentProject) {
+		if (!selectedNode || !selectedNode.data || !fieldName.trim() || !$projectStore.currentProject) {
 			return;
 		}
 
@@ -123,7 +125,7 @@
 
 	// Remove field from table
 	async function removeField(fieldId: string) {
-		if (!selectedNode || !$projectStore.currentProject) {
+		if (!selectedNode || !selectedNode.data || !$projectStore.currentProject) {
 			return;
 		}
 
@@ -157,7 +159,7 @@
 
 	// Update existing field
 	async function updateField(fieldId: string, updates: any) {
-		if (!selectedNode || !$projectStore.currentProject) {
+		if (!selectedNode || !selectedNode.data || !$projectStore.currentProject) {
 			return;
 		}
 
@@ -202,7 +204,7 @@
 </script>
 
 <div class="property-panel p-4">
-	{#if panel.isOpen && panel.type === 'table' && selectedNode}
+	{#if panel.isOpen && panel.type === 'table' && selectedNode && selectedNode.data}
 		<!-- Table Properties -->
 		<div class="property-section">
 			<h3 class="text-lg font-medium text-gray-900 mb-4">Table Properties</h3>
@@ -222,7 +224,7 @@
 			<div class="mb-6">
 				<h4 class="text-sm font-medium text-gray-700 mb-3">Fields</h4>
 				<div class="space-y-2 max-h-40 overflow-y-auto">
-					{#each selectedNode.data.fields as field}
+					{#each (selectedNode.data.fields || []) as field}
 						<div class="field-item bg-gray-50 p-3 rounded border">
 							<div class="flex items-center justify-between mb-2">
 								<span class="font-medium text-gray-900">{field.name}</span>

@@ -106,7 +106,42 @@
 
 	// Handle node selection
 	function onNodeClick(event: any) {
-		const node = event.detail.node as TableNodeType;
+		// Defensive check for event structure variations
+		let node: TableNodeType | null = null;
+
+		// Try different event structures that @xyflow/svelte might use
+		if (event.detail?.node) {
+			node = event.detail.node as TableNodeType;
+		} else if (event.node) {
+			node = event.node as TableNodeType;
+		} else if (event.detail?.id) {
+			// Fallback: find node by ID if direct reference is missing
+			const nodeId = event.detail.id;
+			const foundNode = displayNodes.find(n => n.id === nodeId);
+			if (foundNode) {
+				node = foundNode;
+			}
+		} else if (event.id) {
+			// Another fallback pattern
+			const nodeId = event.id;
+			const foundNode = displayNodes.find(n => n.id === nodeId);
+			if (foundNode) {
+				node = foundNode;
+			}
+		}
+
+		// Log debug information if node is still null
+		if (!node) {
+			console.warn('onNodeClick: Could not extract node from event', {
+				event,
+				eventDetail: event.detail,
+				availableNodes: displayNodes.length,
+				eventKeys: Object.keys(event),
+				detailKeys: event.detail ? Object.keys(event.detail) : 'no detail'
+			});
+			return; // Early return to prevent errors
+		}
+
 		const currentTool = $designerStore.toolbar.selectedTool;
 
 		if (currentTool === 'relationship') {
@@ -136,7 +171,7 @@
 			await handleTableCreation(event);
 		} else if (currentTool === 'relationship') {
 			// Handle relationship creation workflow
-			handleRelationshipClick(event);
+			handleRelationshipClick();
 		} else {
 			// Default select tool behavior - deselect all
 			flowStore.selectNode(null);
@@ -292,7 +327,7 @@
 	}
 
 	// Handle clicking on canvas when relationship tool is selected
-	function handleRelationshipClick(event: any) {
+	function handleRelationshipClick() {
 		// Cancel relationship creation if user clicks on empty canvas
 		if (relationshipCreation.isActive) {
 			cancelRelationshipCreation();
@@ -300,7 +335,12 @@
 	}
 
 	// Handle clicking on a table node when relationship tool is selected
-	async function handleRelationshipNodeClick(node: TableNodeType) {
+	async function handleRelationshipNodeClick(node: TableNodeType | null) {
+		if (!node) {
+			console.warn('handleRelationshipNodeClick: node is null');
+			return;
+		}
+
 		if (!$projectStore.currentProject) {
 			console.error('No current project');
 			return;

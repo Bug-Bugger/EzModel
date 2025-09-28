@@ -74,10 +74,14 @@ func (suite *FieldHandlerTestSuite) TestCreate_Success() {
 	fieldRequest := createValidFieldRequest()
 	field := createTestField(tableID)
 
-	suite.mockFieldService.On("CreateField", tableID, &fieldRequest).Return(field, nil)
+	userID := uuid.New()
+	suite.mockFieldService.On("CreateField", tableID, &fieldRequest, userID).Return(field, nil)
 
 	// Create request with table_id in URL params
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/tables/"+tableID.String()+"/fields", fieldRequest)
+
+	// Add user context
+	req = testutil.WithUserContext(req, userID)
 
 	// Add URL params using chi context
 	rctx := chi.NewRouteContext()
@@ -157,9 +161,11 @@ func (suite *FieldHandlerTestSuite) TestCreate_TableNotFound() {
 	tableID := uuid.New()
 	fieldRequest := createValidFieldRequest()
 
-	suite.mockFieldService.On("CreateField", tableID, &fieldRequest).Return(nil, services.ErrTableNotFound)
+	userID := uuid.New()
+	suite.mockFieldService.On("CreateField", tableID, &fieldRequest, userID).Return(nil, services.ErrTableNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/tables/"+tableID.String()+"/fields", fieldRequest)
+	req = testutil.WithUserContext(req, userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("table_id", tableID.String())
@@ -177,9 +183,11 @@ func (suite *FieldHandlerTestSuite) TestCreate_InvalidInput() {
 	tableID := uuid.New()
 	fieldRequest := createValidFieldRequest()
 
-	suite.mockFieldService.On("CreateField", tableID, &fieldRequest).Return(nil, services.ErrInvalidInput)
+	userID := uuid.New()
+	suite.mockFieldService.On("CreateField", tableID, &fieldRequest, userID).Return(nil, services.ErrInvalidInput)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/tables/"+tableID.String()+"/fields", fieldRequest)
+	req = testutil.WithUserContext(req, userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("table_id", tableID.String())
@@ -197,9 +205,11 @@ func (suite *FieldHandlerTestSuite) TestCreate_ServiceError() {
 	tableID := uuid.New()
 	fieldRequest := createValidFieldRequest()
 
-	suite.mockFieldService.On("CreateField", tableID, &fieldRequest).Return(nil, assert.AnError)
+	userID := uuid.New()
+	suite.mockFieldService.On("CreateField", tableID, &fieldRequest, userID).Return(nil, assert.AnError)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/tables/"+tableID.String()+"/fields", fieldRequest)
+	req = testutil.WithUserContext(req, userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("table_id", tableID.String())
@@ -362,9 +372,11 @@ func (suite *FieldHandlerTestSuite) TestUpdate_Success() {
 	updatedField.DataType = *updateRequest.DataType
 	updatedField.IsPrimaryKey = *updateRequest.IsPrimaryKey
 
-	suite.mockFieldService.On("UpdateField", fieldID, &updateRequest).Return(updatedField, nil)
+	userID := uuid.New()
+	suite.mockFieldService.On("UpdateField", fieldID, &updateRequest, userID).Return(updatedField, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/fields/"+fieldID.String(), updateRequest)
+	req = testutil.WithUserContext(req, userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("field_id", fieldID.String())
@@ -405,9 +417,11 @@ func (suite *FieldHandlerTestSuite) TestUpdate_FieldNotFound() {
 	fieldID := uuid.New()
 	updateRequest := createValidUpdateFieldRequest()
 
-	suite.mockFieldService.On("UpdateField", fieldID, &updateRequest).Return(nil, services.ErrFieldNotFound)
+	userID := uuid.New()
+	suite.mockFieldService.On("UpdateField", fieldID, &updateRequest, userID).Return(nil, services.ErrFieldNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/fields/"+fieldID.String(), updateRequest)
+	req = testutil.WithUserContext(req, userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("field_id", fieldID.String())

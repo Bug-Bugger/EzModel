@@ -48,6 +48,81 @@ func (m *mockAuthorizationService) GetProjectIDFromField(fieldID uuid.UUID) (uui
 	return args.Get(0).(uuid.UUID), args.Error(1)
 }
 
+// Mock collaboration service for tests
+type mockCollaborationService struct {
+	mock.Mock
+}
+
+func (m *mockCollaborationService) CreateSession(projectID, userID uuid.UUID, userColor string) (*models.CollaborationSession, error) {
+	args := m.Called(projectID, userID, userColor)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.CollaborationSession), args.Error(1)
+}
+
+func (m *mockCollaborationService) GetSessionByID(id uuid.UUID) (*models.CollaborationSession, error) {
+	args := m.Called(id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.CollaborationSession), args.Error(1)
+}
+
+func (m *mockCollaborationService) GetSessionsByProjectID(projectID uuid.UUID) ([]*models.CollaborationSession, error) {
+	args := m.Called(projectID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.CollaborationSession), args.Error(1)
+}
+
+func (m *mockCollaborationService) GetActiveSessionsByProjectID(projectID uuid.UUID) ([]*models.CollaborationSession, error) {
+	args := m.Called(projectID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*models.CollaborationSession), args.Error(1)
+}
+
+func (m *mockCollaborationService) UpdateCursor(sessionID uuid.UUID, cursorX, cursorY *float64) error {
+	args := m.Called(sessionID, cursorX, cursorY)
+	return args.Error(0)
+}
+
+func (m *mockCollaborationService) UpdateSession(id uuid.UUID, req *dto.UpdateSessionRequest) (*models.CollaborationSession, error) {
+	args := m.Called(id, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.CollaborationSession), args.Error(1)
+}
+
+func (m *mockCollaborationService) SetSessionInactive(sessionID uuid.UUID) error {
+	args := m.Called(sessionID)
+	return args.Error(0)
+}
+
+func (m *mockCollaborationService) DeleteSession(sessionID uuid.UUID, userID uuid.UUID) error {
+	args := m.Called(sessionID, userID)
+	return args.Error(0)
+}
+
+func (m *mockCollaborationService) NotifyFieldCreated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, field, senderUserID)
+	return args.Error(0)
+}
+
+func (m *mockCollaborationService) NotifyFieldUpdated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, field, senderUserID)
+	return args.Error(0)
+}
+
+func (m *mockCollaborationService) NotifyFieldDeleted(projectID, fieldID uuid.UUID, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, fieldID, senderUserID)
+	return args.Error(0)
+}
+
 // Test helper functions
 func createTestField(tableID uuid.UUID) *models.Field {
 	return &models.Field{
@@ -68,17 +143,19 @@ func fieldStringPtr(s string) *string {
 
 type FieldServiceTestSuite struct {
 	suite.Suite
-	mockFieldRepo   *mockRepo.MockFieldRepository
-	mockTableRepo   *mockRepo.MockTableRepository
-	mockAuthService *mockAuthorizationService
-	service         *FieldService
+	mockFieldRepo         *mockRepo.MockFieldRepository
+	mockTableRepo         *mockRepo.MockTableRepository
+	mockAuthService       *mockAuthorizationService
+	mockCollabService     *mockCollaborationService
+	service               *FieldService
 }
 
 func (suite *FieldServiceTestSuite) SetupTest() {
 	suite.mockFieldRepo = new(mockRepo.MockFieldRepository)
 	suite.mockTableRepo = new(mockRepo.MockTableRepository)
 	suite.mockAuthService = new(mockAuthorizationService)
-	suite.service = NewFieldService(suite.mockFieldRepo, suite.mockTableRepo, suite.mockAuthService)
+	suite.mockCollabService = new(mockCollaborationService)
+	suite.service = NewFieldService(suite.mockFieldRepo, suite.mockTableRepo, suite.mockAuthService, suite.mockCollabService)
 }
 
 func TestFieldServiceSuite(t *testing.T) {
@@ -115,7 +192,9 @@ func (suite *FieldServiceTestSuite) TestCreateField_Success() {
 			field.Position == 1
 	})).Return(fieldID, nil)
 
-	result, err := suite.service.CreateField(tableID, req)
+	userID := uuid.New()
+	suite.mockCollabService.On("NotifyFieldCreated", table.ProjectID, mock.AnythingOfType("*models.Field"), userID).Return(nil)
+	result, err := suite.service.CreateField(tableID, req, userID)
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -130,6 +209,7 @@ func (suite *FieldServiceTestSuite) TestCreateField_Success() {
 
 	suite.mockTableRepo.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
+	suite.mockCollabService.AssertExpectations(suite.T())
 }
 
 // Test CreateField - Invalid Name (empty)
@@ -140,7 +220,8 @@ func (suite *FieldServiceTestSuite) TestCreateField_InvalidNameEmpty() {
 		DataType: "VARCHAR(255)",
 	}
 
-	result, err := suite.service.CreateField(tableID, req)
+	userID := uuid.New()
+	result, err := suite.service.CreateField(tableID, req, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -156,7 +237,8 @@ func (suite *FieldServiceTestSuite) TestCreateField_InvalidNameTooLong() {
 		DataType: "VARCHAR(255)",
 	}
 
-	result, err := suite.service.CreateField(tableID, req)
+	userID := uuid.New()
+	result, err := suite.service.CreateField(tableID, req, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -171,7 +253,8 @@ func (suite *FieldServiceTestSuite) TestCreateField_InvalidDataType() {
 		DataType: "",
 	}
 
-	result, err := suite.service.CreateField(tableID, req)
+	userID := uuid.New()
+	result, err := suite.service.CreateField(tableID, req, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -188,7 +271,8 @@ func (suite *FieldServiceTestSuite) TestCreateField_TableNotFound() {
 
 	suite.mockTableRepo.On("GetByID", tableID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.CreateField(tableID, req)
+	userID := uuid.New()
+	result, err := suite.service.CreateField(tableID, req, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -214,7 +298,8 @@ func (suite *FieldServiceTestSuite) TestCreateField_RepositoryError() {
 	suite.mockTableRepo.On("GetByID", tableID).Return(table, nil)
 	suite.mockFieldRepo.On("Create", mock.AnythingOfType("*models.Field")).Return(uuid.Nil, assert.AnError)
 
-	result, err := suite.service.CreateField(tableID, req)
+	userID := uuid.New()
+	result, err := suite.service.CreateField(tableID, req, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -291,6 +376,12 @@ func (suite *FieldServiceTestSuite) TestUpdateField_Success() {
 		IsPrimaryKey: &isPrimaryKey,
 	}
 
+	table := &models.Table{
+		ID:        existingField.TableID,
+		Name:      "Test Table",
+		ProjectID: uuid.New(),
+	}
+
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(existingField, nil)
 	suite.mockFieldRepo.On("Update", mock.MatchedBy(func(field *models.Field) bool {
 		return field.ID == fieldID &&
@@ -298,8 +389,11 @@ func (suite *FieldServiceTestSuite) TestUpdateField_Success() {
 			field.DataType == newDataType &&
 			field.IsPrimaryKey == isPrimaryKey
 	})).Return(nil)
+	suite.mockTableRepo.On("GetByID", existingField.TableID).Return(table, nil)
 
-	result, err := suite.service.UpdateField(fieldID, updateRequest)
+	userID := uuid.New()
+	suite.mockCollabService.On("NotifyFieldUpdated", table.ProjectID, mock.AnythingOfType("*models.Field"), userID).Return(nil)
+	result, err := suite.service.UpdateField(fieldID, updateRequest, userID)
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -309,6 +403,8 @@ func (suite *FieldServiceTestSuite) TestUpdateField_Success() {
 	suite.Equal(isPrimaryKey, result.IsPrimaryKey)
 
 	suite.mockFieldRepo.AssertExpectations(suite.T())
+	suite.mockTableRepo.AssertExpectations(suite.T())
+	suite.mockCollabService.AssertExpectations(suite.T())
 }
 
 // Test UpdateField - Not Found
@@ -320,7 +416,8 @@ func (suite *FieldServiceTestSuite) TestUpdateField_NotFound() {
 
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.UpdateField(fieldID, updateRequest)
+	userID := uuid.New()
+	result, err := suite.service.UpdateField(fieldID, updateRequest, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -342,7 +439,8 @@ func (suite *FieldServiceTestSuite) TestUpdateField_InvalidName() {
 
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(existingField, nil)
 
-	result, err := suite.service.UpdateField(fieldID, updateRequest)
+	userID := uuid.New()
+	result, err := suite.service.UpdateField(fieldID, updateRequest, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -364,7 +462,8 @@ func (suite *FieldServiceTestSuite) TestUpdateField_InvalidDataType() {
 
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(existingField, nil)
 
-	result, err := suite.service.UpdateField(fieldID, updateRequest)
+	userID := uuid.New()
+	result, err := suite.service.UpdateField(fieldID, updateRequest, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -385,12 +484,14 @@ func (suite *FieldServiceTestSuite) TestDeleteField_Success() {
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(existingField, nil)
 	suite.mockFieldRepo.On("Delete", fieldID).Return(nil)
+	suite.mockCollabService.On("NotifyFieldDeleted", projectID, fieldID, userID).Return(nil)
 
 	err := suite.service.DeleteField(fieldID, userID)
 
 	suite.NoError(err)
 	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
+	suite.mockCollabService.AssertExpectations(suite.T())
 }
 
 // Test DeleteField - Not Found

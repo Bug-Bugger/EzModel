@@ -155,11 +155,16 @@ function createCollaborationStore() {
 
     // Send schema change event
     sendSchemaEvent(type: string, data: any) {
+      console.log("📤 Sending schema event:", type, data);
       if (wsClient && wsClient.isConnected()) {
-        wsClient.send({
+        const message = {
           type,
           data,
-        });
+        };
+        console.log("📡 WebSocket sending:", message);
+        wsClient.send(message);
+      } else {
+        console.warn("⚠️ WebSocket not connected, cannot send schema event:", type, data);
       }
     },
 
@@ -176,6 +181,8 @@ function createCollaborationStore() {
   }
 
   function handleWebSocketMessage(message: any) {
+    console.log("🔄 WebSocket message received:", message.type, message);
+
     switch (message.type) {
       case "user_joined":
         // Handle backend UserJoinedPayload structure
@@ -281,8 +288,54 @@ function createCollaborationStore() {
         });
         break;
 
-      case "table_update":
       case "table_deleted":
+        console.log("🗑️ Received table_deleted message:", message);
+        console.log("📊 Message data:", message.data);
+        console.log("👤 Message user_id:", message.user_id);
+
+        try {
+          // Handle table deletion - remove table from canvas
+          if (message.data && message.data.id) {
+            console.log("🔄 Removing table with ID:", message.data.id);
+            flowStore.removeLocalTableNode(message.data.id);
+            console.log("✅ Table removal completed");
+          } else {
+            console.warn("⚠️ Missing table ID in deletion message:", message.data);
+          }
+
+          // Create activity event for table deletion
+          update((state) => {
+            try {
+              const userName = message.user_id ? getUsernameFromId(message.user_id, state) : "Unknown User";
+              console.log("👤 Resolved username:", userName);
+
+              const newEvent: ActivityEvent = {
+                id: crypto.randomUUID(),
+                type: message.type,
+                userId: message.user_id || "unknown",
+                userName: userName,
+                message: generateActivityMessage(message.type, message.data || {}),
+                data: message.data || {},
+                timestamp: Date.now(),
+              };
+
+              console.log("📝 Creating activity event:", newEvent);
+
+              return {
+                ...state,
+                activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+              };
+            } catch (activityError) {
+              console.error("❌ Error creating activity event:", activityError);
+              return state; // Return unchanged state on error
+            }
+          });
+        } catch (error) {
+          console.error("❌ Error handling table_deleted message:", error, message);
+        }
+        break;
+
+      case "table_update":
       case "relationship_create":
       case "relationship_delete":
         update((state) => {

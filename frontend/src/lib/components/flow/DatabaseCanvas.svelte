@@ -576,21 +576,45 @@
 				}
 
 				if ($flowStore.selectedNode) {
+					// Capture selectedNode data before any operations to prevent null reference errors
+					const nodeToDelete = $flowStore.selectedNode;
+
+					// Validate that we have all required data
+					if (!nodeToDelete || !nodeToDelete.data || !nodeToDelete.id) {
+						console.error('Cannot delete: invalid node data', nodeToDelete);
+						return;
+					}
+
+					// Capture the data we need before any state changes
+					const tableData = {
+						id: nodeToDelete.id,
+						name: nodeToDelete.data.name
+					};
+
+					console.log('🗑️ Deleting table:', tableData);
+
 					try {
+						// Send WebSocket event FIRST to ensure real-time collaboration
+						// This ensures other users see the deletion immediately
+						collaborationStore.sendSchemaEvent('table_deleted', tableData);
+						console.log('📡 WebSocket deletion event sent');
+
+						// Then remove from backend and local store
 						await flowStore.removeTableNode(
 							$projectStore.currentProject.id,
-							$flowStore.selectedNode.id
+							tableData.id
 						);
-						collaborationStore.sendSchemaEvent('table_deleted', {
-							id: $flowStore.selectedNode.id,
-							name: $flowStore.selectedNode.data.name
-						});
+						console.log('✅ Table deletion completed');
 
 						// Auto-save canvas data
 						const canvasData = flowStore.getCurrentCanvasData();
 						projectStore.autoSaveCanvasData(canvasData);
 					} catch (error) {
-						console.error('Failed to delete table:', error);
+						console.error('❌ Failed to delete table:', error);
+
+						// Even if backend deletion fails, we already sent the WebSocket event
+						// so other users will see the deletion. We could optionally show
+						// an error message to the user but keep the deletion for consistency.
 					}
 				} else if ($flowStore.selectedEdge) {
 					flowStore.removeRelationshipEdge($flowStore.selectedEdge.id);

@@ -12,17 +12,17 @@ import (
 )
 
 type FieldService struct {
-	fieldRepo         repository.FieldRepositoryInterface
-	tableRepo         repository.TableRepositoryInterface
-	authService       AuthorizationServiceInterface
+	fieldRepo            repository.FieldRepositoryInterface
+	tableRepo            repository.TableRepositoryInterface
+	authService          AuthorizationServiceInterface
 	collaborationService CollaborationSessionServiceInterface
 }
 
 func NewFieldService(fieldRepo repository.FieldRepositoryInterface, tableRepo repository.TableRepositoryInterface, authService AuthorizationServiceInterface, collaborationService CollaborationSessionServiceInterface) *FieldService {
 	return &FieldService{
-		fieldRepo:         fieldRepo,
-		tableRepo:         tableRepo,
-		authService:       authService,
+		fieldRepo:            fieldRepo,
+		tableRepo:            tableRepo,
+		authService:          authService,
 		collaborationService: collaborationService,
 	}
 }

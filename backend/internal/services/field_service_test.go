@@ -143,11 +143,11 @@ func fieldStringPtr(s string) *string {
 
 type FieldServiceTestSuite struct {
 	suite.Suite
-	mockFieldRepo         *mockRepo.MockFieldRepository
-	mockTableRepo         *mockRepo.MockTableRepository
-	mockAuthService       *mockAuthorizationService
-	mockCollabService     *mockCollaborationService
-	service               *FieldService
+	mockFieldRepo     *mockRepo.MockFieldRepository
+	mockTableRepo     *mockRepo.MockTableRepository
+	mockAuthService   *mockAuthorizationService
+	mockCollabService *mockCollaborationService
+	service           *FieldService
 }
 
 func (suite *FieldServiceTestSuite) SetupTest() {

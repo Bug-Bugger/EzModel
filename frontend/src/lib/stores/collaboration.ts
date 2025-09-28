@@ -169,6 +169,12 @@ function createCollaborationStore() {
     },
   };
 
+  // Helper function to get username from user_id
+  function getUsernameFromId(userId: string, state: CollaborationState): string {
+    const user = state.connectedUsers.find(u => u.id === userId);
+    return user?.username || "Unknown User";
+  }
+
   function handleWebSocketMessage(message: any) {
     switch (message.type) {
       case "user_joined":
@@ -253,12 +259,22 @@ function createCollaborationStore() {
       case "field_delete":
       case "relationship_create":
       case "relationship_delete":
-        addActivityEvent({
-          type: message.type,
-          userId: message.user_id,
-          userName: message.user_name,
-          message: generateActivityMessage(message.type, message.data),
-          data: message.data,
+        update((state) => {
+          const userName = getUsernameFromId(message.user_id, state);
+          const newEvent: ActivityEvent = {
+            id: crypto.randomUUID(),
+            type: message.type,
+            userId: message.user_id,
+            userName: userName,
+            message: generateActivityMessage(message.type, message.data),
+            data: message.data,
+            timestamp: Date.now(),
+          };
+
+          return {
+            ...state,
+            activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+          };
         });
         break;
 
@@ -286,12 +302,22 @@ function createCollaborationStore() {
           });
 
           // Add activity event for completed table move
-          addActivityEvent({
-            type: "table_update", // Use existing activity type for consistency
-            userId: message.user_id,
-            userName: message.user_name || "Unknown User",
-            message: `moved table "${message.data.name || 'Unknown Table'}"`,
-            data: message.data,
+          update((state) => {
+            const userName = getUsernameFromId(message.user_id, state);
+            const newEvent: ActivityEvent = {
+              id: crypto.randomUUID(),
+              type: "table_update", // Use existing activity type for consistency
+              userId: message.user_id,
+              userName: userName,
+              message: `moved table "${message.data.name || 'Unknown Table'}"`,
+              data: message.data,
+              timestamp: Date.now(),
+            };
+
+            return {
+              ...state,
+              activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+            };
           });
         }
         break;

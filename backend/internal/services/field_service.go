@@ -12,20 +12,22 @@ import (
 )
 
 type FieldService struct {
-	fieldRepo   repository.FieldRepositoryInterface
-	tableRepo   repository.TableRepositoryInterface
-	authService AuthorizationServiceInterface
+	fieldRepo         repository.FieldRepositoryInterface
+	tableRepo         repository.TableRepositoryInterface
+	authService       AuthorizationServiceInterface
+	collaborationService CollaborationSessionServiceInterface
 }
 
-func NewFieldService(fieldRepo repository.FieldRepositoryInterface, tableRepo repository.TableRepositoryInterface, authService AuthorizationServiceInterface) *FieldService {
+func NewFieldService(fieldRepo repository.FieldRepositoryInterface, tableRepo repository.TableRepositoryInterface, authService AuthorizationServiceInterface, collaborationService CollaborationSessionServiceInterface) *FieldService {
 	return &FieldService{
-		fieldRepo:   fieldRepo,
-		tableRepo:   tableRepo,
-		authService: authService,
+		fieldRepo:         fieldRepo,
+		tableRepo:         tableRepo,
+		authService:       authService,
+		collaborationService: collaborationService,
 	}
 }
 
-func (s *FieldService) CreateField(tableID uuid.UUID, req *dto.CreateFieldRequest) (*models.Field, error) {
+func (s *FieldService) CreateField(tableID uuid.UUID, req *dto.CreateFieldRequest, userID uuid.UUID) (*models.Field, error) {
 	name := strings.TrimSpace(req.Name)
 	dataType := strings.TrimSpace(req.DataType)
 
@@ -37,8 +39,8 @@ func (s *FieldService) CreateField(tableID uuid.UUID, req *dto.CreateFieldReques
 		return nil, ErrInvalidInput
 	}
 
-	// Verify table exists
-	_, err := s.tableRepo.GetByID(tableID)
+	// Verify table exists and get project ID for collaboration
+	table, err := s.tableRepo.GetByID(tableID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrTableNotFound
@@ -62,6 +64,15 @@ func (s *FieldService) CreateField(tableID uuid.UUID, req *dto.CreateFieldReques
 	}
 
 	field.ID = id
+
+	// Broadcast field creation to collaborators
+	if s.collaborationService != nil {
+		if err := s.collaborationService.NotifyFieldCreated(table.ProjectID, field, userID); err != nil {
+			// Log error but don't fail the operation
+			// TODO: Add proper logging
+		}
+	}
+
 	return field, nil
 }
 
@@ -80,7 +91,7 @@ func (s *FieldService) GetFieldsByTableID(tableID uuid.UUID) ([]*models.Field, e
 	return s.fieldRepo.GetByTableID(tableID)
 }
 
-func (s *FieldService) UpdateField(id uuid.UUID, req *dto.UpdateFieldRequest) (*models.Field, error) {
+func (s *FieldService) UpdateField(id uuid.UUID, req *dto.UpdateFieldRequest, userID uuid.UUID) (*models.Field, error) {
 	field, err := s.fieldRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -126,6 +137,15 @@ func (s *FieldService) UpdateField(id uuid.UUID, req *dto.UpdateFieldRequest) (*
 		return nil, err
 	}
 
+	// Get table and project ID for collaboration notification
+	table, err := s.tableRepo.GetByID(field.TableID)
+	if err == nil && s.collaborationService != nil {
+		if err := s.collaborationService.NotifyFieldUpdated(table.ProjectID, field, userID); err != nil {
+			// Log error but don't fail the operation
+			// TODO: Add proper logging
+		}
+	}
+
 	return field, nil
 }
 
@@ -154,7 +174,20 @@ func (s *FieldService) DeleteField(id uuid.UUID, userID uuid.UUID) error {
 		return err
 	}
 
-	return s.fieldRepo.Delete(id)
+	// Delete the field
+	if err := s.fieldRepo.Delete(id); err != nil {
+		return err
+	}
+
+	// Notify collaborators about field deletion
+	if s.collaborationService != nil {
+		if err := s.collaborationService.NotifyFieldDeleted(projectID, id, userID); err != nil {
+			// Log error but don't fail the operation
+			// TODO: Add proper logging
+		}
+	}
+
+	return nil
 }
 
 func (s *FieldService) ReorderFields(tableID uuid.UUID, fieldPositions map[uuid.UUID]int) error {

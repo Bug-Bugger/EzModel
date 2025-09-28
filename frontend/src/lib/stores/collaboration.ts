@@ -30,9 +30,9 @@ export interface ActivityEvent {
     | "table_created"
     | "table_update"
     | "table_deleted"
-    | "field_create"
-    | "field_update"
-    | "field_delete"
+    | "field_created"
+    | "field_updated"
+    | "field_deleted"
     | "relationship_create"
     | "relationship_delete";
   message: string;
@@ -304,7 +304,7 @@ function createCollaborationStore() {
         });
         break;
 
-      case "field_create":
+      case "field_created":
         // Handle field creation - add field to table and create activity
         if (message.data.table_id && message.data.field_id) {
           // Map backend field data to frontend format
@@ -313,10 +313,10 @@ function createCollaborationStore() {
             name: message.data.name,
             type: message.data.type,
             is_primary: message.data.is_primary || false,
-            is_foreign: message.data.is_foreign || false,
-            is_required: message.data.is_required || false,
-            is_unique: message.data.is_unique || false,
-            default_value: message.data.default
+            is_foreign: false, // Backend doesn't send this yet
+            is_required: !message.data.is_nullable, // Backend sends is_nullable, frontend uses is_required (inverse)
+            is_unique: false, // Backend doesn't send this yet
+            default_value: message.data.default || ""
           };
 
           // Update the table's fields in the flow store
@@ -348,7 +348,7 @@ function createCollaborationStore() {
         });
         break;
 
-      case "field_update":
+      case "field_updated":
         // Handle field update - update field in table and create activity
         if (message.data.table_id && message.data.field_id) {
           // Map backend field data to frontend format
@@ -356,10 +356,10 @@ function createCollaborationStore() {
             name: message.data.name,
             type: message.data.type,
             is_primary: message.data.is_primary || false,
-            is_foreign: message.data.is_foreign || false,
-            is_required: message.data.is_required || false,
-            is_unique: message.data.is_unique || false,
-            default_value: message.data.default
+            is_foreign: false, // Backend doesn't send this yet
+            is_required: !message.data.is_nullable, // Backend sends is_nullable, frontend uses is_required (inverse)
+            is_unique: false, // Backend doesn't send this yet
+            default_value: message.data.default || ""
           };
 
           // Update the field in the flow store
@@ -393,7 +393,7 @@ function createCollaborationStore() {
         });
         break;
 
-      case "field_delete":
+      case "field_deleted":
         // Handle field deletion - remove field from table and create activity
         if (message.data.table_id && message.data.field_id) {
           // Remove the field from the flow store
@@ -495,12 +495,12 @@ function createCollaborationStore() {
         return `updated table "${data.name}"`;
       case "table_deleted":
         return `deleted table "${data.name}"`;
-      case "field_create":
-        return `added field "${data.name}" to "${data.table_name}"`;
-      case "field_update":
-        return `updated field "${data.name}" in "${data.table_name}"`;
-      case "field_delete":
-        return `removed field "${data.name}" from "${data.table_name}"`;
+      case "field_created":
+        return `added field "${data.name}" to table`;
+      case "field_updated":
+        return `updated field "${data.name}" in table`;
+      case "field_deleted":
+        return `removed field "${data.name}" from table`;
       case "relationship_create":
         return `created relationship between "${data.from_table}" and "${data.to_table}"`;
       case "relationship_delete":

@@ -41,10 +41,10 @@ type TableServiceInterface interface {
 }
 
 type FieldServiceInterface interface {
-	CreateField(tableID uuid.UUID, req *dto.CreateFieldRequest) (*models.Field, error)
+	CreateField(tableID uuid.UUID, req *dto.CreateFieldRequest, userID uuid.UUID) (*models.Field, error)
 	GetFieldByID(id uuid.UUID) (*models.Field, error)
 	GetFieldsByTableID(tableID uuid.UUID) ([]*models.Field, error)
-	UpdateField(id uuid.UUID, req *dto.UpdateFieldRequest) (*models.Field, error)
+	UpdateField(id uuid.UUID, req *dto.UpdateFieldRequest, userID uuid.UUID) (*models.Field, error)
 	DeleteField(id uuid.UUID, userID uuid.UUID) error
 	ReorderFields(tableID uuid.UUID, fieldPositions map[uuid.UUID]int) error
 }
@@ -67,6 +67,11 @@ type CollaborationSessionServiceInterface interface {
 	UpdateSession(id uuid.UUID, req *dto.UpdateSessionRequest) (*models.CollaborationSession, error)
 	SetSessionInactive(sessionID uuid.UUID) error
 	DeleteSession(sessionID uuid.UUID, userID uuid.UUID) error
+
+	// Field collaboration methods
+	NotifyFieldCreated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error
+	NotifyFieldUpdated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error
+	NotifyFieldDeleted(projectID, fieldID uuid.UUID, senderUserID uuid.UUID) error
 }
 
 type JWTServiceInterface interface {

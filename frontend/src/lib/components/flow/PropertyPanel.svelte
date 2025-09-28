@@ -120,12 +120,7 @@
 			const updatedFields = [...selectedNode.data.fields, frontendField];
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
-			// Send WebSocket event for real-time collaboration
-			collaborationStore.sendSchemaEvent('field_create', {
-				...frontendField,
-				table_id: selectedNode.id,
-				table_name: selectedNode.data.name
-			});
+			// WebSocket broadcasting is now handled by the backend after successful API call
 
 			// Auto-save canvas data to persist field changes
 			const canvasData = flowStore.getCurrentCanvasData();
@@ -168,13 +163,7 @@
 			const updatedFields = selectedNode.data.fields.filter(f => f.id !== fieldId);
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
-			// Send WebSocket event for real-time collaboration
-			collaborationStore.sendSchemaEvent('field_delete', {
-				id: fieldId,
-				name: field.name,
-				table_id: selectedNode.id,
-				table_name: selectedNode.data.name
-			});
+			// WebSocket broadcasting is now handled by the backend after successful API call
 
 			// Auto-save canvas data to persist field deletion
 			const canvasData = flowStore.getCurrentCanvasData();
@@ -220,13 +209,7 @@
 			);
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
-			// Send WebSocket event for real-time collaboration
-			collaborationStore.sendSchemaEvent('field_update', {
-				id: fieldId,
-				...updates,
-				table_id: selectedNode.id,
-				table_name: selectedNode.data.name
-			});
+			// WebSocket broadcasting is now handled by the backend after successful API call
 
 			// Auto-save canvas data to persist field updates
 			const canvasData = flowStore.getCurrentCanvasData();

@@ -37,8 +37,21 @@ func (h *FieldHandler) Create() http.HandlerFunc {
 			return
 		}
 
+		// Get current user ID from context for collaboration
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
+		if !ok {
+			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
 		// Create field through service
-		field, err := h.fieldService.CreateField(tableID, &req)
+		field, err := h.fieldService.CreateField(tableID, &req, userID)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrTableNotFound):
@@ -160,8 +173,21 @@ func (h *FieldHandler) Update() http.HandlerFunc {
 			return
 		}
 
+		// Get current user ID from context for collaboration
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
+		if !ok {
+			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
 		// Update field through service
-		field, err := h.fieldService.UpdateField(fieldID, &req)
+		field, err := h.fieldService.UpdateField(fieldID, &req, userID)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrFieldNotFound):

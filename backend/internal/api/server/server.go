@@ -76,9 +76,9 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 	s.userService = services.NewUserService(s.userRepo)
 	s.projectService = services.NewProjectService(s.projectRepo, s.userRepo)
 	s.tableService = services.NewTableService(s.tableRepo, s.projectRepo, s.authService)
-	s.fieldService = services.NewFieldService(s.fieldRepo, s.tableRepo, s.authService)
-	s.relationshipService = services.NewRelationshipService(s.relationshipRepo, s.projectRepo, s.tableRepo, s.fieldRepo, s.authService)
 	s.collaborationService = services.NewCollaborationSessionService(s.collaborationRepo, s.projectRepo, s.userRepo, s.authService, s.websocketHub)
+	s.fieldService = services.NewFieldService(s.fieldRepo, s.tableRepo, s.authService, s.collaborationService)
+	s.relationshipService = services.NewRelationshipService(s.relationshipRepo, s.projectRepo, s.tableRepo, s.fieldRepo, s.authService)
 	s.jwtService = services.NewJWTService(cfg)
 
 	// Initialize middleware

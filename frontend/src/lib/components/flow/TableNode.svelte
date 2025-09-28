@@ -54,7 +54,7 @@
 		{#each data.fields as field, index}
 			<div
 				class="field-row flex items-center px-4 py-2 border-b border-gray-100 hover:bg-gray-50 last:border-b-0"
-				class:bg-blue-50={field.is_primary}
+				class:bg-blue-50={field.is_primary_key}
 			>
 				<!-- Connection handles for relationships -->
 				<Handle
@@ -81,25 +81,19 @@
 						<span class="field-name font-medium text-gray-900 truncate">
 							{field.name}
 						</span>
-						<span class="field-type text-xs {getFieldTypeColor(field.type)} font-mono">
-							{field.type}
+						<span class="field-type text-xs {getFieldTypeColor(field.data_type)} font-mono">
+							{field.data_type}
 						</span>
 					</div>
 
 					<!-- Field Constraints -->
-					{#if field.is_primary || field.is_foreign || field.is_required || field.is_unique}
+					{#if field.is_primary_key || !field.is_nullable}
 						<div class="field-constraints flex space-x-1 mt-1">
-							{#if field.is_primary}
+							{#if field.is_primary_key}
 								<span class="constraint-badge bg-yellow-100 text-yellow-800 text-xs px-1 rounded">PK</span>
 							{/if}
-							{#if field.is_foreign}
-								<span class="constraint-badge bg-green-100 text-green-800 text-xs px-1 rounded">FK</span>
-							{/if}
-							{#if field.is_required}
+							{#if !field.is_nullable}
 								<span class="constraint-badge bg-red-100 text-red-800 text-xs px-1 rounded">NOT NULL</span>
-							{/if}
-							{#if field.is_unique}
-								<span class="constraint-badge bg-blue-100 text-blue-800 text-xs px-1 rounded">UNIQUE</span>
 							{/if}
 						</div>
 					{/if}

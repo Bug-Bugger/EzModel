@@ -50,29 +50,15 @@
 		tableName = selectedNode.data.name;
 	}
 
-	// Helper function to map frontend field data to backend format
-	function mapFieldToBackendFormat(field: any): CreateFieldRequest {
+	// Helper function to prepare field data for backend API
+	function prepareFieldForBackend(field: any): CreateFieldRequest {
 		return {
 			name: field.name,
-			data_type: field.type,
-			is_primary_key: field.is_primary,
-			is_nullable: !field.is_required, // Backend uses is_nullable, frontend uses is_required (inverse)
+			data_type: field.data_type,
+			is_primary_key: field.is_primary_key,
+			is_nullable: field.is_nullable,
 			default_value: field.default_value || '',
 			position: selectedNode ? selectedNode.data.fields.length : 0
-		};
-	}
-
-	// Helper function to map backend field data to frontend format
-	function mapFieldToFrontendFormat(backendField: any): any {
-		return {
-			id: backendField.id,
-			name: backendField.name,
-			type: backendField.data_type,
-			is_primary: backendField.is_primary_key,
-			is_foreign: false, // Backend doesn't have this field yet
-			is_required: !backendField.is_nullable, // Backend uses is_nullable, frontend uses is_required (inverse)
-			is_unique: false, // Backend doesn't have this field yet
-			default_value: backendField.default_value
 		};
 	}
 
@@ -94,30 +80,25 @@
 		}
 
 		try {
-			// Create field data for backend
+			// Create field data using backend structure
 			const fieldData = {
 				name: fieldName.trim(),
-				type: fieldType,
-				is_primary: isPrimary,
-				is_foreign: isForeign,
-				is_required: isRequired,
-				is_unique: isUnique,
-				default_value: defaultValue || undefined
+				data_type: fieldType,
+				is_primary_key: isPrimary,
+				is_nullable: !isRequired, // Convert frontend "required" to backend "nullable" (inverse)
+				default_value: defaultValue || '',
+				position: selectedNode.data.fields.length
 			};
 
-			// Map to backend format and create via API
-			const backendFieldData = mapFieldToBackendFormat(fieldData);
+			// Create via API using backend format
 			const createdField = await projectService.createField(
 				$projectStore.currentProject.id,
 				selectedNode.id,
-				backendFieldData
+				fieldData
 			);
 
-			// Map back to frontend format
-			const frontendField = mapFieldToFrontendFormat(createdField);
-
-			// Update local store
-			const updatedFields = [...selectedNode.data.fields, frontendField];
+			// Update local store with the returned field (already in correct format)
+			const updatedFields = [...selectedNode.data.fields, createdField];
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
 			// WebSocket broadcasting is now handled by the backend after successful API call
@@ -186,12 +167,12 @@
 				return;
 			}
 
-			// Map frontend updates to backend format
+			// Prepare updates in backend format (updates should already be in backend format)
 			const backendUpdates: UpdateFieldRequest = {};
 			if (updates.name !== undefined) backendUpdates.name = updates.name;
-			if (updates.type !== undefined) backendUpdates.data_type = updates.type;
-			if (updates.is_primary !== undefined) backendUpdates.is_primary_key = updates.is_primary;
-			if (updates.is_required !== undefined) backendUpdates.is_nullable = !updates.is_required;
+			if (updates.data_type !== undefined) backendUpdates.data_type = updates.data_type;
+			if (updates.is_primary_key !== undefined) backendUpdates.is_primary_key = updates.is_primary_key;
+			if (updates.is_nullable !== undefined) backendUpdates.is_nullable = updates.is_nullable;
 			if (updates.default_value !== undefined) backendUpdates.default_value = updates.default_value;
 
 			// Update field via API
@@ -202,10 +183,9 @@
 				backendUpdates
 			);
 
-			// Map back to frontend format and update local store
-			const frontendField = mapFieldToFrontendFormat(updatedField);
+			// Update local store with the returned field (already in correct format)
 			const updatedFields = selectedNode.data.fields.map(field =>
-				field.id === fieldId ? frontendField : field
+				field.id === fieldId ? updatedField : field
 			);
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
@@ -254,18 +234,12 @@
 								</button>
 							</div>
 							<div class="flex items-center space-x-2 text-xs text-gray-600">
-								<span class="bg-white px-2 py-1 rounded">{field.type}</span>
-								{#if field.is_primary}
+								<span class="bg-white px-2 py-1 rounded">{field.data_type}</span>
+								{#if field.is_primary_key}
 									<span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">PK</span>
 								{/if}
-								{#if field.is_foreign}
-									<span class="bg-green-100 text-green-800 px-2 py-1 rounded">FK</span>
-								{/if}
-								{#if field.is_required}
-									<span class="bg-red-100 text-red-800 px-2 py-1 rounded">Required</span>
-								{/if}
-								{#if field.is_unique}
-									<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded">Unique</span>
+								{#if !field.is_nullable}
+									<span class="bg-red-100 text-red-800 px-2 py-1 rounded">NOT NULL</span>
 								{/if}
 							</div>
 						</div>

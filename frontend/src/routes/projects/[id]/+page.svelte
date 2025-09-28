@@ -187,8 +187,8 @@
 													{#each table.fields.slice(0, 6) as field}
 														<div class="field-item bg-white px-3 py-2 rounded border text-sm">
 															<span class="font-medium text-gray-900">{field.name}</span>
-															<span class="text-gray-500 ml-2">{field.type}</span>
-															{#if field.is_primary}
+															<span class="text-gray-500 ml-2">{field.data_type}</span>
+															{#if field.is_primary_key}
 																<span class="text-yellow-600 ml-1">PK</span>
 															{/if}
 														</div>

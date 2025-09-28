@@ -17,15 +17,13 @@ export interface Table {
 
 export interface Field {
 	id: string;
-	name: string;
-	type: string;
 	table_id: string;
-	is_primary: boolean;
-	is_foreign: boolean;
-	is_required: boolean;
-	is_unique: boolean;
-	default_value?: string;
-	constraints?: string[];
+	name: string;
+	data_type: string;
+	is_primary_key: boolean;
+	is_nullable: boolean;
+	default_value: string;
+	position: number;
 	created_at: string;
 	updated_at: string;
 }

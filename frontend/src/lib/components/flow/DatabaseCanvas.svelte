@@ -246,12 +246,15 @@
 				fields: [
 					{
 						id: crypto.randomUUID(),
+						table_id: '', // Will be set by backend
 						name: 'id',
-						type: 'UUID',
-						is_primary: true,
-						is_foreign: false,
-						is_required: true,
-						is_unique: true
+						data_type: 'UUID',
+						is_primary_key: true,
+						is_nullable: false,
+						default_value: '',
+						position: 0,
+						created_at: new Date().toISOString(),
+						updated_at: new Date().toISOString()
 					}
 				]
 			};

@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { writable, get } from "svelte/store";
 import { authStore } from "./auth";
 import {
   createCollaborationClient,
@@ -283,11 +283,129 @@ function createCollaborationStore() {
 
       case "table_update":
       case "table_deleted":
-      case "field_create":
-      case "field_update":
-      case "field_delete":
       case "relationship_create":
       case "relationship_delete":
+        update((state) => {
+          const userName = getUsernameFromId(message.user_id, state);
+          const newEvent: ActivityEvent = {
+            id: crypto.randomUUID(),
+            type: message.type,
+            userId: message.user_id,
+            userName: userName,
+            message: generateActivityMessage(message.type, message.data),
+            data: message.data,
+            timestamp: Date.now(),
+          };
+
+          return {
+            ...state,
+            activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+          };
+        });
+        break;
+
+      case "field_create":
+        // Handle field creation - add field to table and create activity
+        if (message.data.table_id && message.data.field_id) {
+          // Map backend field data to frontend format
+          const frontendField = {
+            id: message.data.field_id,
+            name: message.data.name,
+            type: message.data.type,
+            is_primary: message.data.is_primary || false,
+            is_foreign: message.data.is_foreign || false,
+            is_required: message.data.is_required || false,
+            is_unique: message.data.is_unique || false,
+            default_value: message.data.default
+          };
+
+          // Update the table's fields in the flow store
+          const currentNodes = get(flowStore).nodes;
+          const tableNode = currentNodes.find(node => node.id === message.data.table_id);
+          if (tableNode) {
+            const updatedFields = [...tableNode.data.fields, frontendField];
+            flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+          }
+        }
+
+        // Create activity event
+        update((state) => {
+          const userName = getUsernameFromId(message.user_id, state);
+          const newEvent: ActivityEvent = {
+            id: crypto.randomUUID(),
+            type: message.type,
+            userId: message.user_id,
+            userName: userName,
+            message: generateActivityMessage(message.type, message.data),
+            data: message.data,
+            timestamp: Date.now(),
+          };
+
+          return {
+            ...state,
+            activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+          };
+        });
+        break;
+
+      case "field_update":
+        // Handle field update - update field in table and create activity
+        if (message.data.table_id && message.data.field_id) {
+          // Map backend field data to frontend format
+          const fieldUpdates = {
+            name: message.data.name,
+            type: message.data.type,
+            is_primary: message.data.is_primary || false,
+            is_foreign: message.data.is_foreign || false,
+            is_required: message.data.is_required || false,
+            is_unique: message.data.is_unique || false,
+            default_value: message.data.default
+          };
+
+          // Update the field in the flow store
+          const currentNodes = get(flowStore).nodes;
+          const tableNode = currentNodes.find(node => node.id === message.data.table_id);
+          if (tableNode) {
+            const updatedFields = tableNode.data.fields.map(field =>
+              field.id === message.data.field_id ? { ...field, ...fieldUpdates } : field
+            );
+            flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+          }
+        }
+
+        // Create activity event
+        update((state) => {
+          const userName = getUsernameFromId(message.user_id, state);
+          const newEvent: ActivityEvent = {
+            id: crypto.randomUUID(),
+            type: message.type,
+            userId: message.user_id,
+            userName: userName,
+            message: generateActivityMessage(message.type, message.data),
+            data: message.data,
+            timestamp: Date.now(),
+          };
+
+          return {
+            ...state,
+            activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+          };
+        });
+        break;
+
+      case "field_delete":
+        // Handle field deletion - remove field from table and create activity
+        if (message.data.table_id && message.data.field_id) {
+          // Remove the field from the flow store
+          const currentNodes = get(flowStore).nodes;
+          const tableNode = currentNodes.find(node => node.id === message.data.table_id);
+          if (tableNode) {
+            const updatedFields = tableNode.data.fields.filter(field => field.id !== message.data.field_id);
+            flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+          }
+        }
+
+        // Create activity event
         update((state) => {
           const userName = getUsernameFromId(message.user_id, state);
           const newEvent: ActivityEvent = {

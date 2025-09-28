@@ -2,9 +2,12 @@
 	import { designerStore } from '$lib/stores/designer';
 	import { flowStore } from '$lib/stores/flow';
 	import { collaborationStore } from '$lib/stores/collaboration';
+	import { projectStore } from '$lib/stores/project';
+	import { projectService } from '$lib/services/project';
 	import Button from '../ui/button.svelte';
 	import Input from '../ui/input.svelte';
 	import Select from '../ui/select.svelte';
+	import type { CreateFieldRequest, UpdateFieldRequest } from '$lib/types/models';
 
 	// Field types available
 	const fieldTypeOptions = [
@@ -47,6 +50,32 @@
 		tableName = selectedNode.data.name;
 	}
 
+	// Helper function to map frontend field data to backend format
+	function mapFieldToBackendFormat(field: any): CreateFieldRequest {
+		return {
+			name: field.name,
+			data_type: field.type,
+			is_primary_key: field.is_primary,
+			is_nullable: !field.is_required, // Backend uses is_nullable, frontend uses is_required (inverse)
+			default_value: field.default_value || '',
+			position: selectedNode ? selectedNode.data.fields.length : 0
+		};
+	}
+
+	// Helper function to map backend field data to frontend format
+	function mapFieldToFrontendFormat(backendField: any): any {
+		return {
+			id: backendField.id,
+			name: backendField.name,
+			type: backendField.data_type,
+			is_primary: backendField.is_primary_key,
+			is_foreign: false, // Backend doesn't have this field yet
+			is_required: !backendField.is_nullable, // Backend uses is_nullable, frontend uses is_required (inverse)
+			is_unique: false, // Backend doesn't have this field yet
+			default_value: backendField.default_value
+		};
+	}
+
 	// Update table name
 	function updateTableName() {
 		if (selectedNode && tableName !== selectedNode.data.name) {
@@ -59,10 +88,14 @@
 	}
 
 	// Add new field to table
-	function addField() {
-		if (selectedNode && fieldName.trim()) {
-			const newField = {
-				id: crypto.randomUUID(),
+	async function addField() {
+		if (!selectedNode || !fieldName.trim() || !$projectStore.currentProject) {
+			return;
+		}
+
+		try {
+			// Create field data for backend
+			const fieldData = {
 				name: fieldName.trim(),
 				type: fieldType,
 				is_primary: isPrimary,
@@ -72,14 +105,31 @@
 				default_value: defaultValue || undefined
 			};
 
-			const updatedFields = [...selectedNode.data.fields, newField];
+			// Map to backend format and create via API
+			const backendFieldData = mapFieldToBackendFormat(fieldData);
+			const createdField = await projectService.createField(
+				$projectStore.currentProject.id,
+				selectedNode.id,
+				backendFieldData
+			);
+
+			// Map back to frontend format
+			const frontendField = mapFieldToFrontendFormat(createdField);
+
+			// Update local store
+			const updatedFields = [...selectedNode.data.fields, frontendField];
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
+			// Send WebSocket event for real-time collaboration
 			collaborationStore.sendSchemaEvent('field_create', {
-				...newField,
+				...frontendField,
 				table_id: selectedNode.id,
 				table_name: selectedNode.data.name
 			});
+
+			// Auto-save canvas data to persist field changes
+			const canvasData = flowStore.getCurrentCanvasData();
+			projectStore.autoSaveCanvasData(canvasData);
 
 			// Reset form
 			fieldName = '';
@@ -89,41 +139,101 @@
 			isRequired = false;
 			isUnique = false;
 			defaultValue = '';
+		} catch (error) {
+			console.error('Failed to create field:', error);
+			// TODO: Show error message to user
 		}
 	}
 
 	// Remove field from table
-	function removeField(fieldId: string) {
-		if (selectedNode) {
+	async function removeField(fieldId: string) {
+		if (!selectedNode || !$projectStore.currentProject) {
+			return;
+		}
+
+		try {
 			const field = selectedNode.data.fields.find(f => f.id === fieldId);
+			if (!field) {
+				return;
+			}
+
+			// Delete field via API
+			await projectService.deleteField(
+				$projectStore.currentProject.id,
+				selectedNode.id,
+				fieldId
+			);
+
+			// Update local store
 			const updatedFields = selectedNode.data.fields.filter(f => f.id !== fieldId);
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
-			if (field) {
-				collaborationStore.sendSchemaEvent('field_delete', {
-					id: fieldId,
-					name: field.name,
-					table_id: selectedNode.id,
-					table_name: selectedNode.data.name
-				});
-			}
+			// Send WebSocket event for real-time collaboration
+			collaborationStore.sendSchemaEvent('field_delete', {
+				id: fieldId,
+				name: field.name,
+				table_id: selectedNode.id,
+				table_name: selectedNode.data.name
+			});
+
+			// Auto-save canvas data to persist field deletion
+			const canvasData = flowStore.getCurrentCanvasData();
+			projectStore.autoSaveCanvasData(canvasData);
+		} catch (error) {
+			console.error('Failed to delete field:', error);
+			// TODO: Show error message to user
 		}
 	}
 
 	// Update existing field
-	function updateField(fieldId: string, updates: any) {
-		if (selectedNode) {
+	async function updateField(fieldId: string, updates: any) {
+		if (!selectedNode || !$projectStore.currentProject) {
+			return;
+		}
+
+		try {
+			const currentField = selectedNode.data.fields.find(f => f.id === fieldId);
+			if (!currentField) {
+				return;
+			}
+
+			// Map frontend updates to backend format
+			const backendUpdates: UpdateFieldRequest = {};
+			if (updates.name !== undefined) backendUpdates.name = updates.name;
+			if (updates.type !== undefined) backendUpdates.data_type = updates.type;
+			if (updates.is_primary !== undefined) backendUpdates.is_primary_key = updates.is_primary;
+			if (updates.is_required !== undefined) backendUpdates.is_nullable = !updates.is_required;
+			if (updates.default_value !== undefined) backendUpdates.default_value = updates.default_value;
+
+			// Update field via API
+			const updatedField = await projectService.updateField(
+				$projectStore.currentProject.id,
+				selectedNode.id,
+				fieldId,
+				backendUpdates
+			);
+
+			// Map back to frontend format and update local store
+			const frontendField = mapFieldToFrontendFormat(updatedField);
 			const updatedFields = selectedNode.data.fields.map(field =>
-				field.id === fieldId ? { ...field, ...updates } : field
+				field.id === fieldId ? frontendField : field
 			);
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
+			// Send WebSocket event for real-time collaboration
 			collaborationStore.sendSchemaEvent('field_update', {
 				id: fieldId,
 				...updates,
 				table_id: selectedNode.id,
 				table_name: selectedNode.data.name
 			});
+
+			// Auto-save canvas data to persist field updates
+			const canvasData = flowStore.getCurrentCanvasData();
+			projectStore.autoSaveCanvasData(canvasData);
+		} catch (error) {
+			console.error('Failed to update field:', error);
+			// TODO: Show error message to user
 		}
 	}
 </script>

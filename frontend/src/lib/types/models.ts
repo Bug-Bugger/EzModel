@@ -104,3 +104,21 @@ export interface UpdateRelationshipRequest {
 	to_field_id?: string;
 	relationship_type?: 'one-to-one' | 'one-to-many' | 'many-to-many';
 }
+
+export interface CreateFieldRequest {
+	name: string;
+	data_type: string;
+	is_primary_key: boolean;
+	is_nullable: boolean;
+	default_value?: string;
+	position?: number;
+}
+
+export interface UpdateFieldRequest {
+	name?: string;
+	data_type?: string;
+	is_primary_key?: boolean;
+	is_nullable?: boolean;
+	default_value?: string;
+	position?: number;
+}

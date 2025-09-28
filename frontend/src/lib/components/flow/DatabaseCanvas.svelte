@@ -8,7 +8,7 @@
 	} from '@xyflow/svelte';
 	import '@xyflow/svelte/dist/style.css';
 
-	import TableNode from './TableNode.svelte';
+	import TableNodeWrapper from './TableNodeWrapper.svelte';
 	import MouseTracker from './MouseTracker.svelte';
 	import UserCursor from '../collaboration/UserCursor.svelte';
 	import CanvasHookManager from './CanvasHookManager.svelte';
@@ -21,7 +21,7 @@
 
 	// Custom node and edge types
 	const nodeTypes = {
-		table: TableNode
+		table: TableNodeWrapper
 	};
 
 	// TODO: Fix edge types compatibility with @xyflow/svelte v1.3.1
@@ -125,6 +125,7 @@
 		flowStore.selectEdge(edge);
 		designerStore.openPropertyPanel('relationship', edge);
 	}
+
 
 	// Handle canvas click based on selected tool
 	async function onPaneClick(event: any) {

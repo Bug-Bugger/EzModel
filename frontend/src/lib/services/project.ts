@@ -9,7 +9,10 @@ import type {
 	UpdateTablePositionRequest,
 	Relationship,
 	CreateRelationshipRequest,
-	UpdateRelationshipRequest
+	UpdateRelationshipRequest,
+	Field,
+	CreateFieldRequest,
+	UpdateFieldRequest
 } from '$lib/types/models';
 
 export class ProjectService {
@@ -167,6 +170,30 @@ export class ProjectService {
 		const response = await apiClient.delete(`/projects/${projectId}/relationships/${relationshipId}`);
 		if (!response.success) {
 			throw new Error(response.message || 'Failed to delete relationship');
+		}
+	}
+
+	// Field Management Methods
+	async createField(projectId: string, tableId: string, fieldData: CreateFieldRequest): Promise<Field> {
+		const response = await apiClient.post<Field>(`/projects/${projectId}/tables/${tableId}/fields`, fieldData);
+		if (response.success && response.data) {
+			return response.data;
+		}
+		throw new Error(response.message || 'Failed to create field');
+	}
+
+	async updateField(projectId: string, tableId: string, fieldId: string, fieldData: UpdateFieldRequest): Promise<Field> {
+		const response = await apiClient.put<Field>(`/projects/${projectId}/tables/${tableId}/fields/${fieldId}`, fieldData);
+		if (response.success && response.data) {
+			return response.data;
+		}
+		throw new Error(response.message || 'Failed to update field');
+	}
+
+	async deleteField(projectId: string, tableId: string, fieldId: string): Promise<void> {
+		const response = await apiClient.delete(`/projects/${projectId}/tables/${tableId}/fields/${fieldId}`);
+		if (!response.success) {
+			throw new Error(response.message || 'Failed to delete field');
 		}
 	}
 }

@@ -1,9 +1,12 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import { Handle, Position } from '@xyflow/svelte';
 	import type { TableNode } from '$lib/stores/flow';
 
 	export let data: TableNode['data'];
 	export let selected: boolean = false;
+
+	const dispatch = createEventDispatcher();
 
 	// Icons for different field types and constraints
 	function getFieldIcon(field: any) {
@@ -23,6 +26,12 @@
 			'DECIMAL': 'text-indigo-600'
 		};
 		return typeColors[type] || 'text-gray-500';
+	}
+
+	// Handle add field button click
+	function handleAddField(event: MouseEvent) {
+		event.stopPropagation(); // Prevent node selection
+		dispatch('addField', { tableId: data.id, tableName: data.name });
 	}
 </script>
 
@@ -101,7 +110,10 @@
 
 	<!-- Add Field Button -->
 	<div class="table-footer p-2 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-		<button class="add-field-btn w-full text-sm text-gray-600 hover:text-gray-800 py-1 px-2 rounded hover:bg-gray-100 transition-colors">
+		<button
+			class="add-field-btn w-full text-sm text-gray-600 hover:text-gray-800 py-1 px-2 rounded hover:bg-gray-100 transition-colors"
+			on:click={handleAddField}
+		>
 			+ Add Field
 		</button>
 	</div>

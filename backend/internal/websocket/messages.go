@@ -97,6 +97,7 @@ type FieldPayload struct {
 	IsPrimary  bool      `json:"is_primary"`
 	IsNullable bool      `json:"is_nullable"`
 	Default    *string   `json:"default,omitempty"`
+	Position   int       `json:"position"`
 }
 
 type RelationshipPayload struct {

@@ -256,6 +256,7 @@ func (s *CollaborationSessionService) NotifyFieldCreated(projectID uuid.UUID, fi
 		IsPrimary:  field.IsPrimaryKey,
 		IsNullable: field.IsNullable,
 		Default:    &field.DefaultValue,
+		Position:   field.Position,
 	}
 
 	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeFieldCreated, payload, senderUserID)
@@ -271,6 +272,7 @@ func (s *CollaborationSessionService) NotifyFieldUpdated(projectID uuid.UUID, fi
 		IsPrimary:  field.IsPrimaryKey,
 		IsNullable: field.IsNullable,
 		Default:    &field.DefaultValue,
+		Position:   field.Position,
 	}
 
 	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeFieldUpdated, payload, senderUserID)

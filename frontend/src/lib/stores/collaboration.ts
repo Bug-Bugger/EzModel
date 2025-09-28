@@ -183,6 +183,10 @@ function createCollaborationStore() {
   function handleWebSocketMessage(message: any) {
     console.log("🔄 WebSocket message received:", message.type, message);
 
+    // Check if this message is from the current user to prevent duplicate updates
+    const currentUser = get(authStore).user;
+    const isOwnMessage = currentUser && message.user_id === currentUser.id;
+
     switch (message.type) {
       case "user_joined":
         // Handle backend UserJoinedPayload structure
@@ -360,26 +364,29 @@ function createCollaborationStore() {
       case "field_created":
         // Handle field creation - add field to table and create activity
         if (message.data.table_id && message.data.field_id) {
-          // Use backend field data structure directly
-          const fieldData = {
-            id: message.data.field_id,
-            table_id: message.data.table_id,
-            name: message.data.name,
-            data_type: message.data.type,
-            is_primary_key: message.data.is_primary || false,
-            is_nullable: message.data.is_nullable,
-            default_value: message.data.default || "",
-            position: message.data.position || 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          };
+          // Only update local state if this is NOT from the current user (prevent duplicates)
+          if (!isOwnMessage) {
+            // Use backend field data structure directly
+            const fieldData = {
+              id: message.data.field_id,
+              table_id: message.data.table_id,
+              name: message.data.name,
+              data_type: message.data.type,
+              is_primary_key: message.data.is_primary || false,
+              is_nullable: message.data.is_nullable,
+              default_value: message.data.default || "",
+              position: message.data.position || 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            };
 
-          // Update the table's fields in the flow store
-          const currentNodes = get(flowStore).nodes;
-          const tableNode = currentNodes.find(node => node.id === message.data.table_id);
-          if (tableNode) {
-            const updatedFields = [...tableNode.data.fields, fieldData];
-            flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+            // Update the table's fields in the flow store
+            const currentNodes = get(flowStore).nodes;
+            const tableNode = currentNodes.find(node => node.id === message.data.table_id);
+            if (tableNode) {
+              const updatedFields = [...tableNode.data.fields, fieldData];
+              flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+            }
           }
         }
 
@@ -406,25 +413,28 @@ function createCollaborationStore() {
       case "field_updated":
         // Handle field update - update field in table and create activity
         if (message.data.table_id && message.data.field_id) {
-          // Use backend field data structure directly
-          const fieldUpdates = {
-            name: message.data.name,
-            data_type: message.data.type,
-            is_primary_key: message.data.is_primary || false,
-            is_nullable: message.data.is_nullable,
-            default_value: message.data.default || "",
-            position: message.data.position || 0,
-            updated_at: new Date().toISOString()
-          };
+          // Only update local state if this is NOT from the current user (prevent duplicates)
+          if (!isOwnMessage) {
+            // Use backend field data structure directly
+            const fieldUpdates = {
+              name: message.data.name,
+              data_type: message.data.type,
+              is_primary_key: message.data.is_primary || false,
+              is_nullable: message.data.is_nullable,
+              default_value: message.data.default || "",
+              position: message.data.position || 0,
+              updated_at: new Date().toISOString()
+            };
 
-          // Update the field in the flow store
-          const currentNodes = get(flowStore).nodes;
-          const tableNode = currentNodes.find(node => node.id === message.data.table_id);
-          if (tableNode) {
-            const updatedFields = tableNode.data.fields.map(field =>
-              field.id === message.data.field_id ? { ...field, ...fieldUpdates } : field
-            );
-            flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+            // Update the field in the flow store
+            const currentNodes = get(flowStore).nodes;
+            const tableNode = currentNodes.find(node => node.id === message.data.table_id);
+            if (tableNode) {
+              const updatedFields = tableNode.data.fields.map(field =>
+                field.id === message.data.field_id ? { ...field, ...fieldUpdates } : field
+              );
+              flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+            }
           }
         }
 
@@ -451,12 +461,15 @@ function createCollaborationStore() {
       case "field_deleted":
         // Handle field deletion - remove field from table and create activity
         if (message.data.table_id && message.data.field_id) {
-          // Remove the field from the flow store
-          const currentNodes = get(flowStore).nodes;
-          const tableNode = currentNodes.find(node => node.id === message.data.table_id);
-          if (tableNode) {
-            const updatedFields = tableNode.data.fields.filter(field => field.id !== message.data.field_id);
-            flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+          // Only update local state if this is NOT from the current user (prevent duplicates)
+          if (!isOwnMessage) {
+            // Remove the field from the flow store
+            const currentNodes = get(flowStore).nodes;
+            const tableNode = currentNodes.find(node => node.id === message.data.table_id);
+            if (tableNode) {
+              const updatedFields = tableNode.data.fields.filter(field => field.id !== message.data.field_id);
+              flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+            }
           }
         }
 

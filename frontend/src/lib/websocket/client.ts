@@ -53,10 +53,25 @@ export class WebSocketClient {
 
 				this.ws.onmessage = (event) => {
 					try {
-						const message: WebSocketMessage = JSON.parse(event.data);
-						this.config.onMessage(message);
+						// Debug logging to see raw message content
+						console.log('Raw WebSocket message:', event.data);
+						console.log('Message length:', event.data.length);
+
+						// Handle newline-separated JSON messages from backend
+						const messages = event.data.trim().split('\n').filter((line: string) => line.trim());
+
+						for (const messageText of messages) {
+							try {
+								const message: WebSocketMessage = JSON.parse(messageText);
+								this.config.onMessage(message);
+							} catch (parseError) {
+								console.error('Failed to parse individual message:', parseError);
+								console.error('Message text:', messageText);
+							}
+						}
 					} catch (error) {
-						console.error('Failed to parse WebSocket message:', error);
+						console.error('Failed to handle WebSocket message:', error);
+						console.error('Raw data:', event.data);
 					}
 				};
 

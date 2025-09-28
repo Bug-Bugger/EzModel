@@ -210,6 +210,28 @@ function createFlowStore() {
 			}));
 		},
 
+		// Add table node from external source (collaboration)
+		addTableNodeFromExternal(tableData: any, position: Position) {
+			const newNode: TableNode = {
+				id: tableData.id,
+				type: 'table',
+				position: position,
+				data: {
+					id: tableData.id,
+					name: tableData.name,
+					fields: tableData.fields || [],
+					position: position
+				}
+			};
+
+			update(state => ({
+				...state,
+				nodes: [...state.nodes, newNode]
+			}));
+
+			return newNode;
+		},
+
 		// Remove table node with API integration
 		async removeTableNode(projectId: string, nodeId: string): Promise<void> {
 			try {

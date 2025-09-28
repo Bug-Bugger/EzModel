@@ -262,12 +262,13 @@
 				finalPosition
 			);
 
-			// Send collaboration event with the created table
-			collaborationStore.sendSchemaEvent('table_create', {
+			// Send collaboration event with essential table data
+			collaborationStore.sendSchemaEvent('table_created', {
 				id: tableNode.id,
 				name: tableNode.data.name,
 				pos_x: finalPosition.x,
-				pos_y: finalPosition.y
+				pos_y: finalPosition.y,
+				fields: tableNode.data.fields
 			});
 
 			// Select the new table for editing
@@ -511,7 +512,7 @@
 							$projectStore.currentProject.id,
 							$flowStore.selectedNode.id
 						);
-						collaborationStore.sendSchemaEvent('table_delete', {
+						collaborationStore.sendSchemaEvent('table_deleted', {
 							id: $flowStore.selectedNode.id,
 							name: $flowStore.selectedNode.data.name
 						});

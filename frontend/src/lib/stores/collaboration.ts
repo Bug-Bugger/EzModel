@@ -27,9 +27,9 @@ export interface ActivityEvent {
   userName: string;
   type:
     | "user_joined"
-    | "table_create"
+    | "table_created"
     | "table_update"
-    | "table_delete"
+    | "table_deleted"
     | "field_create"
     | "field_update"
     | "field_delete"
@@ -251,9 +251,38 @@ function createCollaborationStore() {
         });
         break;
 
-      case "table_create":
+      case "table_created":
+        // Handle table creation - add table to canvas and create activity
+        if (message.data.id && message.data.name && message.data.pos_x !== undefined && message.data.pos_y !== undefined) {
+          // Add table to canvas using the flow store
+          flowStore.addTableNodeFromExternal(message.data, {
+            x: message.data.pos_x,
+            y: message.data.pos_y
+          });
+        }
+
+        // Create activity event for table creation
+        update((state) => {
+          const userName = getUsernameFromId(message.user_id, state);
+          const newEvent: ActivityEvent = {
+            id: crypto.randomUUID(),
+            type: message.type,
+            userId: message.user_id,
+            userName: userName,
+            message: generateActivityMessage(message.type, message.data),
+            data: message.data,
+            timestamp: Date.now(),
+          };
+
+          return {
+            ...state,
+            activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+          };
+        });
+        break;
+
       case "table_update":
-      case "table_delete":
+      case "table_deleted":
       case "field_create":
       case "field_update":
       case "field_delete":
@@ -342,11 +371,11 @@ function createCollaborationStore() {
 
   function generateActivityMessage(type: string, data: any): string {
     switch (type) {
-      case "table_create":
+      case "table_created":
         return `created table "${data.name}"`;
       case "table_update":
         return `updated table "${data.name}"`;
-      case "table_delete":
+      case "table_deleted":
         return `deleted table "${data.name}"`;
       case "field_create":
         return `added field "${data.name}" to "${data.table_name}"`;

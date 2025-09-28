@@ -4,6 +4,7 @@ import {
   createCollaborationClient,
   type WebSocketClient,
 } from "../websocket/client";
+import { flowStore } from "./flow";
 
 export interface CollaboratorCursor {
   x: number; // Global coordinates
@@ -259,6 +260,40 @@ function createCollaborationStore() {
           message: generateActivityMessage(message.type, message.data),
           data: message.data,
         });
+        break;
+
+      case "table_updated":
+        // Handle table position updates from other users
+        if (message.data.table_id && message.data.x !== undefined && message.data.y !== undefined) {
+          // Update table position using static import
+          flowStore.updateTablePositionFromExternal(message.data.table_id, {
+            x: message.data.x,
+            y: message.data.y
+          });
+
+          // No activity event for real-time position updates during dragging
+          // Activity events will be created only on drag completion
+        }
+        break;
+
+      case "table_moved":
+        // Handle final table position after drag completion
+        if (message.data.table_id && message.data.x !== undefined && message.data.y !== undefined) {
+          // Update table position using static import
+          flowStore.updateTablePositionFromExternal(message.data.table_id, {
+            x: message.data.x,
+            y: message.data.y
+          });
+
+          // Add activity event for completed table move
+          addActivityEvent({
+            type: "table_update", // Use existing activity type for consistency
+            userId: message.user_id,
+            userName: message.user_name || "Unknown User",
+            message: `moved table "${message.data.name || 'Unknown Table'}"`,
+            data: message.data,
+          });
+        }
         break;
 
       default:

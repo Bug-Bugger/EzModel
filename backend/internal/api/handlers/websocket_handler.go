@@ -41,6 +41,7 @@ type WebSocketHandler struct {
 	jwtService     services.JWTServiceInterface
 	userService    services.UserServiceInterface
 	projectService services.ProjectServiceInterface
+	tableService   services.TableServiceInterface
 }
 
 func NewWebSocketHandler(
@@ -48,12 +49,14 @@ func NewWebSocketHandler(
 	jwtService services.JWTServiceInterface,
 	userService services.UserServiceInterface,
 	projectService services.ProjectServiceInterface,
+	tableService services.TableServiceInterface,
 ) *WebSocketHandler {
 	return &WebSocketHandler{
 		hub:            hub,
 		jwtService:     jwtService,
 		userService:    userService,
 		projectService: projectService,
+		tableService:   tableService,
 	}
 }
 
@@ -281,6 +284,10 @@ func (h *WebSocketHandler) handleMessage(client *websocketPkg.Client, message *w
 		h.handlePong(client, message)
 	case websocketPkg.MessageTypeCanvasUpdated:
 		h.handleCanvasUpdate(client, message)
+	case websocketPkg.MessageTypeTableUpdated:
+		h.handleTableUpdate(client, message)
+	case websocketPkg.MessageTypeTableMoved:
+		h.handleTableUpdate(client, message)
 	default:
 		// For other message types, broadcast to all clients in the project
 		h.hub.BroadcastToProject(client.ProjectID, message, client)
@@ -351,6 +358,28 @@ func (h *WebSocketHandler) handleCanvasUpdate(client *websocketPkg.Client, messa
 	h.hub.BroadcastToProject(client.ProjectID, message, client)
 }
 
+// handleTableUpdate processes table position update messages
+func (h *WebSocketHandler) handleTableUpdate(client *websocketPkg.Client, message *websocketPkg.WebSocketMessage) {
+	var payload websocketPkg.TablePayload
+	if err := message.UnmarshalData(&payload); err != nil {
+		log.Printf("Error unmarshaling table payload: %v", err)
+		return
+	}
+
+	log.Printf("Table position update received: table_id=%s, position=(%f, %f)",
+		payload.TableID, payload.X, payload.Y)
+
+	// Update table position in database asynchronously
+	go func() {
+		if err := h.updateTablePosition(client.ProjectID, payload.TableID, payload.X, payload.Y); err != nil {
+			log.Printf("Error updating table position: %v", err)
+		}
+	}()
+
+	// Broadcast to other clients in the project
+	h.hub.BroadcastToProject(client.ProjectID, message, client)
+}
+
 // updateProjectCanvasData updates the canvas data in the database
 func (h *WebSocketHandler) updateProjectCanvasData(projectID uuid.UUID, canvasData string) error {
 	// Use the project service to update canvas data
@@ -358,6 +387,12 @@ func (h *WebSocketHandler) updateProjectCanvasData(projectID uuid.UUID, canvasDa
 		CanvasData: &canvasData,
 	})
 	return err
+}
+
+// updateTablePosition updates a table's position in the database
+func (h *WebSocketHandler) updateTablePosition(projectID, tableID uuid.UUID, x, y float64) error {
+	// Use the table service to update table position
+	return h.tableService.UpdateTablePosition(tableID, x, y)
 }
 
 // generateRandomColor generates a random hex color for user identification

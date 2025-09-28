@@ -50,6 +50,46 @@
 	// Instructions text based on current tool and state
 	$: instructionText = getInstructionText($designerStore.toolbar.selectedTool, relationshipCreation.isActive, relationshipCreation.firstTableName);
 
+	// Proper throttling for real-time position broadcasts
+	let lastBroadcastTime = 0;
+	let pendingBroadcastData: { nodeId: string; position: { x: number; y: number }; tableName: string } | null = null;
+	let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
+	const BROADCAST_THROTTLE_MS = 50; // ~20 FPS for smooth collaboration
+
+	function broadcastNow() {
+		if (pendingBroadcastData) {
+			// Send collaboration event with proper TablePayload structure
+			collaborationStore.sendSchemaEvent('table_updated', {
+				table_id: pendingBroadcastData.nodeId,
+				name: pendingBroadcastData.tableName,
+				x: pendingBroadcastData.position.x,
+				y: pendingBroadcastData.position.y
+			});
+
+			lastBroadcastTime = Date.now();
+			pendingBroadcastData = null;
+			broadcastTimer = null;
+		}
+	}
+
+	function throttledBroadcastPosition(nodeId: string, position: { x: number; y: number }, tableName: string) {
+		const now = Date.now();
+		const timeSinceLastBroadcast = now - lastBroadcastTime;
+
+		// Always store the latest position data
+		pendingBroadcastData = { nodeId, position, tableName };
+
+		if (timeSinceLastBroadcast >= BROADCAST_THROTTLE_MS) {
+			// Enough time has passed, broadcast immediately
+			broadcastNow();
+		} else if (!broadcastTimer) {
+			// Schedule broadcast for the remaining time
+			const delay = BROADCAST_THROTTLE_MS - timeSinceLastBroadcast;
+			broadcastTimer = setTimeout(broadcastNow, delay);
+		}
+		// If timer is already running, we just updated pendingBroadcastData with latest position
+	}
+
 	function getInstructionText(tool: string, relationshipActive: boolean, firstTableName: string | null): string | null {
 		switch (tool) {
 			case 'table':
@@ -336,6 +376,27 @@
 		console.log('Relationship creation cancelled');
 	}
 
+	// Handle real-time node dragging for collaboration
+	function onNodeDrag(event: any) {
+		if (!$projectStore.currentProject) {
+			return;
+		}
+
+		// SvelteFlow drag events use targetNode structure
+		const node = event.targetNode;
+
+		if (!node || !node.id || !node.position) {
+			return;
+		}
+
+		// Get table name for the broadcast
+		const tableData = displayNodes.find(n => n.id === node.id)?.data;
+		const tableName = tableData?.name || 'Unknown Table';
+
+		// Broadcast position in real-time (throttled)
+		throttledBroadcastPosition(node.id, node.position, tableName);
+	}
+
 	// Handle node drag end to save position
 	async function onNodeDragStop(event: any) {
 		if (!$projectStore.currentProject) {
@@ -370,6 +431,26 @@
 		try {
 			console.log('SAVE DEBUG: Starting position save process...');
 
+			// Clear any pending broadcast timer and send final position
+			if (broadcastTimer) {
+				clearTimeout(broadcastTimer);
+				broadcastTimer = null;
+			}
+
+			// Send final position broadcast for real-time updates
+			if (pendingBroadcastData) {
+				broadcastNow();
+			}
+
+			// Send separate "table moved" event for activity logging
+			const tableData = displayNodes.find(n => n.id === node.id)?.data;
+			collaborationStore.sendSchemaEvent('table_moved', {
+				table_id: node.id,
+				name: tableData?.name || 'Unknown Table',
+				x: position.x,
+				y: position.y
+			});
+
 			// Update position in backend and local store
 			console.log('SAVE DEBUG: Calling updateTablePosition...');
 			await flowStore.updateTablePosition(
@@ -379,11 +460,7 @@
 			);
 			console.log('SAVE DEBUG: updateTablePosition completed');
 
-			// Send collaboration event
-			collaborationStore.sendSchemaEvent('table_update', {
-				id: node.id,
-				position: position
-			});
+			// Final position already sent by broadcastNow() above
 
 			// Auto-save canvas data
 			console.log('SAVE DEBUG: Getting canvas data...');
@@ -457,6 +534,13 @@
 			window.removeEventListener('keydown', handleKeydown);
 			window.removeEventListener('resize', handleResize);
 
+			// Clean up throttle timer and reset state
+			if (broadcastTimer) {
+				clearTimeout(broadcastTimer);
+				broadcastTimer = null;
+			}
+			pendingBroadcastData = null;
+			lastBroadcastTime = 0;
 		};
 	});
 </script>
@@ -477,6 +561,7 @@
 		onedgeclick={onEdgeClick}
 		onpaneclick={onPaneClick}
 		onmove={onMove}
+		onnodedrag={onNodeDrag}
 		onnodedragstop={onNodeDragStop}
 	>
 		<!-- Hook manager component - provides hook access to parent -->

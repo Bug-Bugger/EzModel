@@ -31,7 +31,7 @@ func SetupRoutes(
 	fieldHandler := handlers.NewFieldHandler(fieldService)
 	relationshipHandler := handlers.NewRelationshipHandler(relationshipService)
 	collaborationHandler := handlers.NewCollaborationHandler(collaborationService)
-	websocketHandler := handlers.NewWebSocketHandler(websocketHub, jwtService, userService, projectService)
+	websocketHandler := handlers.NewWebSocketHandler(websocketHub, jwtService, userService, projectService, tableService)
 
 	// Mount all API routes under /api prefix
 	r.Route("/api", func(r chi.Router) {

@@ -21,12 +21,13 @@ import (
 
 type WebSocketHandlerTestSuite struct {
 	suite.Suite
-	handler         *WebSocketHandler
-	hub             *websocketPkg.Hub
-	mockJWTService  *mockService.MockJWTService
-	mockUserService *mockService.MockUserService
-	mockProjService *mockService.MockProjectService
-	upgrader        websocket.Upgrader
+	handler          *WebSocketHandler
+	hub              *websocketPkg.Hub
+	mockJWTService   *mockService.MockJWTService
+	mockUserService  *mockService.MockUserService
+	mockProjService  *mockService.MockProjectService
+	mockTableService *mockService.MockTableService
+	upgrader         websocket.Upgrader
 }
 
 func (suite *WebSocketHandlerTestSuite) SetupTest() {
@@ -36,12 +37,14 @@ func (suite *WebSocketHandlerTestSuite) SetupTest() {
 	suite.mockJWTService = new(mockService.MockJWTService)
 	suite.mockUserService = new(mockService.MockUserService)
 	suite.mockProjService = new(mockService.MockProjectService)
+	suite.mockTableService = new(mockService.MockTableService)
 
 	suite.handler = NewWebSocketHandler(
 		suite.hub,
 		suite.mockJWTService,
 		suite.mockUserService,
 		suite.mockProjService,
+		suite.mockTableService,
 	)
 
 	suite.upgrader = websocket.Upgrader{
@@ -409,8 +412,9 @@ func BenchmarkWebSocketHandlerAuthentication(b *testing.B) {
 	mockJWTService := new(mockService.MockJWTService)
 	mockUserService := new(mockService.MockUserService)
 	mockProjService := new(mockService.MockProjectService)
+	mockTableService := new(mockService.MockTableService)
 
-	handler := NewWebSocketHandler(hub, mockJWTService, mockUserService, mockProjService)
+	handler := NewWebSocketHandler(hub, mockJWTService, mockUserService, mockProjService, mockTableService)
 
 	userID := uuid.New()
 	token := "test-token"

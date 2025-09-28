@@ -194,6 +194,22 @@ function createFlowStore() {
 			}
 		},
 
+		// Update table position from external source (collaboration)
+		updateTablePositionFromExternal(nodeId: string, position: Position) {
+			update(state => ({
+				...state,
+				nodes: state.nodes.map(node =>
+					node.id === nodeId
+						? {
+							...node,
+							position,
+							data: { ...node.data, position }
+						}
+						: node
+				)
+			}));
+		},
+
 		// Remove table node with API integration
 		async removeTableNode(projectId: string, nodeId: string): Promise<void> {
 			try {

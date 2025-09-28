@@ -20,6 +20,7 @@ const (
 	// Schema modification events
 	MessageTypeTableCreated MessageType = "table_created"
 	MessageTypeTableUpdated MessageType = "table_updated"
+	MessageTypeTableMoved   MessageType = "table_moved"
 	MessageTypeTableDeleted MessageType = "table_deleted"
 	MessageTypeFieldCreated MessageType = "field_created"
 	MessageTypeFieldUpdated MessageType = "field_updated"

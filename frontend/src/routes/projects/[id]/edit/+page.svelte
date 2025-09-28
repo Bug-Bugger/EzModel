@@ -89,7 +89,7 @@
 			// Clear existing flow state
 			flowStore.clear();
 
-			// Reconstruct table nodes from backend data
+			// Reconstruct table nodes from backend data with field loading
 			console.log('DEBUG: Starting table reconstruction...');
 			for (const table of tables) {
 				const savedPosition = savedPositions[table.id];
@@ -107,11 +107,22 @@
 					usingRandomPosition: !savedPosition
 				});
 
+				// Load field data for this table since backend doesn't include it
+				let tableFields = [];
+				try {
+					tableFields = await projectService.getTableFields(projectId, table.id);
+					console.log(`DEBUG: Loaded ${tableFields.length} fields for table "${table.name}"`);
+				} catch (error) {
+					console.warn(`Failed to load fields for table "${table.name}":`, error);
+					// If no fields exist yet, create a default ID field
+					tableFields = [];
+				}
+
 				// Convert backend table to frontend table node format
 				const tableData = {
 					id: table.id,
 					name: table.name,
-					fields: table.fields || [] // Use fields from backend if available
+					fields: tableFields
 				};
 
 				flowStore.addLocalTableNode(tableData, position);
@@ -243,7 +254,7 @@
 			<!-- Live Cursors are now rendered inside DatabaseCanvas/SvelteFlow -->
 
 			<!-- Debug Info -->
-			<div class="absolute top-4 left-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs font-mono z-50">
+			<div class="absolute top-8 left-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs font-mono z-50">
 				<div>Connected Users: {$collaborationStore.connectedUsers.length}</div>
 				<div>Users with cursors: {$collaborationStore.connectedUsers.filter(u => u.cursor).length}</div>
 

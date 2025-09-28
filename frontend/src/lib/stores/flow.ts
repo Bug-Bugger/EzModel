@@ -82,7 +82,7 @@ function createFlowStore() {
 		},
 
 		// Save current canvas state
-		getCanvasData() {
+		getCurrentCanvasData(): string {
 			let currentState: FlowState;
 			const unsubscribe = subscribe(state => currentState = state);
 			unsubscribe();
@@ -308,10 +308,6 @@ function createFlowStore() {
 			}));
 		},
 
-		// Get current canvas data for saving
-		getCurrentCanvasData(): string {
-			return this.getCanvasData();
-		},
 
 		// Clear all data
 		clear() {

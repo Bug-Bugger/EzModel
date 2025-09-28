@@ -115,6 +115,14 @@ export class ProjectService {
 		}
 	}
 
+	async getTableFields(projectId: string, tableId: string): Promise<any[]> {
+		const response = await apiClient.get<any[]>(`/projects/${projectId}/tables/${tableId}/fields`);
+		if (response.success && response.data) {
+			return response.data;
+		}
+		return [];
+	}
+
 	async updateProjectCanvasData(projectId: string, canvasData: string): Promise<void> {
 		const response = await apiClient.put(`/projects/${projectId}`, { canvas_data: canvasData });
 		if (!response.success) {

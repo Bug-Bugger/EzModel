@@ -35,6 +35,9 @@
 	$: selectedNode = $flowStore.selectedNode;
 	$: selectedEdge = $flowStore.selectedEdge;
 
+	// Explicit reactive tracking for fields to ensure UI updates
+	$: tableFields = selectedNode?.data?.fields || [];
+
 	// Form data
 	let tableName = '';
 	let fieldName = '';
@@ -89,7 +92,7 @@
 				is_primary_key: isPrimary,
 				is_nullable: !isRequired, // Convert frontend "required" to backend "nullable" (inverse)
 				default_value: defaultValue || '',
-				position: selectedNode.data.fields.length
+				position: tableFields.length
 			};
 
 			// Create via API using backend format
@@ -224,7 +227,7 @@
 			<div class="mb-6">
 				<h4 class="text-sm font-medium text-gray-700 mb-3">Fields</h4>
 				<div class="space-y-2 max-h-40 overflow-y-auto">
-					{#each (selectedNode.data.fields || []) as field}
+					{#each tableFields as field}
 						<div class="field-item bg-gray-50 p-3 rounded border">
 							<div class="flex items-center justify-between mb-2">
 								<span class="font-medium text-gray-900">{field.name}</span>

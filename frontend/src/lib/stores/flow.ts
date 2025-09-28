@@ -157,14 +157,24 @@ function createFlowStore() {
 
 		// Update table node locally
 		updateTableNode(nodeId: string, updates: Partial<TableNode['data']>) {
-			update(state => ({
-				...state,
-				nodes: state.nodes.map(node =>
+			update(state => {
+				const updatedNodes = state.nodes.map(node =>
 					node.id === nodeId
 						? { ...node, data: { ...node.data, ...updates } }
 						: node
-				)
-			}));
+				);
+
+				// Update selectedNode if it's the updated node to ensure proper reactivity
+				const updatedSelectedNode = state.selectedNode?.id === nodeId
+					? updatedNodes.find(n => n.id === nodeId) || null
+					: state.selectedNode;
+
+				return {
+					...state,
+					nodes: updatedNodes,
+					selectedNode: updatedSelectedNode
+				};
+			});
 		},
 
 		// Update table position with API integration

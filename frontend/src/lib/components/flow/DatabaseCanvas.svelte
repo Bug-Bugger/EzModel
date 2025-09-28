@@ -159,12 +159,16 @@
 
 	// Handle viewport changes
 	function onMove(event: any) {
-		const viewport = event.detail.viewport;
-		flowStore.updateViewport(viewport);
-		designerStore.setZoom(viewport.zoom);
+		const viewport = event.detail?.viewport;
 
-		// Update container bounds when viewport changes (pan/zoom)
-		updateContainerBounds();
+		// Ensure viewport is valid before processing
+		if (viewport && typeof viewport.zoom === 'number' && isFinite(viewport.zoom)) {
+			flowStore.updateViewport(viewport);
+			designerStore.setZoom(viewport.zoom);
+
+			// Update container bounds when viewport changes (pan/zoom)
+			updateContainerBounds();
+		}
 	}
 
 	// Handle table creation (extracted from double-click)

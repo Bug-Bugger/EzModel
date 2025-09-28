@@ -1,18 +1,24 @@
 <script lang="ts">
-	import { useSvelteFlow, useNodes, useNodesInitialized } from '@xyflow/svelte';
-	import { createEventDispatcher } from 'svelte';
+	import { useSvelteFlow, useNodesInitialized } from '@xyflow/svelte';
 
-	const dispatch = createEventDispatcher();
+	// Removed deprecated createEventDispatcher - not needed for current functionality
 
 	// SvelteFlow hooks - safe to use inside SvelteFlow context
 	const { screenToFlowPosition, getViewport } = useSvelteFlow();
-	const nodes = useNodes();
 	const nodesInitialized = useNodesInitialized();
 
 	// Export coordinate conversion function
 	export function convertScreenToFlow(screenX: number, screenY: number) {
 		if (screenToFlowPosition) {
-			return screenToFlowPosition({ x: screenX, y: screenY });
+			try {
+				const result = screenToFlowPosition({ x: screenX, y: screenY });
+				// Ensure the result is valid before returning
+				if (result && isFinite(result.x) && isFinite(result.y)) {
+					return result;
+				}
+			} catch (error) {
+				console.warn('Error in screenToFlowPosition:', error);
+			}
 		}
 		return { x: screenX, y: screenY };
 	}
@@ -25,15 +31,16 @@
 	// Export current viewport
 	export function getCurrentViewport() {
 		if (getViewport) {
-			return getViewport();
+			const viewport = getViewport();
+			// Return the viewport only if it's valid, otherwise return default
+			if (viewport && viewport.zoom !== undefined) {
+				return viewport;
+			}
 		}
 		return { x: 0, y: 0, zoom: 1 };
 	}
 
-	// Dispatch events when important state changes
-	$: if (nodesInitialized) {
-		dispatch('nodes-initialized');
-	}
+	// Removed dispatch functionality - not currently needed
 </script>
 
 <!-- This component is invisible but provides hook access to parent -->

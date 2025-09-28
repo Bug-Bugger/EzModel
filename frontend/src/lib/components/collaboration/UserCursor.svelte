@@ -28,8 +28,8 @@
 	$: if (user.cursor && getViewport) {
 		// Get current viewport to make this reactive to viewport changes
 		const newViewport = getViewport();
-		// Only update if viewport actually changed (avoid infinite loops)
-		if (JSON.stringify(newViewport) !== JSON.stringify(currentViewport)) {
+		// Only update if viewport actually changed and is valid (avoid infinite loops)
+		if (newViewport && newViewport.zoom !== undefined && JSON.stringify(newViewport) !== JSON.stringify(currentViewport)) {
 			currentViewport = newViewport;
 			updateTargetPosition();
 		}
@@ -102,7 +102,10 @@
 	onMount(() => {
 		// Initialize viewport tracking
 		if (getViewport) {
-			currentViewport = getViewport();
+			const initialViewport = getViewport();
+			if (initialViewport && initialViewport.zoom !== undefined) {
+				currentViewport = initialViewport;
+			}
 		}
 		updateTargetPosition();
 

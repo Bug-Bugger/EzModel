@@ -536,6 +536,26 @@
 			updateContainerBounds();
 		}
 
+		// Helper function to check if user is currently editing text
+		function isUserEditingText(): boolean {
+			const activeElement = document.activeElement;
+			if (!activeElement) return false;
+
+			// Check if the active element is an input field, textarea, or content editable
+			const tagName = activeElement.tagName.toLowerCase();
+			const isTextInput = tagName === 'input' || tagName === 'textarea';
+			const isContentEditable = activeElement.getAttribute('contenteditable') === 'true';
+
+			// Also check if it's an input with text type (exclude buttons, checkboxes, etc.)
+			if (tagName === 'input') {
+				const inputType = (activeElement as HTMLInputElement).type;
+				const textInputTypes = ['text', 'email', 'password', 'search', 'tel', 'url'];
+				return textInputTypes.includes(inputType);
+			}
+
+			return isTextInput || isContentEditable;
+		}
+
 		// Set up keyboard shortcuts
 		async function handleKeydown(event: KeyboardEvent) {
 			if (!$projectStore.currentProject) return;
@@ -550,6 +570,11 @@
 			}
 
 			if (event.key === 'Delete' || event.key === 'Backspace') {
+				// Don't delete tables if user is editing text in an input field
+				if (isUserEditingText()) {
+					return; // Allow normal text editing behavior
+				}
+
 				if ($flowStore.selectedNode) {
 					try {
 						await flowStore.removeTableNode(

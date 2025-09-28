@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { designerStore } from '$lib/stores/designer';
-	import { collaborationStore } from '$lib/stores/collaboration';
 	import Button from '../ui/button.svelte';
 
 	// Tool selection

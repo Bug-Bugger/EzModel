@@ -48,7 +48,7 @@ func (r *TableRepository) Delete(id uuid.UUID) error {
 }
 
 func (r *TableRepository) UpdatePosition(id uuid.UUID, posX, posY float64) error {
-	return r.db.Model(&models.Table{}).Where("id = ?", id).Updates(map[string]interface{}{
+	return r.db.Model(&models.Table{}).Where("id = ?", id).Select("pos_x", "pos_y").Updates(map[string]any{
 		"pos_x": posX,
 		"pos_y": posY,
 	}).Error

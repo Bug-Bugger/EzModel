@@ -19,8 +19,8 @@ type UpdateTableRequest struct {
 }
 
 type UpdateTablePositionRequest struct {
-	PosX float64 `json:"pos_x" validate:"required"`
-	PosY float64 `json:"pos_y" validate:"required"`
+	PosX float64 `json:"pos_x"`
+	PosY float64 `json:"pos_y"`
 }
 
 type TableResponse struct {

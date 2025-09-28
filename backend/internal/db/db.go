@@ -45,5 +45,5 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 func isTableExistsError(errorMsg string) bool {
 	errorMsg = strings.ToLower(errorMsg)
 	return strings.Contains(errorMsg, "already exists") ||
-		   strings.Contains(errorMsg, "relation") && strings.Contains(errorMsg, "already exists")
+		strings.Contains(errorMsg, "relation") && strings.Contains(errorMsg, "already exists")
 }

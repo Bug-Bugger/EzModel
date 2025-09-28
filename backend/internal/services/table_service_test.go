@@ -96,12 +96,15 @@ func (suite *TableServiceTestSuite) TestCreateTable_Success() {
 		OwnerID: uuid.New(),
 	}
 
+	userID := uuid.New()
+
 	suite.mockProjectRepo.On("GetByID", projectID).Return(project, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockTableRepo.On("Create", mock.MatchedBy(func(table *models.Table) bool {
 		return table.Name == name && table.ProjectID == projectID && table.PosX == posX && table.PosY == posY
 	})).Return(tableID, nil)
 
-	result, err := suite.service.CreateTable(projectID, name, posX, posY)
+	result, err := suite.service.CreateTable(projectID, name, posX, posY, userID)
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -112,14 +115,16 @@ func (suite *TableServiceTestSuite) TestCreateTable_Success() {
 	suite.Equal(posY, result.PosY)
 
 	suite.mockProjectRepo.AssertExpectations(suite.T())
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockTableRepo.AssertExpectations(suite.T())
 }
 
 // Test CreateTable - Invalid Input (empty name)
 func (suite *TableServiceTestSuite) TestCreateTable_InvalidName() {
 	projectID := uuid.New()
+	userID := uuid.New()
 
-	result, err := suite.service.CreateTable(projectID, "", 100.0, 200.0)
+	result, err := suite.service.CreateTable(projectID, "", 100.0, 200.0, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -129,9 +134,10 @@ func (suite *TableServiceTestSuite) TestCreateTable_InvalidName() {
 // Test CreateTable - Name Too Long
 func (suite *TableServiceTestSuite) TestCreateTable_NameTooLong() {
 	projectID := uuid.New()
+	userID := uuid.New()
 	longName := string(make([]byte, 256))
 
-	result, err := suite.service.CreateTable(projectID, longName, 100.0, 200.0)
+	result, err := suite.service.CreateTable(projectID, longName, 100.0, 200.0, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -141,11 +147,12 @@ func (suite *TableServiceTestSuite) TestCreateTable_NameTooLong() {
 // Test CreateTable - Project Not Found
 func (suite *TableServiceTestSuite) TestCreateTable_ProjectNotFound() {
 	projectID := uuid.New()
+	userID := uuid.New()
 	name := "Test Table"
 
 	suite.mockProjectRepo.On("GetByID", projectID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.CreateTable(projectID, name, 100.0, 200.0)
+	result, err := suite.service.CreateTable(projectID, name, 100.0, 200.0, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -157,6 +164,7 @@ func (suite *TableServiceTestSuite) TestCreateTable_ProjectNotFound() {
 // Test CreateTable - Repository Error on Create
 func (suite *TableServiceTestSuite) TestCreateTable_RepositoryError() {
 	projectID := uuid.New()
+	userID := uuid.New()
 	name := "Test Table"
 
 	project := &models.Project{
@@ -166,15 +174,17 @@ func (suite *TableServiceTestSuite) TestCreateTable_RepositoryError() {
 	}
 
 	suite.mockProjectRepo.On("GetByID", projectID).Return(project, nil)
+	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockTableRepo.On("Create", mock.AnythingOfType("*models.Table")).Return(uuid.Nil, assert.AnError)
 
-	result, err := suite.service.CreateTable(projectID, name, 100.0, 200.0)
+	result, err := suite.service.CreateTable(projectID, name, 100.0, 200.0, userID)
 
 	suite.Error(err)
 	suite.Nil(result)
 	suite.Equal(assert.AnError, err)
 
 	suite.mockProjectRepo.AssertExpectations(suite.T())
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockTableRepo.AssertExpectations(suite.T())
 }
 

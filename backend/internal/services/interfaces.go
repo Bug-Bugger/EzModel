@@ -32,7 +32,7 @@ type ProjectServiceInterface interface {
 }
 
 type TableServiceInterface interface {
-	CreateTable(projectID uuid.UUID, name string, posX, posY float64) (*models.Table, error)
+	CreateTable(projectID uuid.UUID, name string, posX, posY float64, userID uuid.UUID) (*models.Table, error)
 	GetTableByID(id uuid.UUID) (*models.Table, error)
 	GetTablesByProjectID(projectID uuid.UUID) ([]*models.Table, error)
 	UpdateTable(id uuid.UUID, req *dto.UpdateTableRequest) (*models.Table, error)
@@ -71,7 +71,7 @@ type CollaborationSessionServiceInterface interface {
 	// Field collaboration methods
 	NotifyFieldCreated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error
 	NotifyFieldUpdated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error
-	NotifyFieldDeleted(projectID, fieldID uuid.UUID, senderUserID uuid.UUID) error
+	NotifyFieldDeleted(projectID, tableID, fieldID uuid.UUID, senderUserID uuid.UUID) error
 }
 
 type JWTServiceInterface interface {

@@ -58,6 +58,8 @@ func (h *FieldHandler) Create() http.HandlerFunc {
 				responses.RespondWithError(w, http.StatusNotFound, "Table not found")
 			case errors.Is(err, services.ErrInvalidInput):
 				responses.RespondWithError(w, http.StatusBadRequest, "Invalid input")
+			case errors.Is(err, services.ErrForbidden):
+				responses.RespondWithError(w, http.StatusForbidden, "You don't have permission to create fields in this project")
 			default:
 				responses.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 			}

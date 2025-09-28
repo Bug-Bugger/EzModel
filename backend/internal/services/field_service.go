@@ -39,13 +39,22 @@ func (s *FieldService) CreateField(tableID uuid.UUID, req *dto.CreateFieldReques
 		return nil, ErrInvalidInput
 	}
 
-	// Verify table exists and get project ID for collaboration
+	// Verify table exists and get project ID for authorization
 	table, err := s.tableRepo.GetByID(tableID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrTableNotFound
 		}
 		return nil, err
+	}
+
+	// Check authorization
+	canModify, err := s.authService.CanUserModifyProject(userID, table.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if !canModify {
+		return nil, ErrForbidden
 	}
 
 	field := &models.Field{
@@ -165,8 +174,8 @@ func (s *FieldService) DeleteField(id uuid.UUID, userID uuid.UUID) error {
 		return ErrForbidden
 	}
 
-	// Verify field exists
-	_, err = s.fieldRepo.GetByID(id)
+	// Verify field exists and get its table_id
+	field, err := s.fieldRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrFieldNotFound
@@ -181,7 +190,7 @@ func (s *FieldService) DeleteField(id uuid.UUID, userID uuid.UUID) error {
 
 	// Notify collaborators about field deletion
 	if s.collaborationService != nil {
-		if err := s.collaborationService.NotifyFieldDeleted(projectID, id, userID); err != nil {
+		if err := s.collaborationService.NotifyFieldDeleted(projectID, field.TableID, id, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}

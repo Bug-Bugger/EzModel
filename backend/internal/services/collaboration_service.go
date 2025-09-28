@@ -277,9 +277,10 @@ func (s *CollaborationSessionService) NotifyFieldUpdated(projectID uuid.UUID, fi
 }
 
 // NotifyFieldDeleted notifies collaborators about a field deletion
-func (s *CollaborationSessionService) NotifyFieldDeleted(projectID, fieldID uuid.UUID, senderUserID uuid.UUID) error {
+func (s *CollaborationSessionService) NotifyFieldDeleted(projectID, tableID, fieldID uuid.UUID, senderUserID uuid.UUID) error {
 	payload := websocketPkg.FieldPayload{
 		FieldID: fieldID,
+		TableID: tableID,
 	}
 
 	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeFieldDeleted, payload, senderUserID)

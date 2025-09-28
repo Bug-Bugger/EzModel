@@ -118,8 +118,8 @@ func (m *mockCollaborationService) NotifyFieldUpdated(projectID uuid.UUID, field
 	return args.Error(0)
 }
 
-func (m *mockCollaborationService) NotifyFieldDeleted(projectID, fieldID uuid.UUID, senderUserID uuid.UUID) error {
-	args := m.Called(projectID, fieldID, senderUserID)
+func (m *mockCollaborationService) NotifyFieldDeleted(projectID, tableID, fieldID uuid.UUID, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, tableID, fieldID, senderUserID)
 	return args.Error(0)
 }
 
@@ -182,6 +182,7 @@ func (suite *FieldServiceTestSuite) TestCreateField_Success() {
 	}
 
 	suite.mockTableRepo.On("GetByID", tableID).Return(table, nil)
+	suite.mockAuthService.On("CanUserModifyProject", mock.AnythingOfType("uuid.UUID"), table.ProjectID).Return(true, nil)
 	suite.mockFieldRepo.On("Create", mock.MatchedBy(func(field *models.Field) bool {
 		return field.TableID == tableID &&
 			field.Name == "test_field" &&
@@ -208,6 +209,7 @@ func (suite *FieldServiceTestSuite) TestCreateField_Success() {
 	suite.Equal(1, result.Position)
 
 	suite.mockTableRepo.AssertExpectations(suite.T())
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 	suite.mockCollabService.AssertExpectations(suite.T())
 }
@@ -296,6 +298,7 @@ func (suite *FieldServiceTestSuite) TestCreateField_RepositoryError() {
 	}
 
 	suite.mockTableRepo.On("GetByID", tableID).Return(table, nil)
+	suite.mockAuthService.On("CanUserModifyProject", mock.AnythingOfType("uuid.UUID"), table.ProjectID).Return(true, nil)
 	suite.mockFieldRepo.On("Create", mock.AnythingOfType("*models.Field")).Return(uuid.Nil, assert.AnError)
 
 	userID := uuid.New()
@@ -306,6 +309,7 @@ func (suite *FieldServiceTestSuite) TestCreateField_RepositoryError() {
 	suite.Equal(assert.AnError, err)
 
 	suite.mockTableRepo.AssertExpectations(suite.T())
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 }
 
@@ -484,7 +488,7 @@ func (suite *FieldServiceTestSuite) TestDeleteField_Success() {
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(existingField, nil)
 	suite.mockFieldRepo.On("Delete", fieldID).Return(nil)
-	suite.mockCollabService.On("NotifyFieldDeleted", projectID, fieldID, userID).Return(nil)
+	suite.mockCollabService.On("NotifyFieldDeleted", projectID, existingField.TableID, fieldID, userID).Return(nil)
 
 	err := suite.service.DeleteField(fieldID, userID)
 
@@ -581,6 +585,7 @@ func (suite *FieldServiceTestSuite) TestReorderFields_Success() {
 	suite.NoError(err)
 
 	suite.mockTableRepo.AssertExpectations(suite.T())
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 }
 
@@ -625,6 +630,7 @@ func (suite *FieldServiceTestSuite) TestReorderFields_FieldNotFound() {
 	suite.Equal(ErrFieldNotFound, err)
 
 	suite.mockTableRepo.AssertExpectations(suite.T())
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 }
 
@@ -656,5 +662,6 @@ func (suite *FieldServiceTestSuite) TestReorderFields_FieldBelongsToDifferentTab
 	suite.Equal(ErrInvalidInput, err)
 
 	suite.mockTableRepo.AssertExpectations(suite.T())
+	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 }

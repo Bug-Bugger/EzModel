@@ -79,8 +79,24 @@ func (s *AuthorizationService) CanUserModifyProject(userID, projectID uuid.UUID)
 		return false, err
 	}
 
-	// Only owner can modify project
-	return project.OwnerID == userID, nil
+	// Check if user is owner
+	if project.OwnerID == userID {
+		return true, nil
+	}
+
+	// Check if user is collaborator
+	collaboratorProjects, err := s.projectRepo.GetByCollaboratorID(userID)
+	if err != nil {
+		return false, err
+	}
+
+	for _, collabProject := range collaboratorProjects {
+		if collabProject.ID == projectID {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (s *AuthorizationService) CanUserDeleteCollaborationSession(userID, sessionID uuid.UUID) (bool, error) {

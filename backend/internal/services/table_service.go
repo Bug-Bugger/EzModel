@@ -25,7 +25,7 @@ func NewTableService(tableRepo repository.TableRepositoryInterface, projectRepo 
 	}
 }
 
-func (s *TableService) CreateTable(projectID uuid.UUID, name string, posX, posY float64) (*models.Table, error) {
+func (s *TableService) CreateTable(projectID uuid.UUID, name string, posX, posY float64, userID uuid.UUID) (*models.Table, error) {
 	name = strings.TrimSpace(name)
 
 	if len(name) < 1 || len(name) > 255 {
@@ -39,6 +39,15 @@ func (s *TableService) CreateTable(projectID uuid.UUID, name string, posX, posY 
 			return nil, ErrProjectNotFound
 		}
 		return nil, err
+	}
+
+	// Check authorization
+	canModify, err := s.authService.CanUserModifyProject(userID, projectID)
+	if err != nil {
+		return nil, err
+	}
+	if !canModify {
+		return nil, ErrForbidden
 	}
 
 	table := &models.Table{

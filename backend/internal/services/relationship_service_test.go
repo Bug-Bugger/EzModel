@@ -502,6 +502,7 @@ func (suite *RelationshipServiceTestSuite) TestDeleteRelationship_RepositoryErro
 	suite.mockAuthService.On("GetProjectIDFromRelationship", relationshipID).Return(projectID, nil)
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(existingRelationship, nil)
+	suite.mockCollaborationService.On("NotifyRelationshipDeleted", projectID, relationshipID, userID).Return(nil)
 	suite.mockRelationshipRepo.On("Delete", relationshipID).Return(assert.AnError)
 
 	err := suite.service.DeleteRelationship(relationshipID, userID)
@@ -510,5 +511,6 @@ func (suite *RelationshipServiceTestSuite) TestDeleteRelationship_RepositoryErro
 	suite.Equal(assert.AnError, err)
 
 	suite.mockAuthService.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
 }

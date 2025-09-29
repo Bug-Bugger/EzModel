@@ -178,6 +178,7 @@ func (suite *TableServiceTestSuite) TestCreateTable_RepositoryError() {
 
 	suite.mockProjectRepo.On("GetByID", projectID).Return(project, nil)
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
+	suite.mockCollaborationService.On("NotifyTableCreated", projectID, mock.AnythingOfType("*models.Table"), userID).Return(nil)
 	suite.mockTableRepo.On("Create", mock.AnythingOfType("*models.Table")).Return(uuid.Nil, assert.AnError)
 
 	result, err := suite.service.CreateTable(projectID, name, 100.0, 200.0, userID)
@@ -188,6 +189,7 @@ func (suite *TableServiceTestSuite) TestCreateTable_RepositoryError() {
 
 	suite.mockProjectRepo.AssertExpectations(suite.T())
 	suite.mockAuthService.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 	suite.mockTableRepo.AssertExpectations(suite.T())
 }
 
@@ -427,6 +429,7 @@ func (suite *TableServiceTestSuite) TestDeleteTable_RepositoryError() {
 	suite.mockAuthService.On("GetProjectIDFromTable", tableID).Return(projectID, nil)
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockTableRepo.On("GetByID", tableID).Return(existingTable, nil)
+	suite.mockCollaborationService.On("NotifyTableDeleted", projectID, tableID, userID).Return(nil)
 	suite.mockTableRepo.On("Delete", tableID).Return(assert.AnError)
 
 	err := suite.service.DeleteTable(tableID, userID)
@@ -435,5 +438,6 @@ func (suite *TableServiceTestSuite) TestDeleteTable_RepositoryError() {
 	suite.Equal(assert.AnError, err)
 
 	suite.mockAuthService.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 	suite.mockTableRepo.AssertExpectations(suite.T())
 }

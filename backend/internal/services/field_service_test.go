@@ -337,6 +337,7 @@ func (suite *FieldServiceTestSuite) TestCreateField_RepositoryError() {
 
 	suite.mockTableRepo.On("GetByID", tableID).Return(table, nil)
 	suite.mockAuthService.On("CanUserModifyProject", mock.AnythingOfType("uuid.UUID"), table.ProjectID).Return(true, nil)
+	suite.mockCollabService.On("NotifyFieldCreated", table.ProjectID, mock.AnythingOfType("*models.Field"), mock.AnythingOfType("uuid.UUID")).Return(nil)
 	suite.mockFieldRepo.On("Create", mock.AnythingOfType("*models.Field")).Return(uuid.Nil, assert.AnError)
 
 	userID := uuid.New()
@@ -348,6 +349,7 @@ func (suite *FieldServiceTestSuite) TestCreateField_RepositoryError() {
 
 	suite.mockTableRepo.AssertExpectations(suite.T())
 	suite.mockAuthService.AssertExpectations(suite.T())
+	suite.mockCollabService.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 }
 
@@ -579,6 +581,7 @@ func (suite *FieldServiceTestSuite) TestDeleteField_RepositoryError() {
 	suite.mockAuthService.On("GetProjectIDFromField", fieldID).Return(projectID, nil)
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(existingField, nil)
+	suite.mockCollabService.On("NotifyFieldDeleted", projectID, existingField.TableID, fieldID, userID).Return(nil)
 	suite.mockFieldRepo.On("Delete", fieldID).Return(assert.AnError)
 
 	err := suite.service.DeleteField(fieldID, userID)
@@ -587,6 +590,7 @@ func (suite *FieldServiceTestSuite) TestDeleteField_RepositoryError() {
 	suite.Equal(assert.AnError, err)
 
 	suite.mockAuthService.AssertExpectations(suite.T())
+	suite.mockCollabService.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 }
 

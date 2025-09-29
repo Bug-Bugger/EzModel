@@ -97,20 +97,24 @@ func (s *RelationshipService) CreateRelationship(projectID uuid.UUID, req *dto.C
 		RelationType:  relationType,
 	}
 
-	id, err := s.relationshipRepo.Create(relationship)
-	if err != nil {
-		return nil, err
-	}
+	// Generate UUID for the relationship before broadcasting
+	relationship.ID = uuid.New()
 
-	relationship.ID = id
-
-	// Broadcast relationship creation to collaborators
+	// Broadcast relationship creation to collaborators FIRST
 	if s.collaborationService != nil {
 		if err := s.collaborationService.NotifyRelationshipCreated(projectID, relationship, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}
 	}
+
+	// Then persist to database
+	id, err := s.relationshipRepo.Create(relationship)
+	if err != nil {
+		return nil, err
+	}
+
+	relationship.ID = id
 
 	return relationship, nil
 }
@@ -196,16 +200,17 @@ func (s *RelationshipService) UpdateRelationship(id uuid.UUID, req *dto.UpdateRe
 		relationship.RelationType = *req.RelationType
 	}
 
-	if err := s.relationshipRepo.Update(relationship); err != nil {
-		return nil, err
-	}
-
-	// Broadcast relationship update to collaborators
+	// Broadcast relationship update to collaborators FIRST
 	if s.collaborationService != nil {
 		if err := s.collaborationService.NotifyRelationshipUpdated(relationship.ProjectID, relationship, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}
+	}
+
+	// Then persist to database
+	if err := s.relationshipRepo.Update(relationship); err != nil {
+		return nil, err
 	}
 
 	return relationship, nil
@@ -236,17 +241,17 @@ func (s *RelationshipService) DeleteRelationship(id uuid.UUID, userID uuid.UUID)
 		return err
 	}
 
-	// Delete the relationship
-	if err := s.relationshipRepo.Delete(id); err != nil {
-		return err
-	}
-
-	// Notify collaborators about relationship deletion
+	// Notify collaborators about relationship deletion FIRST
 	if s.collaborationService != nil {
 		if err := s.collaborationService.NotifyRelationshipDeleted(projectID, id, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}
+	}
+
+	// Then delete from database
+	if err := s.relationshipRepo.Delete(id); err != nil {
+		return err
 	}
 
 	return nil

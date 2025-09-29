@@ -125,18 +125,19 @@ func (s *ProjectService) UpdateProject(id uuid.UUID, req *dto.UpdateProjectReque
 		// Debug logging for canvas data updates
 		log.Printf("CANVAS DEBUG: Updating canvas data for project %s, data length: %d",
 			project.ID.String(), len(canvasData))
+
+		// Broadcast canvas update to collaborators FIRST if canvas data was changed
+		if s.collaborationService != nil {
+			if err := s.collaborationService.BroadcastCanvasUpdate(id, project.CanvasData, userID); err != nil {
+				// Log error but don't fail the operation
+				// TODO: Add proper logging
+			}
+		}
 	}
 
+	// Then persist to database
 	if err := s.projectRepo.Update(project); err != nil {
 		return nil, err
-	}
-
-	// Broadcast canvas update to collaborators if canvas data was changed
-	if req.CanvasData != nil && s.collaborationService != nil {
-		if err := s.collaborationService.BroadcastCanvasUpdate(id, project.CanvasData, userID); err != nil {
-			// Log error but don't fail the operation
-			// TODO: Add proper logging
-		}
 	}
 
 	return project, nil

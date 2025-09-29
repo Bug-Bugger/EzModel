@@ -59,20 +59,24 @@ func (s *TableService) CreateTable(projectID uuid.UUID, name string, posX, posY 
 		PosY:      posY,
 	}
 
-	id, err := s.tableRepo.Create(table)
-	if err != nil {
-		return nil, err
-	}
+	// Generate UUID for the table before broadcasting
+	table.ID = uuid.New()
 
-	table.ID = id
-
-	// Broadcast table creation to collaborators
+	// Broadcast table creation to collaborators FIRST
 	if s.collaborationService != nil {
 		if err := s.collaborationService.NotifyTableCreated(projectID, table, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}
 	}
+
+	// Then persist to database
+	id, err := s.tableRepo.Create(table)
+	if err != nil {
+		return nil, err
+	}
+
+	table.ID = id
 
 	return table, nil
 }
@@ -118,16 +122,17 @@ func (s *TableService) UpdateTable(id uuid.UUID, req *dto.UpdateTableRequest, us
 		table.PosY = *req.PosY
 	}
 
-	if err := s.tableRepo.Update(table); err != nil {
-		return nil, err
-	}
-
-	// Broadcast table update to collaborators
+	// Broadcast table update to collaborators FIRST
 	if s.collaborationService != nil {
 		if err := s.collaborationService.NotifyTableUpdated(table.ProjectID, table, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}
+	}
+
+	// Then persist to database
+	if err := s.tableRepo.Update(table); err != nil {
+		return nil, err
 	}
 
 	return table, nil
@@ -179,17 +184,17 @@ func (s *TableService) DeleteTable(id uuid.UUID, userID uuid.UUID) error {
 		return err
 	}
 
-	// Delete the table
-	if err := s.tableRepo.Delete(id); err != nil {
-		return err
-	}
-
-	// Notify collaborators about table deletion
+	// Notify collaborators about table deletion FIRST
 	if s.collaborationService != nil {
 		if err := s.collaborationService.NotifyTableDeleted(projectID, id, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}
+	}
+
+	// Then delete from database
+	if err := s.tableRepo.Delete(id); err != nil {
+		return err
 	}
 
 	return nil

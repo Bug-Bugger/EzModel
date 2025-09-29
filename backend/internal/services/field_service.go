@@ -67,20 +67,24 @@ func (s *FieldService) CreateField(tableID uuid.UUID, req *dto.CreateFieldReques
 		Position:     req.Position,
 	}
 
-	id, err := s.fieldRepo.Create(field)
-	if err != nil {
-		return nil, err
-	}
+	// Generate UUID for the field before broadcasting
+	field.ID = uuid.New()
 
-	field.ID = id
-
-	// Broadcast field creation to collaborators
+	// Broadcast field creation to collaborators FIRST
 	if s.collaborationService != nil {
 		if err := s.collaborationService.NotifyFieldCreated(table.ProjectID, field, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}
 	}
+
+	// Then persist to database
+	id, err := s.fieldRepo.Create(field)
+	if err != nil {
+		return nil, err
+	}
+
+	field.ID = id
 
 	return field, nil
 }
@@ -142,17 +146,19 @@ func (s *FieldService) UpdateField(id uuid.UUID, req *dto.UpdateFieldRequest, us
 		field.Position = *req.Position
 	}
 
-	if err := s.fieldRepo.Update(field); err != nil {
-		return nil, err
-	}
-
 	// Get table and project ID for collaboration notification
 	table, err := s.tableRepo.GetByID(field.TableID)
 	if err == nil && s.collaborationService != nil {
+		// Broadcast field update to collaborators FIRST
 		if err := s.collaborationService.NotifyFieldUpdated(table.ProjectID, field, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}
+	}
+
+	// Then persist to database
+	if err := s.fieldRepo.Update(field); err != nil {
+		return nil, err
 	}
 
 	return field, nil
@@ -183,17 +189,17 @@ func (s *FieldService) DeleteField(id uuid.UUID, userID uuid.UUID) error {
 		return err
 	}
 
-	// Delete the field
-	if err := s.fieldRepo.Delete(id); err != nil {
-		return err
-	}
-
-	// Notify collaborators about field deletion
+	// Notify collaborators about field deletion FIRST
 	if s.collaborationService != nil {
 		if err := s.collaborationService.NotifyFieldDeleted(projectID, field.TableID, id, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}
+	}
+
+	// Then delete from database
+	if err := s.fieldRepo.Delete(id); err != nil {
+		return err
 	}
 
 	return nil

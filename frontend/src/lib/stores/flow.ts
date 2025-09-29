@@ -19,14 +19,16 @@ export interface TableNode extends Node {
 }
 
 export interface RelationshipEdge extends Edge {
-	type: 'relationship';
+	type: 'relationship' | 'default'; // Allow default type for testing
+	sourceHandle?: string;
+	targetHandle?: string;
 	data: {
 		id: string;
 		fromTable: string;
 		toTable: string;
 		fromField: string;
 		toField: string;
-		type: 'one-to-one' | 'one-to-many' | 'many-to-many';
+		type: 'one_to_one' | 'one_to_many' | 'many_to_many';
 	};
 }
 
@@ -276,13 +278,49 @@ function createFlowStore() {
 			}));
 		},
 
-		// Add relationship edge
-		addRelationshipEdge(relationship: RelationshipEdge['data']) {
+		// Add relationship edge with API integration
+		async addRelationshipEdge(
+			projectId: string,
+			relationshipData: {
+				source_table_id: string;
+				source_field_id: string;
+				target_table_id: string;
+				target_field_id: string;
+				relation_type: 'one_to_one' | 'one_to_many' | 'many_to_many';
+			}
+		): Promise<RelationshipEdge> {
+			try {
+				// Create via API first
+				const newRelationship = await projectService.createRelationship(projectId, relationshipData);
+
+				// Create the flow edge with backend-generated ID
+				const edgeData = {
+					id: newRelationship.id,
+					fromTable: newRelationship.source_table_id,
+					toTable: newRelationship.target_table_id,
+					fromField: newRelationship.source_field_id,
+					toField: newRelationship.target_field_id,
+					type: newRelationship.relation_type
+				};
+
+				// Add to local store
+				const newEdge = this.addLocalRelationshipEdge(edgeData);
+				return newEdge;
+			} catch (error) {
+				console.error('Failed to create relationship:', error);
+				throw error;
+			}
+		},
+
+		// Add relationship edge without API (for loading existing data)
+		addLocalRelationshipEdge(relationship: RelationshipEdge['data']) {
 			const newEdge: RelationshipEdge = {
 				id: relationship.id,
 				type: 'relationship',
 				source: relationship.fromTable,
 				target: relationship.toTable,
+				sourceHandle: `${relationship.fromTable}-${relationship.fromField}-source`,
+				targetHandle: `${relationship.toTable}-${relationship.toField}-target`,
 				data: relationship
 			};
 
@@ -294,8 +332,50 @@ function createFlowStore() {
 			return newEdge;
 		},
 
-		// Update relationship edge
-		updateRelationshipEdge(edgeId: string, updates: Partial<RelationshipEdge['data']>) {
+		// Update relationship edge with API integration
+		async updateRelationshipEdge(
+			projectId: string,
+			edgeId: string,
+			updates: {
+				relation_type?: 'one_to_one' | 'one_to_many' | 'many_to_many';
+			}
+		): Promise<void> {
+			try {
+				// Update via API first
+				const updatedRelationship = await projectService.updateRelationship(projectId, edgeId, updates);
+
+				// Update local store
+				update(state => ({
+					...state,
+					edges: state.edges.map(edge =>
+						edge.id === edgeId
+							? {
+								...edge,
+								data: {
+									...edge.data,
+									type: updatedRelationship.relation_type
+								}
+							}
+							: edge
+					),
+					selectedEdge: state.selectedEdge?.id === edgeId
+						? {
+							...state.selectedEdge,
+							data: {
+								...state.selectedEdge.data,
+								type: updatedRelationship.relation_type
+							}
+						}
+						: state.selectedEdge
+				}));
+			} catch (error) {
+				console.error('Failed to update relationship:', error);
+				throw error;
+			}
+		},
+
+		// Update relationship edge locally
+		updateLocalRelationshipEdge(edgeId: string, updates: Partial<RelationshipEdge['data']>) {
 			update(state => ({
 				...state,
 				edges: state.edges.map(edge =>
@@ -306,13 +386,56 @@ function createFlowStore() {
 			}));
 		},
 
-		// Remove relationship edge
-		removeRelationshipEdge(edgeId: string) {
+		// Remove relationship edge with API integration
+		async removeRelationshipEdge(projectId: string, edgeId: string): Promise<void> {
+			try {
+				// Delete from backend first
+				await projectService.deleteRelationship(projectId, edgeId);
+
+				// Remove from local store
+				update(state => ({
+					...state,
+					edges: state.edges.filter(edge => edge.id !== edgeId),
+					selectedEdge: state.selectedEdge?.id === edgeId ? null : state.selectedEdge
+				}));
+			} catch (error) {
+				console.error('Failed to delete relationship:', error);
+				throw error;
+			}
+		},
+
+		// Remove relationship edge locally (for optimistic updates)
+		removeLocalRelationshipEdge(edgeId: string) {
 			update(state => ({
 				...state,
 				edges: state.edges.filter(edge => edge.id !== edgeId),
 				selectedEdge: state.selectedEdge?.id === edgeId ? null : state.selectedEdge
 			}));
+		},
+
+		// Load relationships from backend and convert to frontend format
+		async loadProjectRelationships(projectId: string): Promise<void> {
+			try {
+				const relationships = await projectService.getProjectRelationships(projectId);
+
+				// Convert backend format to frontend format and add to store
+				for (const rel of relationships) {
+					const edgeData = {
+						id: rel.id,
+						fromTable: rel.source_table_id,
+						toTable: rel.target_table_id,
+						fromField: rel.source_field_id,
+						toField: rel.target_field_id,
+						type: rel.relation_type
+					};
+					this.addLocalRelationshipEdge(edgeData);
+				}
+
+				console.log(`Loaded ${relationships.length} relationships for project ${projectId}`);
+			} catch (error) {
+				console.error('Failed to load project relationships:', error);
+				throw error;
+			}
 		},
 
 		// Select node
@@ -345,6 +468,11 @@ function createFlowStore() {
 		// Clear all data
 		clear() {
 			set(initialState);
+		},
+
+		// Force reactivity update
+		forceUpdate() {
+			update(state => ({ ...state }));
 		}
 	};
 }

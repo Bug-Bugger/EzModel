@@ -27,9 +27,9 @@ const (
 	MessageTypeFieldDeleted MessageType = "field_deleted"
 
 	// Relationship events
-	MessageTypeRelationshipCreated MessageType = "relationship_created"
-	MessageTypeRelationshipUpdated MessageType = "relationship_updated"
-	MessageTypeRelationshipDeleted MessageType = "relationship_deleted"
+	MessageTypeRelationshipCreated MessageType = "relationship_create"
+	MessageTypeRelationshipUpdated MessageType = "relationship_update"
+	MessageTypeRelationshipDeleted MessageType = "relationship_delete"
 
 	// Canvas events
 	MessageTypeCanvasUpdated MessageType = "canvas_updated"
@@ -101,12 +101,14 @@ type FieldPayload struct {
 }
 
 type RelationshipPayload struct {
-	RelationshipID uuid.UUID `json:"relationship_id"`
+	RelationshipID uuid.UUID `json:"id"`                   // Frontend expects 'id'
 	SourceTableID  uuid.UUID `json:"source_table_id"`
 	TargetTableID  uuid.UUID `json:"target_table_id"`
 	SourceFieldID  uuid.UUID `json:"source_field_id"`
 	TargetFieldID  uuid.UUID `json:"target_field_id"`
-	Type           string    `json:"type"`
+	Type           string    `json:"relation_type"`        // Frontend expects 'relation_type'
+	FromTableName  string    `json:"from_table"`           // Frontend expects table names for activity
+	ToTableName    string    `json:"to_table"`             // Frontend expects table names for activity
 }
 
 // Canvas payload

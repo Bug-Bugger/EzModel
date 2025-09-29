@@ -2,11 +2,16 @@
 	import { createEventDispatcher } from 'svelte';
 	import { Handle, Position } from '@xyflow/svelte';
 	import type { TableNode } from '$lib/stores/flow';
+	import { designerStore } from '$lib/stores/designer';
 
 	export let data: TableNode['data'];
 	export let selected: boolean = false;
 
 	const dispatch = createEventDispatcher();
+
+	// Show handles only when relationship tool is selected (for visual feedback)
+	$: showHandles = $designerStore.toolbar.selectedTool === 'relationship';
+
 
 	// Icons for different field types and constraints
 	function getFieldIcon(field: any) {
@@ -53,23 +58,23 @@
 	<div class="fields-list max-h-60 overflow-y-auto">
 		{#each data.fields as field, index}
 			<div
-				class="field-row flex items-center px-4 py-2 border-b border-gray-100 hover:bg-gray-50 last:border-b-0"
+				class="field-row flex items-center px-4 py-2 border-b border-gray-100 hover:bg-gray-50 last:border-b-0 relative"
 				class:bg-blue-50={field.is_primary_key}
 			>
-				<!-- Connection handles for relationships -->
+				<!-- Connection handles for relationships - always present but only visible when relationship tool is selected -->
 				<Handle
 					type="source"
 					position={Position.Right}
 					id="{data.id}-{field.id}-source"
-					class="w-2 h-2 bg-blue-500 border-2 border-white"
-					style="top: {(index + 1) * 40 + 20}px"
+					class="field-handle-source"
+					style="position: absolute; right: -8px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #3b82f6; border: 2px solid white; border-radius: 50%; z-index: 10; cursor: pointer; {showHandles ? '' : 'opacity: 0; pointer-events: none;'}"
 				/>
 				<Handle
 					type="target"
 					position={Position.Left}
 					id="{data.id}-{field.id}-target"
-					class="w-2 h-2 bg-green-500 border-2 border-white"
-					style="top: {(index + 1) * 40 + 20}px"
+					class="field-handle-target"
+					style="position: absolute; left: -8px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #10b981; border: 2px solid white; border-radius: 50%; z-index: 10; cursor: pointer; {showHandles ? '' : 'opacity: 0; pointer-events: none;'}"
 				/>
 
 				<!-- Field Icon -->
@@ -128,16 +133,47 @@
 		line-height: 1.2;
 	}
 
-	:global(.svelte-flow__handle) {
-		opacity: 0;
-		transition: opacity 0.2s;
+	/* Field handle styling - enhanced for better clickability */
+	:global(.field-handle-source) {
+		width: 16px;
+		height: 16px;
+		background: #3b82f6;
+		border: 2px solid white;
+		border-radius: 50%;
+		right: -8px;
+		top: 50%;
+		transform: translateY(-50%);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+		opacity: 1;
+		z-index: 10;
+		cursor: pointer;
+		transition: all 0.2s ease;
 	}
 
-	.table-node:hover :global(.svelte-flow__handle) {
+	:global(.field-handle-target) {
+		width: 16px;
+		height: 16px;
+		background: #10b981;
+		border: 2px solid white;
+		border-radius: 50%;
+		left: -8px;
+		top: 50%;
+		transform: translateY(-50%);
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 		opacity: 1;
+		z-index: 10;
+		cursor: pointer;
+		transition: all 0.2s ease;
 	}
 
-	.table-node.selected :global(.svelte-flow__handle) {
-		opacity: 1;
+	:global(.field-handle-source:hover),
+	:global(.field-handle-target:hover) {
+		transform: translateY(-50%) scale(1.1);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+	}
+
+	:global(.field-handle-source:active),
+	:global(.field-handle-target:active) {
+		transform: translateY(-50%) scale(0.95);
 	}
 </style>

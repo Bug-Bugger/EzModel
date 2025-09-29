@@ -52,11 +52,8 @@
 
 	async function loadProjectData(projectId: string) {
 		try {
-			// Load tables and relationships from backend
-			const [tables, relationships] = await Promise.all([
-				projectService.getProjectTables(projectId),
-				projectService.getProjectRelationships(projectId)
-			]);
+			// Load tables from backend
+			const tables = await projectService.getProjectTables(projectId);
 
 			// Parse existing canvas data to get positioning information
 			let savedPositions: Record<string, { x: number; y: number }> = {};
@@ -128,17 +125,14 @@
 				flowStore.addLocalTableNode(tableData, position);
 			}
 
-			// Reconstruct relationship edges from backend data
-			for (const relationship of relationships) {
-				flowStore.addRelationshipEdge({
-					id: relationship.id,
-					fromTable: relationship.from_table_id,
-					toTable: relationship.to_table_id,
-					fromField: relationship.from_field_id,
-					toField: relationship.to_field_id,
-					type: relationship.relationship_type
-				});
-			}
+			// Wait a brief moment for tables to be fully rendered
+			await new Promise(resolve => setTimeout(resolve, 100));
+
+			// Load relationships using the flow store method
+			await flowStore.loadProjectRelationships(projectId);
+
+			// Force a reactivity update
+			flowStore.forceUpdate();
 
 			// Apply viewport settings if available
 			if ($projectStore.currentProject?.canvas_data) {
@@ -152,7 +146,7 @@
 				}
 			}
 
-			console.log(`DEBUG: Loaded ${tables.length} tables and ${relationships.length} relationships`);
+			console.log(`DEBUG: Loaded ${tables.length} tables and relationships`);
 			console.log('DEBUG: Final saved positions used:', savedPositions);
 			console.log('DEBUG: Current project canvas_data length:', $projectStore.currentProject?.canvas_data?.length || 0);
 		} catch (error) {

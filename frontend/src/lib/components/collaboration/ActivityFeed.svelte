@@ -30,6 +30,7 @@
 			case 'field_update': return '🔧';
 			case 'field_delete': return '❌';
 			case 'relationship_create': return '🔗';
+			case 'relationship_update': return '🔄';
 			case 'relationship_delete': return '💔';
 			case 'user_joined': return '👋';
 			default: return '📄';
@@ -46,6 +47,7 @@
 				return 'text-green-600 bg-green-50 border-green-200';
 			case 'table_update':
 			case 'field_update':
+			case 'relationship_update':
 				return 'text-blue-600 bg-blue-50 border-blue-200';
 			case 'table_delete':
 			case 'field_delete':

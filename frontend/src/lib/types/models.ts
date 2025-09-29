@@ -30,13 +30,12 @@ export interface Field {
 
 export interface Relationship {
 	id: string;
-	name: string;
 	project_id: string;
-	from_table_id: string;
-	to_table_id: string;
-	from_field_id: string;
-	to_field_id: string;
-	relationship_type: 'one-to-one' | 'one-to-many' | 'many-to-many';
+	source_table_id: string;
+	source_field_id: string;
+	target_table_id: string;
+	target_field_id: string;
+	relation_type: 'one_to_one' | 'one_to_many' | 'many_to_many';
 	created_at: string;
 	updated_at: string;
 }
@@ -86,21 +85,19 @@ export interface UpdateTablePositionRequest {
 }
 
 export interface CreateRelationshipRequest {
-	name: string;
-	from_table_id: string;
-	to_table_id: string;
-	from_field_id: string;
-	to_field_id: string;
-	relationship_type: 'one-to-one' | 'one-to-many' | 'many-to-many';
+	source_table_id: string;
+	source_field_id: string;
+	target_table_id: string;
+	target_field_id: string;
+	relation_type: 'one_to_one' | 'one_to_many' | 'many_to_many';
 }
 
 export interface UpdateRelationshipRequest {
-	name?: string;
-	from_table_id?: string;
-	to_table_id?: string;
-	from_field_id?: string;
-	to_field_id?: string;
-	relationship_type?: 'one-to-one' | 'one-to-many' | 'many-to-many';
+	source_table_id?: string;
+	source_field_id?: string;
+	target_table_id?: string;
+	target_field_id?: string;
+	relation_type?: 'one_to_one' | 'one_to_many' | 'many_to_many';
 }
 
 export interface CreateFieldRequest {

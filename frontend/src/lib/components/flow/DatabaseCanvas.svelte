@@ -9,6 +9,7 @@
 	import '@xyflow/svelte/dist/style.css';
 
 	import TableNodeWrapper from './TableNodeWrapper.svelte';
+	import RelationshipEdge from './RelationshipEdge.svelte';
 	import MouseTracker from './MouseTracker.svelte';
 	import UserCursor from '../collaboration/UserCursor.svelte';
 	import CanvasHookManager from './CanvasHookManager.svelte';
@@ -24,31 +25,30 @@
 		table: TableNodeWrapper
 	};
 
-	// TODO: Fix edge types compatibility with @xyflow/svelte v1.3.1
-	// const edgeTypes = {
-	// 	relationship: RelationshipEdge
-	// };
+	const edgeTypes = {
+		relationship: RelationshipEdge
+	};
 
 	let flowElement: HTMLElement;
 	let containerRect: DOMRect | null = null;
 	let canvasHookManager: CanvasHookManager;
 
-	// Relationship creation state
-	let relationshipCreation = {
-		isActive: false,
-		firstTableId: null as string | null,
-		firstTableName: null as string | null
-	};
+	// Remove relationship creation state - now handled by SvelteFlow connections
 
 	// Reactive flow data from store
 	$: displayNodes = $flowStore.nodes;
 	$: displayEdges = $flowStore.edges;
 
+	// Debug edges
+	$: if (displayEdges.length > 0) {
+		console.log('DatabaseCanvas: displayEdges updated:', displayEdges);
+	}
+
 	// Dynamic CSS classes based on tool state
-	$: canvasClasses = `database-canvas w-full h-full tool-${$designerStore.toolbar.selectedTool}${relationshipCreation.isActive ? ' relationship-active' : ''}`;
+	$: canvasClasses = `database-canvas w-full h-full tool-${$designerStore.toolbar.selectedTool}`;
 
 	// Instructions text based on current tool and state
-	$: instructionText = getInstructionText($designerStore.toolbar.selectedTool, relationshipCreation.isActive, relationshipCreation.firstTableName);
+	$: instructionText = getInstructionText($designerStore.toolbar.selectedTool);
 
 	// Proper throttling for real-time position broadcasts
 	let lastBroadcastTime = 0;
@@ -90,15 +90,12 @@
 		// If timer is already running, we just updated pendingBroadcastData with latest position
 	}
 
-	function getInstructionText(tool: string, relationshipActive: boolean, firstTableName: string | null): string | null {
+	function getInstructionText(tool: string): string | null {
 		switch (tool) {
 			case 'table':
 				return 'Click anywhere on the canvas to place a new table';
 			case 'relationship':
-				if (relationshipActive && firstTableName) {
-					return `Click on another table to create a relationship from "${firstTableName}"`;
-				}
-				return 'Click on a table to start creating a relationship';
+				return 'Drag from any field to another field to create a relationship';
 			default:
 				return null;
 		}
@@ -144,14 +141,15 @@
 
 		const currentTool = $designerStore.toolbar.selectedTool;
 
+		// For relationship tool, don't intercept table clicks - let SvelteFlow handle connections
 		if (currentTool === 'relationship') {
-			// Handle relationship creation workflow
-			handleRelationshipNodeClick(node);
-		} else {
-			// Default select tool behavior
-			flowStore.selectNode(node);
-			designerStore.openPropertyPanel('table', node);
+			// Do nothing - let users drag between field handles
+			return;
 		}
+
+		// Default select tool behavior
+		flowStore.selectNode(node);
+		designerStore.openPropertyPanel('table', node);
 	}
 
 	// Handle edge selection
@@ -169,9 +167,6 @@
 		if (currentTool === 'table') {
 			// Create table when table tool is selected
 			await handleTableCreation(event);
-		} else if (currentTool === 'relationship') {
-			// Handle relationship creation workflow
-			handleRelationshipClick();
 		} else {
 			// Default select tool behavior - deselect all
 			flowStore.selectNode(null);
@@ -326,103 +321,149 @@
 		}
 	}
 
-	// Handle clicking on canvas when relationship tool is selected
-	function handleRelationshipClick() {
-		// Cancel relationship creation if user clicks on empty canvas
-		if (relationshipCreation.isActive) {
-			cancelRelationshipCreation();
-		}
-	}
-
-	// Handle clicking on a table node when relationship tool is selected
-	async function handleRelationshipNodeClick(node: TableNodeType | null) {
-		if (!node) {
-			console.warn('handleRelationshipNodeClick: node is null');
-			return;
-		}
-
+	// Handle field-to-field connections via SvelteFlow
+	async function onConnect(connection: any) {
 		if (!$projectStore.currentProject) {
 			console.error('No current project');
 			return;
 		}
 
-		if (!relationshipCreation.isActive) {
-			// First click - select the source table
-			relationshipCreation.isActive = true;
-			relationshipCreation.firstTableId = node.id;
-			relationshipCreation.firstTableName = node.data.name;
+		console.log('SvelteFlow connection event:', connection);
 
-			console.log(`Started relationship from table: ${node.data.name}`);
-			// TODO: Add visual feedback to highlight the selected table
-		} else {
-			// Second click - create the relationship
-			if (node.id === relationshipCreation.firstTableId) {
-				// User clicked the same table - cancel creation
-				console.warn('Cannot create relationship to the same table');
-				cancelRelationshipCreation();
-				return;
-			}
+		// Parse field IDs from handle IDs (format: "tableId-fieldId-source/target")
+		const sourceHandleId = connection.sourceHandle;
+		const targetHandleId = connection.targetHandle;
 
-			await createRelationship(relationshipCreation.firstTableId!, node.id);
+		if (!sourceHandleId || !targetHandleId) {
+			console.error('Missing handle IDs in connection:', connection);
+			return;
 		}
-	}
 
-	// Create relationship between two tables
-	async function createRelationship(fromTableId: string, toTableId: string) {
-		if (!$projectStore.currentProject) return;
+		// Extract table and field IDs from handle format: "tableId-fieldId-source"
+		// UUIDs are 36 characters: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+		const uuidRegex = /^([a-f0-9-]{36})-([a-f0-9-]{36})-(source|target)$/;
+		const sourceMatch = sourceHandleId.match(uuidRegex);
+		const targetMatch = targetHandleId.match(uuidRegex);
+
+		if (!sourceMatch || !targetMatch) {
+			console.error('Invalid handle ID format (expected UUID-UUID-type):', {
+				sourceHandleId,
+				targetHandleId,
+				sourceMatch,
+				targetMatch
+			});
+			return;
+		}
+
+		const sourceTableId = sourceMatch[1];
+		const sourceFieldId = sourceMatch[2];
+		const targetTableId = targetMatch[1];
+		const targetFieldId = targetMatch[2];
+
+		console.log('Parsed connection data:', {
+			sourceTableId,
+			sourceFieldId,
+			targetTableId,
+			targetFieldId
+		});
+
+		// Enhanced validation
+		// 1. Validate that we're not connecting a field to itself
+		if (sourceTableId === targetTableId && sourceFieldId === targetFieldId) {
+			console.warn('Cannot connect field to itself');
+			// TODO: Show user-friendly error message
+			return;
+		}
+
+		// 2. Check if tables exist in current flow
+		const sourceTable = displayNodes.find(node => node.id === sourceTableId);
+		const targetTable = displayNodes.find(node => node.id === targetTableId);
+
+		if (!sourceTable || !targetTable) {
+			console.error('Source or target table not found:', { sourceTableId, targetTableId });
+			return;
+		}
+
+		// 3. Check if fields exist in their respective tables
+		const sourceField = sourceTable.data.fields.find(field => field.id === sourceFieldId);
+		const targetField = targetTable.data.fields.find(field => field.id === targetFieldId);
+
+		if (!sourceField || !targetField) {
+			console.error('Source or target field not found:', {
+				sourceFieldId,
+				targetFieldId,
+				sourceFields: sourceTable.data.fields.map(f => f.id),
+				targetFields: targetTable.data.fields.map(f => f.id)
+			});
+			return;
+		}
+
+		// 4. Check if relationship already exists between these fields
+		const existingRelationship = displayEdges.find(edge =>
+			(edge.data.fromTable === sourceTableId && edge.data.toTable === targetTableId &&
+			 edge.data.fromField === sourceFieldId && edge.data.toField === targetFieldId) ||
+			(edge.data.fromTable === targetTableId && edge.data.toTable === sourceTableId &&
+			 edge.data.fromField === targetFieldId && edge.data.toField === sourceFieldId)
+		);
+
+		if (existingRelationship) {
+			console.warn('Relationship already exists between these fields');
+			// TODO: Show user-friendly error message
+			return;
+		}
+
+		// 5. Only allow connections when relationship tool is selected
+		if ($designerStore.toolbar.selectedTool !== 'relationship') {
+			console.warn('Relationship creation only allowed when relationship tool is selected');
+			return;
+		}
+
+		console.log('Connection validation passed:', {
+			sourceTable: sourceTable.data.name,
+			sourceField: sourceField.name,
+			targetTable: targetTable.data.name,
+			targetField: targetField.name
+		});
 
 		try {
-			// For now, create a basic relationship
-			// TODO: Let user choose field mappings and relationship type
+			// Create relationship data
 			const relationshipData = {
-				name: `${relationshipCreation.firstTableName}_to_${displayNodes.find(n => n.id === toTableId)?.data.name}`,
-				from_table_id: fromTableId,
-				to_table_id: toTableId,
-				from_field_id: 'id', // Default to primary key
-				to_field_id: 'id',   // Default to primary key
-				relationship_type: 'one-to-many' as const
+				source_table_id: sourceTableId,
+				source_field_id: sourceFieldId,
+				target_table_id: targetTableId,
+				target_field_id: targetFieldId,
+				relation_type: 'one_to_many' as const // Default, can be changed in property panel
 			};
 
-			// Create relationship via API
-			const relationship = await projectService.createRelationship(
+			// Create via API
+			const newRelationship = await projectService.createRelationship(
 				$projectStore.currentProject.id,
 				relationshipData
 			);
 
-			// Add to flow store
-			flowStore.addRelationshipEdge({
-				id: relationship.id,
-				fromTable: fromTableId,
-				toTable: toTableId,
-				fromField: relationshipData.from_field_id,
-				toField: relationshipData.to_field_id,
-				type: relationshipData.relationship_type
-			});
+			// Add relationship edge to local store (map backend response to frontend format)
+			const edgeData = {
+				id: newRelationship.id,
+				fromTable: newRelationship.source_table_id,
+				toTable: newRelationship.target_table_id,
+				fromField: newRelationship.source_field_id,
+				toField: newRelationship.target_field_id,
+				type: newRelationship.relation_type
+			};
 
-			// Send collaboration event
-			collaborationStore.sendSchemaEvent('relationship_create', relationship);
+			flowStore.addLocalRelationshipEdge(edgeData);
+
+			// WebSocket broadcasting is now handled by the backend after successful API call
 
 			// Auto-save canvas data
 			const canvasData = flowStore.getCurrentCanvasData();
 			projectStore.autoSaveCanvasData(canvasData);
 
-			console.log('Relationship created successfully');
+			console.log('Relationship created successfully:', newRelationship);
 		} catch (error) {
 			console.error('Failed to create relationship:', error);
 			// TODO: Show error message to user
-		} finally {
-			// Reset state and switch back to select tool
-			cancelRelationshipCreation();
-			designerStore.selectTool('select');
 		}
-	}
-
-	// Cancel relationship creation
-	function cancelRelationshipCreation() {
-		relationshipCreation.isActive = false;
-		relationshipCreation.firstTableId = null;
-		relationshipCreation.firstTableName = null;
-		console.log('Relationship creation cancelled');
 	}
 
 	// Handle real-time node dragging for collaboration
@@ -561,12 +602,10 @@
 			if (!$projectStore.currentProject) return;
 
 			if (event.key === 'Escape') {
-				// Cancel relationship creation if active
-				if (relationshipCreation.isActive) {
-					cancelRelationshipCreation();
-					event.preventDefault();
-					return;
-				}
+				// Clear any selections
+				flowStore.selectNode(null);
+				flowStore.selectEdge(null);
+				designerStore.closePropertyPanel();
 			}
 
 			if (event.key === 'Delete' || event.key === 'Backspace') {
@@ -617,10 +656,38 @@
 						// an error message to the user but keep the deletion for consistency.
 					}
 				} else if ($flowStore.selectedEdge) {
-					flowStore.removeRelationshipEdge($flowStore.selectedEdge.id);
-					collaborationStore.sendSchemaEvent('relationship_delete', {
-						id: $flowStore.selectedEdge.id
-					});
+					// Capture selectedEdge data before any operations to prevent null reference errors
+					const edgeToDelete = $flowStore.selectedEdge;
+
+					// Validate that we have all required data
+					if (!edgeToDelete || !edgeToDelete.id) {
+						console.error('Cannot delete: invalid edge data', edgeToDelete);
+						return;
+					}
+
+					console.log('🗑️ Deleting relationship:', edgeToDelete.id);
+
+					try {
+						// Delete relationship via API
+						await projectService.deleteRelationship(
+							$projectStore.currentProject.id,
+							edgeToDelete.id
+						);
+
+						// Remove from local store
+						flowStore.removeLocalRelationshipEdge(edgeToDelete.id);
+
+						// WebSocket broadcasting is now handled by the backend after successful API call
+
+						// Auto-save canvas data
+						const canvasData = flowStore.getCurrentCanvasData();
+						projectStore.autoSaveCanvasData(canvasData);
+
+						console.log('✅ Relationship deletion completed');
+					} catch (error) {
+						console.error('❌ Failed to delete relationship:', error);
+						// TODO: Show error message to user
+					}
 				}
 			}
 		}
@@ -653,6 +720,7 @@
 		nodes={displayNodes}
 		edges={displayEdges}
 		{nodeTypes}
+		{edgeTypes}
 		fitView
 		snapGrid={[$designerStore.gridSize, $designerStore.gridSize]}
 		onnodeclick={onNodeClick}
@@ -661,6 +729,7 @@
 		onmove={onMove}
 		onnodedrag={onNodeDrag}
 		onnodedragstop={onNodeDragStop}
+		onconnect={onConnect}
 	>
 		<!-- Hook manager component - provides hook access to parent -->
 		<CanvasHookManager bind:this={canvasHookManager} />
@@ -697,9 +766,6 @@
 	{#if instructionText && ($designerStore.toolbar.selectedTool !== 'select')}
 		<div class="tool-instructions">
 			{instructionText}
-			{#if $designerStore.toolbar.selectedTool === 'relationship' && relationshipCreation.isActive}
-				<div class="text-xs mt-2 opacity-75">Press Escape to cancel</div>
-			{/if}
 		</div>
 	{/if}
 </div>
@@ -741,25 +807,7 @@
 		cursor: crosshair;
 	}
 
-	.database-canvas.tool-relationship.relationship-active {
-		cursor: copy;
-	}
-
-	/* Table highlighting during relationship creation */
-	.database-canvas :global(.svelte-flow__node-table.relationship-source) {
-		border-color: #10b981;
-		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-		animation: pulse 2s infinite;
-	}
-
-	@keyframes pulse {
-		0%, 100% {
-			opacity: 1;
-		}
-		50% {
-			opacity: 0.8;
-		}
-	}
+	/* Table highlighting removed - relationships now created via field connections */
 
 	/* Instructions overlay */
 	.tool-instructions {

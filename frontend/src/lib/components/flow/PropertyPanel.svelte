@@ -25,9 +25,9 @@
 
 	// Relationship type options
 	const relationshipTypeOptions = [
-		{ value: 'one-to-one', label: 'One to One (1:1)' },
-		{ value: 'one-to-many', label: 'One to Many (1:N)' },
-		{ value: 'many-to-many', label: 'Many to Many (N:M)' }
+		{ value: 'one_to_one', label: 'One to One (1:1)' },
+		{ value: 'one_to_many', label: 'One to Many (1:N)' },
+		{ value: 'many_to_many', label: 'Many to Many (N:M)' }
 	];
 
 	// Reactive property panel state
@@ -204,6 +204,55 @@
 			// TODO: Show error message to user
 		}
 	}
+
+	// Update relationship type
+	async function updateRelationshipType(relationshipType: string) {
+		if (!selectedEdge || !selectedEdge.data || !$projectStore.currentProject) {
+			return;
+		}
+
+		try {
+			// Update relationship via API
+			await flowStore.updateRelationshipEdge(
+				$projectStore.currentProject.id,
+				selectedEdge.id,
+				{ relation_type: relationshipType as 'one_to_one' | 'one_to_many' | 'many_to_many' }
+			);
+
+			// WebSocket broadcasting is now handled by the backend after successful API call
+
+			// Auto-save canvas data
+			const canvasData = flowStore.getCurrentCanvasData();
+			projectStore.autoSaveCanvasData(canvasData);
+		} catch (error) {
+			console.error('Failed to update relationship:', error);
+			// TODO: Show error message to user
+		}
+	}
+
+	// Delete relationship
+	async function deleteRelationship() {
+		if (!selectedEdge || !selectedEdge.data || !$projectStore.currentProject) {
+			return;
+		}
+
+		try {
+			// Delete relationship via API
+			await flowStore.removeRelationshipEdge(
+				$projectStore.currentProject.id,
+				selectedEdge.id
+			);
+
+			// WebSocket broadcasting is now handled by the backend after successful API call
+
+			// Auto-save canvas data
+			const canvasData = flowStore.getCurrentCanvasData();
+			projectStore.autoSaveCanvasData(canvasData);
+		} catch (error) {
+			console.error('Failed to delete relationship:', error);
+			// TODO: Show error message to user
+		}
+	}
 </script>
 
 <div class="property-panel p-4">
@@ -333,7 +382,9 @@
 				<div>
 					<label for="relationship-type" class="block text-sm font-medium text-gray-700 mb-2">Relationship Type</label>
 					<Select
+						bind:value={selectedEdge.data.type}
 						options={relationshipTypeOptions}
+						onchange={(value) => updateRelationshipType(value)}
 						class="w-full"
 					/>
 				</div>
@@ -350,12 +401,26 @@
 
 				<div>
 					<label for="from-field" class="block text-sm font-medium text-gray-700 mb-2">From Field</label>
-					<Input id="from-field" value={selectedEdge.data.fromField} class="w-full" />
+					<Input id="from-field" value={selectedEdge.data.fromField} disabled class="w-full" />
 				</div>
 
 				<div>
 					<label for="to-field" class="block text-sm font-medium text-gray-700 mb-2">To Field</label>
-					<Input id="to-field" value={selectedEdge.data.toField} class="w-full" />
+					<Input id="to-field" value={selectedEdge.data.toField} disabled class="w-full" />
+				</div>
+
+				<!-- Delete Relationship Button -->
+				<div class="border-t pt-4">
+					<Button
+						onclick={deleteRelationship}
+						variant="destructive"
+						size="sm"
+						class="w-full"
+					>
+						{#snippet children()}
+							Delete Relationship
+						{/snippet}
+					</Button>
 				</div>
 			</div>
 		</div>

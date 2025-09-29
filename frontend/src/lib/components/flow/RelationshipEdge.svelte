@@ -1,18 +1,25 @@
 <script lang="ts">
-	import { getSmoothStepPath } from '@xyflow/svelte';
+	import { BaseEdge, getSmoothStepPath, type EdgeProps } from '@xyflow/svelte';
 	import type { RelationshipEdge } from '$lib/stores/flow';
 
-	export let id: string;
-	export let sourceX: number;
-	export let sourceY: number;
-	export let targetX: number;
-	export let targetY: number;
-	export let sourcePosition: any;
-	export let targetPosition: any;
-	export let data: RelationshipEdge['data'];
-	export let selected: boolean = false;
+	let {
+		sourceX,
+		sourceY,
+		targetX,
+		targetY,
+		sourcePosition,
+		targetPosition,
+		data,
+		markerEnd,
+		...restProps
+	}: EdgeProps = $props();
 
-	$: pathResult = getSmoothStepPath({
+	// Cast data to our relationship edge data type
+	const relationshipData = data as RelationshipEdge['data'] | undefined;
+	const relationshipType = relationshipData?.type || 'one_to_many';
+
+	// Generate path using getSmoothStepPath
+	const pathResult = $derived(getSmoothStepPath({
 		sourceX,
 		sourceY,
 		sourcePosition,
@@ -20,89 +27,66 @@
 		targetY,
 		targetPosition,
 		borderRadius: 10
-	});
+	}));
 
-	$: path = pathResult[0]; // getSmoothStepPath returns array, first element is the path
-	$: labelX = (sourceX + targetX) / 2;
-	$: labelY = (sourceY + targetY) / 2;
+	const path = $derived(pathResult[0]); // getSmoothStepPath returns array, first element is the path
 
-	// Get relationship type symbols
+	// Label position and text
+	const labelX = $derived((sourceX + targetX) / 2);
+	const labelY = $derived((sourceY + targetY) / 2);
+
+	// Get relationship type symbols - handle both hyphenated and underscore formats
 	function getRelationshipSymbol(type: string) {
 		switch (type) {
-			case 'one-to-one': return '1:1';
-			case 'one-to-many': return '1:N';
-			case 'many-to-many': return 'N:M';
+			case 'one-to-one':
+			case 'one_to_one': return '1:1';
+			case 'one-to-many':
+			case 'one_to_many': return '1:N';
+			case 'many-to-many':
+			case 'many_to_many': return 'N:M';
 			default: return '1:N';
 		}
 	}
 
 	function getRelationshipColor(type: string) {
 		switch (type) {
-			case 'one-to-one': return '#10b981'; // green
-			case 'one-to-many': return '#3b82f6'; // blue
-			case 'many-to-many': return '#f59e0b'; // yellow
+			case 'one-to-one':
+			case 'one_to_one': return '#10b981'; // green
+			case 'one-to-many':
+			case 'one_to_many': return '#3b82f6'; // blue
+			case 'many-to-many':
+			case 'many_to_many': return '#f59e0b'; // yellow
 			default: return '#64748b'; // gray
 		}
 	}
 </script>
 
-<!-- Edge Path -->
-<path
-	{id}
-	d={path}
-	stroke={selected ? '#3b82f6' : getRelationshipColor(data.type)}
-	stroke-width={selected ? 3 : 2}
-	fill="none"
-	class="relationship-edge"
-	marker-end="url(#arrowhead-{data.type})"
-/>
+<!-- Base edge path -->
+<BaseEdge {path} style={`stroke: ${getRelationshipColor(relationshipType)}; stroke-width: 2px;`} />
 
-<!-- Edge Label -->
-<div
-	class="relationship-label absolute pointer-events-none"
-	style="transform: translate(-50%, -50%) translate({labelX}px, {labelY}px)"
+<!-- Custom relationship type label -->
+<foreignObject
+	x={labelX - 20}
+	y={labelY - 10}
+	width="40"
+	height="20"
+	class="edge-label"
 >
 	<div
-		class="label-content bg-white border border-gray-300 rounded px-2 py-1 text-xs font-medium shadow-sm"
-		style="color: {getRelationshipColor(data.type)}"
+		class="relationship-label"
+		style={`
+			background: white;
+			border: 1px solid #d1d5db;
+			border-radius: 4px;
+			padding: 2px 6px;
+			font-size: 11px;
+			font-weight: 500;
+			color: ${getRelationshipColor(relationshipType)};
+			box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+			text-align: center;
+			white-space: nowrap;
+		`}
 	>
-		{getRelationshipSymbol(data.type)}
+		{getRelationshipSymbol(relationshipType)}
 	</div>
-</div>
-
-<!-- Arrow Markers -->
-<defs>
-	<marker
-		id="arrowhead-{data.type}"
-		markerWidth="10"
-		markerHeight="7"
-		refX="9"
-		refY="3.5"
-		orient="auto"
-	>
-		<polygon
-			points="0 0, 10 3.5, 0 7"
-			fill={selected ? '#3b82f6' : getRelationshipColor(data.type)}
-		/>
-	</marker>
-</defs>
-
-<style>
-	.relationship-edge {
-		cursor: pointer;
-		transition: stroke-width 0.2s, stroke 0.2s;
-	}
-
-	.relationship-edge:hover {
-		stroke-width: 3;
-	}
-
-	.relationship-label {
-		font-family: 'Inter', sans-serif;
-	}
-
-	.label-content {
-		min-width: 24px;
-		text-align: center;
-	}
-</style>
+</foreignObject>

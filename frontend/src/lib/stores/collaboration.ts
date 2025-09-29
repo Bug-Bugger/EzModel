@@ -34,6 +34,7 @@ export interface ActivityEvent {
     | "field_updated"
     | "field_deleted"
     | "relationship_create"
+    | "relationship_update"
     | "relationship_delete";
   message: string;
   timestamp: number;
@@ -340,8 +341,90 @@ function createCollaborationStore() {
         break;
 
       case "table_update":
+        update((state) => {
+          const userName = getUsernameFromId(message.user_id, state);
+          const newEvent: ActivityEvent = {
+            id: crypto.randomUUID(),
+            type: message.type,
+            userId: message.user_id,
+            userName: userName,
+            message: generateActivityMessage(message.type, message.data),
+            data: message.data,
+            timestamp: Date.now(),
+          };
+
+          return {
+            ...state,
+            activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+          };
+        });
+        break;
+
       case "relationship_create":
+        // Add relationship edge to flow store for real-time collaboration
+        if (message.data.id && message.data.source_table_id && message.data.target_table_id) {
+          flowStore.addLocalRelationshipEdge({
+            id: message.data.id,
+            fromTable: message.data.source_table_id,
+            toTable: message.data.target_table_id,
+            fromField: message.data.source_field_id,
+            toField: message.data.target_field_id,
+            type: message.data.relation_type
+          });
+        }
+
+        update((state) => {
+          const userName = getUsernameFromId(message.user_id, state);
+          const newEvent: ActivityEvent = {
+            id: crypto.randomUUID(),
+            type: message.type,
+            userId: message.user_id,
+            userName: userName,
+            message: generateActivityMessage(message.type, message.data),
+            data: message.data,
+            timestamp: Date.now(),
+          };
+
+          return {
+            ...state,
+            activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+          };
+        });
+        break;
+
+      case "relationship_update":
+        // Update relationship edge in flow store for real-time collaboration
+        if (message.data.id) {
+          flowStore.updateLocalRelationshipEdge(message.data.id, {
+            type: message.data.relation_type
+          });
+        }
+
+        update((state) => {
+          const userName = getUsernameFromId(message.user_id, state);
+          const newEvent: ActivityEvent = {
+            id: crypto.randomUUID(),
+            type: message.type,
+            userId: message.user_id,
+            userName: userName,
+            message: generateActivityMessage(message.type, message.data),
+            data: message.data,
+            timestamp: Date.now(),
+          };
+
+          return {
+            ...state,
+            activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+          };
+        });
+        break;
+
       case "relationship_delete":
+        // Remove relationship edge from flow store for real-time collaboration
+        if (message.data.id) {
+          flowStore.removeLocalRelationshipEdge(message.data.id);
+        }
+
         update((state) => {
           const userName = getUsernameFromId(message.user_id, state);
           const newEvent: ActivityEvent = {
@@ -571,6 +654,8 @@ function createCollaborationStore() {
         return `removed field "${data.name}" from table`;
       case "relationship_create":
         return `created relationship between "${data.from_table}" and "${data.to_table}"`;
+      case "relationship_update":
+        return `updated relationship between "${data.from_table}" and "${data.to_table}"`;
       case "relationship_delete":
         return `removed relationship between "${data.from_table}" and "${data.to_table}"`;
       default:

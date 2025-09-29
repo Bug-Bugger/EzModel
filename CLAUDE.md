@@ -313,7 +313,15 @@ All API responses follow this consistent structure:
 
 ### WebSocket Architecture
 
-The WebSocket system is fully implemented with the following components:
+The WebSocket system is fully implemented with standardized broadcasting across all operations:
+
+#### Standardized Flow Architecture
+All CRUD operations follow the consistent pattern:
+```
+Handler → Service → Collaboration Service → WebSocket Hub → Clients
+```
+
+This ensures that **all** schema changes (tables, fields, relationships, projects) are broadcast in real-time with proper user attribution and error isolation.
 
 #### Hub Structure
 - **Client Management**: Tracks connected clients per project
@@ -324,27 +332,78 @@ The WebSocket system is fully implemented with the following components:
 #### Message Types
 ```go
 const (
-    MessageTypeUserJoined    = "user_joined"
-    MessageTypeUserLeft      = "user_left"
-    MessageTypeUserPresence  = "user_presence"
-    MessageTypeCursorMove    = "cursor_move"
-    MessageTypeTableCreate   = "table_create"
-    MessageTypeTableUpdate   = "table_update"
-    MessageTypeTableDelete   = "table_delete"
-    MessageTypeFieldCreate   = "field_create"
-    MessageTypeFieldUpdate   = "field_update"
-    MessageTypeFieldDelete   = "field_delete"
-    MessageTypePing          = "ping"
-    MessageTypePong          = "pong"
+    MessageTypeUserJoined         = "user_joined"
+    MessageTypeUserLeft           = "user_left"
+    MessageTypeUserPresence       = "user_presence"
+    MessageTypeCursorMove         = "cursor_move"
+    MessageTypeTableCreate        = "table_create"
+    MessageTypeTableUpdate        = "table_update"
+    MessageTypeTableDelete        = "table_delete"
+    MessageTypeFieldCreate        = "field_create"
+    MessageTypeFieldUpdate        = "field_update"
+    MessageTypeFieldDelete        = "field_delete"
+    MessageTypeRelationshipCreate = "relationship_create"
+    MessageTypeRelationshipUpdate = "relationship_update"
+    MessageTypeRelationshipDelete = "relationship_delete"
+    MessageTypeCanvasUpdate       = "canvas_update"
+    MessageTypePing               = "ping"
+    MessageTypePong               = "pong"
 )
+```
+
+#### Collaboration Service Interface
+All services now integrate with the collaboration service for consistent WebSocket broadcasting:
+
+```go
+type CollaborationSessionServiceInterface interface {
+    // User presence and session management
+    CreateSession(projectID, userID uuid.UUID) (*models.CollaborationSession, error)
+    GetActiveSessionsByProjectID(projectID uuid.UUID) ([]*models.CollaborationSession, error)
+
+    // Field operations broadcasting
+    NotifyFieldCreated(projectID uuid.UUID, field *models.Field, userID uuid.UUID)
+    NotifyFieldUpdated(projectID uuid.UUID, field *models.Field, userID uuid.UUID)
+    NotifyFieldDeleted(projectID uuid.UUID, fieldID uuid.UUID, userID uuid.UUID)
+
+    // Table operations broadcasting (NEW)
+    NotifyTableCreated(projectID uuid.UUID, table *models.Table, userID uuid.UUID)
+    NotifyTableUpdated(projectID uuid.UUID, table *models.Table, userID uuid.UUID)
+    NotifyTableDeleted(projectID uuid.UUID, tableID uuid.UUID, userID uuid.UUID)
+
+    // Relationship operations broadcasting (NEW)
+    NotifyRelationshipCreated(projectID uuid.UUID, relationship *models.Relationship, userID uuid.UUID)
+    NotifyRelationshipUpdated(projectID uuid.UUID, relationship *models.Relationship, userID uuid.UUID)
+    NotifyRelationshipDeleted(projectID uuid.UUID, relationshipID uuid.UUID, userID uuid.UUID)
+
+    // Canvas operations broadcasting (NEW)
+    BroadcastCanvasUpdate(projectID uuid.UUID, canvasData string, userID uuid.UUID)
+}
 ```
 
 #### Features Implemented
 - **Live Cursors**: Real-time cursor tracking and display
 - **User Presence**: Active user list with join/leave notifications
-- **Schema Updates**: Broadcast table/field changes instantly
-- **Activity Feed**: Live activity log of schema changes
+- **Complete Schema Updates**: ALL operations broadcast instantly:
+  - ✅ Table creation, updates, position changes, deletion
+  - ✅ Field creation, updates, reordering, deletion
+  - ✅ Relationship creation, updates, deletion
+  - ✅ Project canvas updates and modifications
+- **Activity Feed**: Live activity log of all schema changes
 - **Connection Management**: Automatic reconnection and cleanup
+- **Error Isolation**: WebSocket failures don't break core business operations
+- **User Attribution**: All activities properly tracked to specific users
+
+#### Service Integration
+All services now include collaboration service dependencies with standardized userID parameters:
+
+```go
+// Example: TableService methods now include userID for proper attribution
+func (s *TableService) CreateTable(projectID uuid.UUID, name string, posX, posY float64, userID uuid.UUID) (*models.Table, error)
+func (s *TableService) UpdateTable(id uuid.UUID, req *dto.UpdateTableRequest, userID uuid.UUID) (*models.Table, error)
+func (s *TableService) DeleteTable(id uuid.UUID, userID uuid.UUID) error
+```
+
+This ensures consistent real-time collaboration across the entire application with no operations missing WebSocket notifications.
 
 ## Frontend State Management
 

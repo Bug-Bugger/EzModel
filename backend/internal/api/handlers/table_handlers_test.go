@@ -21,11 +21,13 @@ type TableHandlerTestSuite struct {
 	suite.Suite
 	mockService *mockService.MockTableService
 	handler     *TableHandler
+	userID      uuid.UUID
 }
 
 func (suite *TableHandlerTestSuite) SetupTest() {
 	suite.mockService = new(mockService.MockTableService)
 	suite.handler = NewTableHandler(suite.mockService)
+	suite.userID = uuid.New()
 }
 
 func TestTableHandlerSuite(t *testing.T) {
@@ -42,6 +44,7 @@ func (suite *TableHandlerTestSuite) TestCreateTable_Success() {
 		Return(expectedTable, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/tables", requestBody)
+	req = testutil.WithUserContext(req, suite.userID)
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
@@ -167,6 +170,7 @@ func (suite *TableHandlerTestSuite) TestUpdateTable_Success() {
 	suite.mockService.On("UpdateTable", tableID, &updateRequest, mock.AnythingOfType("uuid.UUID")).Return(updatedTable, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/tables/"+tableID.String(), updateRequest)
+	req = testutil.WithUserContext(req, suite.userID)
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()
@@ -195,6 +199,7 @@ func (suite *TableHandlerTestSuite) TestUpdateTablePosition_Success() {
 	suite.mockService.On("UpdateTablePosition", tableID, positionRequest.PosX, positionRequest.PosY, mock.AnythingOfType("uuid.UUID")).Return(nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/tables/"+tableID.String()+"/position", positionRequest)
+	req = testutil.WithUserContext(req, suite.userID)
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()

@@ -137,6 +137,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_Success() {
 			rel.TargetFieldID == targetFieldID &&
 			rel.RelationType == "one_to_many"
 	})).Return(relationshipID, nil)
+	suite.mockCollaborationService.On("NotifyRelationshipCreated", projectID, mock.AnythingOfType("*models.Relationship"), mock.AnythingOfType("uuid.UUID")).Return(nil)
 
 	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
@@ -154,6 +155,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_Success() {
 	suite.mockTableRepo.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 }
 
 // Test CreateRelationship - Default RelationType
@@ -187,6 +189,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_DefaultRelatio
 	suite.mockRelationshipRepo.On("Create", mock.MatchedBy(func(rel *models.Relationship) bool {
 		return rel.RelationType == "one_to_many"
 	})).Return(relationshipID, nil)
+	suite.mockCollaborationService.On("NotifyRelationshipCreated", projectID, mock.AnythingOfType("*models.Relationship"), mock.AnythingOfType("uuid.UUID")).Return(nil)
 
 	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
@@ -198,6 +201,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_DefaultRelatio
 	suite.mockTableRepo.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 }
 
 // Test CreateRelationship - Project Not Found
@@ -376,6 +380,7 @@ func (suite *RelationshipServiceTestSuite) TestUpdateRelationship_Success() {
 			rel.SourceTableID == newSourceTableID &&
 			rel.RelationType == newRelationType
 	})).Return(nil)
+	suite.mockCollaborationService.On("NotifyRelationshipUpdated", existingRelationship.ProjectID, mock.AnythingOfType("*models.Relationship"), mock.AnythingOfType("uuid.UUID")).Return(nil)
 
 	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest, uuid.New())
 
@@ -387,6 +392,7 @@ func (suite *RelationshipServiceTestSuite) TestUpdateRelationship_Success() {
 
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
 	suite.mockTableRepo.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 }
 
 // Test UpdateRelationship - Not Found
@@ -443,12 +449,14 @@ func (suite *RelationshipServiceTestSuite) TestDeleteRelationship_Success() {
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(existingRelationship, nil)
 	suite.mockRelationshipRepo.On("Delete", relationshipID).Return(nil)
+	suite.mockCollaborationService.On("NotifyRelationshipDeleted", projectID, relationshipID, userID).Return(nil)
 
 	err := suite.service.DeleteRelationship(relationshipID, userID)
 
 	suite.NoError(err)
 	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 }
 
 // Test DeleteRelationship - Not Found

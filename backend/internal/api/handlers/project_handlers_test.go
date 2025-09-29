@@ -231,6 +231,7 @@ func (suite *ProjectHandlerTestSuite) TestUpdateProject_Success() {
 	suite.mockService.On("UpdateProject", projectID, &updateRequest, mock.AnythingOfType("uuid.UUID")).Return(updatedProject, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/projects/"+projectID.String(), updateRequest)
+	req = testutil.WithUserContext(req, suite.userID)
 	w := httptest.NewRecorder()
 
 	rctx := chi.NewRouteContext()

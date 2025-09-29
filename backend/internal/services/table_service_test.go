@@ -105,7 +105,7 @@ func (suite *TableServiceTestSuite) TestCreateTable_Success() {
 	suite.mockTableRepo.On("Create", mock.MatchedBy(func(table *models.Table) bool {
 		return table.Name == name && table.ProjectID == projectID && table.PosX == posX && table.PosY == posY
 	})).Return(tableID, nil)
-	suite.mockCollaborationService.On("NotifyTableCreated", projectID, mock.AnythingOfType("*models.Table"), userID).Return()
+	suite.mockCollaborationService.On("NotifyTableCreated", projectID, mock.AnythingOfType("*models.Table"), userID).Return(nil)
 
 	result, err := suite.service.CreateTable(projectID, name, posX, posY, userID)
 
@@ -258,6 +258,7 @@ func (suite *TableServiceTestSuite) TestUpdateTable_Success() {
 	suite.mockTableRepo.On("Update", mock.MatchedBy(func(table *models.Table) bool {
 		return table.ID == tableID && table.Name == newName
 	})).Return(nil)
+	suite.mockCollaborationService.On("NotifyTableUpdated", existingTable.ProjectID, mock.AnythingOfType("*models.Table"), mock.AnythingOfType("uuid.UUID")).Return(nil)
 
 	result, err := suite.service.UpdateTable(tableID, updateRequest, uuid.New())
 
@@ -320,6 +321,7 @@ func (suite *TableServiceTestSuite) TestUpdateTablePosition_Success() {
 
 	suite.mockTableRepo.On("GetByID", tableID).Return(existingTable, nil)
 	suite.mockTableRepo.On("UpdatePosition", tableID, newPosX, newPosY).Return(nil)
+	suite.mockCollaborationService.On("NotifyTableUpdated", existingTable.ProjectID, mock.AnythingOfType("*models.Table"), mock.AnythingOfType("uuid.UUID")).Return(nil)
 
 	err := suite.service.UpdateTablePosition(tableID, newPosX, newPosY, uuid.New())
 
@@ -373,6 +375,7 @@ func (suite *TableServiceTestSuite) TestDeleteTable_Success() {
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockTableRepo.On("GetByID", tableID).Return(existingTable, nil)
 	suite.mockTableRepo.On("Delete", tableID).Return(nil)
+	suite.mockCollaborationService.On("NotifyTableDeleted", projectID, tableID, userID).Return(nil)
 
 	err := suite.service.DeleteTable(tableID, userID)
 

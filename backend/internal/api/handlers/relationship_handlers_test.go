@@ -52,11 +52,13 @@ type RelationshipHandlerTestSuite struct {
 	suite.Suite
 	mockRelationshipService *mockService.MockRelationshipService
 	handler                 *RelationshipHandler
+	userID                  uuid.UUID
 }
 
 func (suite *RelationshipHandlerTestSuite) SetupTest() {
 	suite.mockRelationshipService = new(mockService.MockRelationshipService)
 	suite.handler = NewRelationshipHandler(suite.mockRelationshipService)
+	suite.userID = uuid.New()
 }
 
 func TestRelationshipHandlerSuite(t *testing.T) {
@@ -78,6 +80,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_Success() {
 	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest, mock.AnythingOfType("uuid.UUID")).Return(relationship, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
+	req = testutil.WithUserContext(req, suite.userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("project_id", projectID.String())
@@ -157,6 +160,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_ProjectNotFound() {
 	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest, mock.AnythingOfType("uuid.UUID")).Return(nil, services.ErrProjectNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
+	req = testutil.WithUserContext(req, suite.userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("project_id", projectID.String())
@@ -177,6 +181,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_TableNotFound() {
 	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest, mock.AnythingOfType("uuid.UUID")).Return(nil, services.ErrTableNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
+	req = testutil.WithUserContext(req, suite.userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("project_id", projectID.String())
@@ -197,6 +202,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_FieldNotFound() {
 	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest, mock.AnythingOfType("uuid.UUID")).Return(nil, services.ErrFieldNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
+	req = testutil.WithUserContext(req, suite.userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("project_id", projectID.String())
@@ -217,6 +223,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_ServiceError() {
 	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest, mock.AnythingOfType("uuid.UUID")).Return(nil, assert.AnError)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
+	req = testutil.WithUserContext(req, suite.userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("project_id", projectID.String())
@@ -422,6 +429,7 @@ func (suite *RelationshipHandlerTestSuite) TestUpdate_Success() {
 	suite.mockRelationshipService.On("UpdateRelationship", relationshipID, &updateRequest, mock.AnythingOfType("uuid.UUID")).Return(updatedRelationship, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/relationships/"+relationshipID.String(), updateRequest)
+	req = testutil.WithUserContext(req, suite.userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("relationship_id", relationshipID.String())
@@ -464,6 +472,7 @@ func (suite *RelationshipHandlerTestSuite) TestUpdate_RelationshipNotFound() {
 	suite.mockRelationshipService.On("UpdateRelationship", relationshipID, &updateRequest, mock.AnythingOfType("uuid.UUID")).Return(nil, services.ErrRelationshipNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/relationships/"+relationshipID.String(), updateRequest)
+	req = testutil.WithUserContext(req, suite.userID)
 
 	rctx := chi.NewRouteContext()
 	rctx.URLParams.Add("relationship_id", relationshipID.String())

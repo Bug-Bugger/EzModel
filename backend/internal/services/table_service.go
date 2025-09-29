@@ -12,16 +12,18 @@ import (
 )
 
 type TableService struct {
-	tableRepo   repository.TableRepositoryInterface
-	projectRepo repository.ProjectRepositoryInterface
-	authService AuthorizationServiceInterface
+	tableRepo           repository.TableRepositoryInterface
+	projectRepo         repository.ProjectRepositoryInterface
+	authService         AuthorizationServiceInterface
+	collaborationService CollaborationSessionServiceInterface
 }
 
-func NewTableService(tableRepo repository.TableRepositoryInterface, projectRepo repository.ProjectRepositoryInterface, authService AuthorizationServiceInterface) *TableService {
+func NewTableService(tableRepo repository.TableRepositoryInterface, projectRepo repository.ProjectRepositoryInterface, authService AuthorizationServiceInterface, collaborationService CollaborationSessionServiceInterface) *TableService {
 	return &TableService{
-		tableRepo:   tableRepo,
-		projectRepo: projectRepo,
-		authService: authService,
+		tableRepo:           tableRepo,
+		projectRepo:         projectRepo,
+		authService:         authService,
+		collaborationService: collaborationService,
 	}
 }
 
@@ -63,6 +65,15 @@ func (s *TableService) CreateTable(projectID uuid.UUID, name string, posX, posY 
 	}
 
 	table.ID = id
+
+	// Broadcast table creation to collaborators
+	if s.collaborationService != nil {
+		if err := s.collaborationService.NotifyTableCreated(projectID, table, userID); err != nil {
+			// Log error but don't fail the operation
+			// TODO: Add proper logging
+		}
+	}
+
 	return table, nil
 }
 
@@ -81,7 +92,7 @@ func (s *TableService) GetTablesByProjectID(projectID uuid.UUID) ([]*models.Tabl
 	return s.tableRepo.GetByProjectID(projectID)
 }
 
-func (s *TableService) UpdateTable(id uuid.UUID, req *dto.UpdateTableRequest) (*models.Table, error) {
+func (s *TableService) UpdateTable(id uuid.UUID, req *dto.UpdateTableRequest, userID uuid.UUID) (*models.Table, error) {
 	table, err := s.tableRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -111,12 +122,20 @@ func (s *TableService) UpdateTable(id uuid.UUID, req *dto.UpdateTableRequest) (*
 		return nil, err
 	}
 
+	// Broadcast table update to collaborators
+	if s.collaborationService != nil {
+		if err := s.collaborationService.NotifyTableUpdated(table.ProjectID, table, userID); err != nil {
+			// Log error but don't fail the operation
+			// TODO: Add proper logging
+		}
+	}
+
 	return table, nil
 }
 
-func (s *TableService) UpdateTablePosition(id uuid.UUID, posX, posY float64) error {
-	// Verify table exists
-	_, err := s.tableRepo.GetByID(id)
+func (s *TableService) UpdateTablePosition(id uuid.UUID, posX, posY float64, userID uuid.UUID) error {
+	// Verify table exists and get table data
+	table, err := s.tableRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrTableNotFound
@@ -124,7 +143,24 @@ func (s *TableService) UpdateTablePosition(id uuid.UUID, posX, posY float64) err
 		return err
 	}
 
-	return s.tableRepo.UpdatePosition(id, posX, posY)
+	err = s.tableRepo.UpdatePosition(id, posX, posY)
+	if err != nil {
+		return err
+	}
+
+	// Update table position for broadcasting
+	table.PosX = posX
+	table.PosY = posY
+
+	// Broadcast table position update to collaborators
+	if s.collaborationService != nil {
+		if err := s.collaborationService.NotifyTableUpdated(table.ProjectID, table, userID); err != nil {
+			// Log error but don't fail the operation
+			// TODO: Add proper logging
+		}
+	}
+
+	return nil
 }
 
 func (s *TableService) DeleteTable(id uuid.UUID, userID uuid.UUID) error {
@@ -152,5 +188,18 @@ func (s *TableService) DeleteTable(id uuid.UUID, userID uuid.UUID) error {
 		return err
 	}
 
-	return s.tableRepo.Delete(id)
+	// Delete the table
+	if err := s.tableRepo.Delete(id); err != nil {
+		return err
+	}
+
+	// Notify collaborators about table deletion
+	if s.collaborationService != nil {
+		if err := s.collaborationService.NotifyTableDeleted(projectID, id, userID); err != nil {
+			// Log error but don't fail the operation
+			// TODO: Add proper logging
+		}
+	}
+
+	return nil
 }

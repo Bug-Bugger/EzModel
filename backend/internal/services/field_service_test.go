@@ -123,6 +123,44 @@ func (m *mockCollaborationService) NotifyFieldDeleted(projectID, tableID, fieldI
 	return args.Error(0)
 }
 
+// Table collaboration methods
+func (m *mockCollaborationService) NotifyTableCreated(projectID uuid.UUID, table *models.Table, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, table, senderUserID)
+	return args.Error(0)
+}
+
+func (m *mockCollaborationService) NotifyTableUpdated(projectID uuid.UUID, table *models.Table, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, table, senderUserID)
+	return args.Error(0)
+}
+
+func (m *mockCollaborationService) NotifyTableDeleted(projectID, tableID uuid.UUID, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, tableID, senderUserID)
+	return args.Error(0)
+}
+
+// Relationship collaboration methods
+func (m *mockCollaborationService) NotifyRelationshipCreated(projectID uuid.UUID, relationship *models.Relationship, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, relationship, senderUserID)
+	return args.Error(0)
+}
+
+func (m *mockCollaborationService) NotifyRelationshipUpdated(projectID uuid.UUID, relationship *models.Relationship, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, relationship, senderUserID)
+	return args.Error(0)
+}
+
+func (m *mockCollaborationService) NotifyRelationshipDeleted(projectID, relationshipID uuid.UUID, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, relationshipID, senderUserID)
+	return args.Error(0)
+}
+
+// Canvas collaboration methods
+func (m *mockCollaborationService) BroadcastCanvasUpdate(projectID uuid.UUID, canvasData string, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, canvasData, senderUserID)
+	return args.Error(0)
+}
+
 // Test helper functions
 func createTestField(tableID uuid.UUID) *models.Field {
 	return &models.Field{

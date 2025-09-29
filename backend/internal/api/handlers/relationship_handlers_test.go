@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -74,7 +75,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_Success() {
 		relationshipRequest.TargetFieldID,
 	)
 
-	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest).Return(relationship, nil)
+	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest, mock.AnythingOfType("uuid.UUID")).Return(relationship, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
 
@@ -153,7 +154,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_ProjectNotFound() {
 	projectID := uuid.New()
 	relationshipRequest := createValidRelationshipRequest()
 
-	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest).Return(nil, services.ErrProjectNotFound)
+	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest, mock.AnythingOfType("uuid.UUID")).Return(nil, services.ErrProjectNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
 
@@ -173,7 +174,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_TableNotFound() {
 	projectID := uuid.New()
 	relationshipRequest := createValidRelationshipRequest()
 
-	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest).Return(nil, services.ErrTableNotFound)
+	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest, mock.AnythingOfType("uuid.UUID")).Return(nil, services.ErrTableNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
 
@@ -193,7 +194,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_FieldNotFound() {
 	projectID := uuid.New()
 	relationshipRequest := createValidRelationshipRequest()
 
-	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest).Return(nil, services.ErrFieldNotFound)
+	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest, mock.AnythingOfType("uuid.UUID")).Return(nil, services.ErrFieldNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
 
@@ -213,7 +214,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_ServiceError() {
 	projectID := uuid.New()
 	relationshipRequest := createValidRelationshipRequest()
 
-	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest).Return(nil, assert.AnError)
+	suite.mockRelationshipService.On("CreateRelationship", projectID, &relationshipRequest, mock.AnythingOfType("uuid.UUID")).Return(nil, assert.AnError)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/relationships", relationshipRequest)
 
@@ -418,7 +419,7 @@ func (suite *RelationshipHandlerTestSuite) TestUpdate_Success() {
 	updatedRelationship.ID = relationshipID
 	updatedRelationship.RelationType = *updateRequest.RelationType
 
-	suite.mockRelationshipService.On("UpdateRelationship", relationshipID, &updateRequest).Return(updatedRelationship, nil)
+	suite.mockRelationshipService.On("UpdateRelationship", relationshipID, &updateRequest, mock.AnythingOfType("uuid.UUID")).Return(updatedRelationship, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/relationships/"+relationshipID.String(), updateRequest)
 
@@ -460,7 +461,7 @@ func (suite *RelationshipHandlerTestSuite) TestUpdate_RelationshipNotFound() {
 	relationshipID := uuid.New()
 	updateRequest := createValidUpdateRelationshipRequest()
 
-	suite.mockRelationshipService.On("UpdateRelationship", relationshipID, &updateRequest).Return(nil, services.ErrRelationshipNotFound)
+	suite.mockRelationshipService.On("UpdateRelationship", relationshipID, &updateRequest, mock.AnythingOfType("uuid.UUID")).Return(nil, services.ErrRelationshipNotFound)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/relationships/"+relationshipID.String(), updateRequest)
 

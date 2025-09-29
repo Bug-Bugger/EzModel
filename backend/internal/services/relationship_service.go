@@ -11,11 +11,12 @@ import (
 )
 
 type RelationshipService struct {
-	relationshipRepo repository.RelationshipRepositoryInterface
-	projectRepo      repository.ProjectRepositoryInterface
-	tableRepo        repository.TableRepositoryInterface
-	fieldRepo        repository.FieldRepositoryInterface
-	authService      AuthorizationServiceInterface
+	relationshipRepo     repository.RelationshipRepositoryInterface
+	projectRepo          repository.ProjectRepositoryInterface
+	tableRepo            repository.TableRepositoryInterface
+	fieldRepo            repository.FieldRepositoryInterface
+	authService          AuthorizationServiceInterface
+	collaborationService CollaborationSessionServiceInterface
 }
 
 func NewRelationshipService(
@@ -24,17 +25,19 @@ func NewRelationshipService(
 	tableRepo repository.TableRepositoryInterface,
 	fieldRepo repository.FieldRepositoryInterface,
 	authService AuthorizationServiceInterface,
+	collaborationService CollaborationSessionServiceInterface,
 ) *RelationshipService {
 	return &RelationshipService{
-		relationshipRepo: relationshipRepo,
-		projectRepo:      projectRepo,
-		tableRepo:        tableRepo,
-		fieldRepo:        fieldRepo,
-		authService:      authService,
+		relationshipRepo:     relationshipRepo,
+		projectRepo:          projectRepo,
+		tableRepo:            tableRepo,
+		fieldRepo:            fieldRepo,
+		authService:          authService,
+		collaborationService: collaborationService,
 	}
 }
 
-func (s *RelationshipService) CreateRelationship(projectID uuid.UUID, req *dto.CreateRelationshipRequest) (*models.Relationship, error) {
+func (s *RelationshipService) CreateRelationship(projectID uuid.UUID, req *dto.CreateRelationshipRequest, userID uuid.UUID) (*models.Relationship, error) {
 	// Verify project exists
 	_, err := s.projectRepo.GetByID(projectID)
 	if err != nil {
@@ -100,6 +103,15 @@ func (s *RelationshipService) CreateRelationship(projectID uuid.UUID, req *dto.C
 	}
 
 	relationship.ID = id
+
+	// Broadcast relationship creation to collaborators
+	if s.collaborationService != nil {
+		if err := s.collaborationService.NotifyRelationshipCreated(projectID, relationship, userID); err != nil {
+			// Log error but don't fail the operation
+			// TODO: Add proper logging
+		}
+	}
+
 	return relationship, nil
 }
 
@@ -122,7 +134,7 @@ func (s *RelationshipService) GetRelationshipsByTableID(tableID uuid.UUID) ([]*m
 	return s.relationshipRepo.GetByTableID(tableID)
 }
 
-func (s *RelationshipService) UpdateRelationship(id uuid.UUID, req *dto.UpdateRelationshipRequest) (*models.Relationship, error) {
+func (s *RelationshipService) UpdateRelationship(id uuid.UUID, req *dto.UpdateRelationshipRequest, userID uuid.UUID) (*models.Relationship, error) {
 	relationship, err := s.relationshipRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -188,6 +200,14 @@ func (s *RelationshipService) UpdateRelationship(id uuid.UUID, req *dto.UpdateRe
 		return nil, err
 	}
 
+	// Broadcast relationship update to collaborators
+	if s.collaborationService != nil {
+		if err := s.collaborationService.NotifyRelationshipUpdated(relationship.ProjectID, relationship, userID); err != nil {
+			// Log error but don't fail the operation
+			// TODO: Add proper logging
+		}
+	}
+
 	return relationship, nil
 }
 
@@ -216,5 +236,18 @@ func (s *RelationshipService) DeleteRelationship(id uuid.UUID, userID uuid.UUID)
 		return err
 	}
 
-	return s.relationshipRepo.Delete(id)
+	// Delete the relationship
+	if err := s.relationshipRepo.Delete(id); err != nil {
+		return err
+	}
+
+	// Notify collaborators about relationship deletion
+	if s.collaborationService != nil {
+		if err := s.collaborationService.NotifyRelationshipDeleted(projectID, id, userID); err != nil {
+			// Log error but don't fail the operation
+			// TODO: Add proper logging
+		}
+	}
+
+	return nil
 }

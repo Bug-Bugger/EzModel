@@ -349,7 +349,7 @@ func (h *WebSocketHandler) handleCanvasUpdate(client *websocketPkg.Client, messa
 	// This is a simple implementation - in production you might want to
 	// implement operational transformation or conflict resolution
 	go func() {
-		if err := h.updateProjectCanvasData(client.ProjectID, payload.CanvasData); err != nil {
+		if err := h.updateProjectCanvasData(client.ProjectID, payload.CanvasData, client.UserID); err != nil {
 			log.Printf("Error updating canvas data: %v", err)
 		}
 	}()
@@ -371,7 +371,7 @@ func (h *WebSocketHandler) handleTableUpdate(client *websocketPkg.Client, messag
 
 	// Update table position in database asynchronously
 	go func() {
-		if err := h.updateTablePosition(client.ProjectID, payload.TableID, payload.X, payload.Y); err != nil {
+		if err := h.updateTablePosition(client.ProjectID, payload.TableID, payload.X, payload.Y, client.UserID); err != nil {
 			log.Printf("Error updating table position: %v", err)
 		}
 	}()
@@ -381,18 +381,18 @@ func (h *WebSocketHandler) handleTableUpdate(client *websocketPkg.Client, messag
 }
 
 // updateProjectCanvasData updates the canvas data in the database
-func (h *WebSocketHandler) updateProjectCanvasData(projectID uuid.UUID, canvasData string) error {
+func (h *WebSocketHandler) updateProjectCanvasData(projectID uuid.UUID, canvasData string, userID uuid.UUID) error {
 	// Use the project service to update canvas data
 	_, err := h.projectService.UpdateProject(projectID, &dto.UpdateProjectRequest{
 		CanvasData: &canvasData,
-	})
+	}, userID)
 	return err
 }
 
 // updateTablePosition updates a table's position in the database
-func (h *WebSocketHandler) updateTablePosition(projectID, tableID uuid.UUID, x, y float64) error {
+func (h *WebSocketHandler) updateTablePosition(projectID, tableID uuid.UUID, x, y float64, userID uuid.UUID) error {
 	// Use the table service to update table position
-	return h.tableService.UpdateTablePosition(tableID, x, y)
+	return h.tableService.UpdateTablePosition(tableID, x, y, userID)
 }
 
 // generateRandomColor generates a random hex color for user identification

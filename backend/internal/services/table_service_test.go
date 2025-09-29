@@ -68,6 +68,7 @@ type TableServiceTestSuite struct {
 	mockTableRepo   *mockRepo.MockTableRepository
 	mockProjectRepo *mockRepo.MockProjectRepository
 	mockAuthService *mockTableAuthService
+	mockCollaborationService *mockCollaborationService
 	service         *TableService
 }
 
@@ -75,7 +76,8 @@ func (suite *TableServiceTestSuite) SetupTest() {
 	suite.mockTableRepo = new(mockRepo.MockTableRepository)
 	suite.mockProjectRepo = new(mockRepo.MockProjectRepository)
 	suite.mockAuthService = new(mockTableAuthService)
-	suite.service = NewTableService(suite.mockTableRepo, suite.mockProjectRepo, suite.mockAuthService)
+	suite.mockCollaborationService = new(mockCollaborationService)
+	suite.service = NewTableService(suite.mockTableRepo, suite.mockProjectRepo, suite.mockAuthService, suite.mockCollaborationService)
 }
 
 func TestTableServiceSuite(t *testing.T) {
@@ -103,6 +105,7 @@ func (suite *TableServiceTestSuite) TestCreateTable_Success() {
 	suite.mockTableRepo.On("Create", mock.MatchedBy(func(table *models.Table) bool {
 		return table.Name == name && table.ProjectID == projectID && table.PosX == posX && table.PosY == posY
 	})).Return(tableID, nil)
+	suite.mockCollaborationService.On("NotifyTableCreated", projectID, mock.AnythingOfType("*models.Table"), userID).Return()
 
 	result, err := suite.service.CreateTable(projectID, name, posX, posY, userID)
 
@@ -256,7 +259,7 @@ func (suite *TableServiceTestSuite) TestUpdateTable_Success() {
 		return table.ID == tableID && table.Name == newName
 	})).Return(nil)
 
-	result, err := suite.service.UpdateTable(tableID, updateRequest)
+	result, err := suite.service.UpdateTable(tableID, updateRequest, uuid.New())
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -275,7 +278,7 @@ func (suite *TableServiceTestSuite) TestUpdateTable_NotFound() {
 
 	suite.mockTableRepo.On("GetByID", tableID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.UpdateTable(tableID, updateRequest)
+	result, err := suite.service.UpdateTable(tableID, updateRequest, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -297,7 +300,7 @@ func (suite *TableServiceTestSuite) TestUpdateTable_InvalidName() {
 
 	suite.mockTableRepo.On("GetByID", tableID).Return(existingTable, nil)
 
-	result, err := suite.service.UpdateTable(tableID, updateRequest)
+	result, err := suite.service.UpdateTable(tableID, updateRequest, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -318,7 +321,7 @@ func (suite *TableServiceTestSuite) TestUpdateTablePosition_Success() {
 	suite.mockTableRepo.On("GetByID", tableID).Return(existingTable, nil)
 	suite.mockTableRepo.On("UpdatePosition", tableID, newPosX, newPosY).Return(nil)
 
-	err := suite.service.UpdateTablePosition(tableID, newPosX, newPosY)
+	err := suite.service.UpdateTablePosition(tableID, newPosX, newPosY, uuid.New())
 
 	suite.NoError(err)
 	suite.mockTableRepo.AssertExpectations(suite.T())
@@ -332,7 +335,7 @@ func (suite *TableServiceTestSuite) TestUpdateTablePosition_NotFound() {
 
 	suite.mockTableRepo.On("GetByID", tableID).Return(nil, gorm.ErrRecordNotFound)
 
-	err := suite.service.UpdateTablePosition(tableID, newPosX, newPosY)
+	err := suite.service.UpdateTablePosition(tableID, newPosX, newPosY, uuid.New())
 
 	suite.Error(err)
 	suite.Equal(ErrTableNotFound, err)
@@ -351,7 +354,7 @@ func (suite *TableServiceTestSuite) TestUpdateTablePosition_RepositoryError() {
 	suite.mockTableRepo.On("GetByID", tableID).Return(existingTable, nil)
 	suite.mockTableRepo.On("UpdatePosition", tableID, newPosX, newPosY).Return(assert.AnError)
 
-	err := suite.service.UpdateTablePosition(tableID, newPosX, newPosY)
+	err := suite.service.UpdateTablePosition(tableID, newPosX, newPosY, uuid.New())
 
 	suite.Error(err)
 	suite.Equal(assert.AnError, err)

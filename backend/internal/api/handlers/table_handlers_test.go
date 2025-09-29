@@ -13,6 +13,7 @@ import (
 	"github.com/Bug-Bugger/ezmodel/internal/testutil"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -37,7 +38,7 @@ func (suite *TableHandlerTestSuite) TestCreateTable_Success() {
 	requestBody := testutil.CreateValidTableRequest()
 	expectedTable := testutil.CreateTestTable(projectID)
 
-	suite.mockService.On("CreateTable", projectID, requestBody.Name, requestBody.PosX, requestBody.PosY).
+	suite.mockService.On("CreateTable", projectID, requestBody.Name, requestBody.PosX, requestBody.PosY, mock.AnythingOfType("uuid.UUID")).
 		Return(expectedTable, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/projects/"+projectID.String()+"/tables", requestBody)
@@ -163,7 +164,7 @@ func (suite *TableHandlerTestSuite) TestUpdateTable_Success() {
 	updatedTable.ID = tableID
 	updatedTable.Name = newName
 
-	suite.mockService.On("UpdateTable", tableID, &updateRequest).Return(updatedTable, nil)
+	suite.mockService.On("UpdateTable", tableID, &updateRequest, mock.AnythingOfType("uuid.UUID")).Return(updatedTable, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/tables/"+tableID.String(), updateRequest)
 	w := httptest.NewRecorder()
@@ -191,7 +192,7 @@ func (suite *TableHandlerTestSuite) TestUpdateTablePosition_Success() {
 		PosY: 400.0,
 	}
 
-	suite.mockService.On("UpdateTablePosition", tableID, positionRequest.PosX, positionRequest.PosY).Return(nil)
+	suite.mockService.On("UpdateTablePosition", tableID, positionRequest.PosX, positionRequest.PosY, mock.AnythingOfType("uuid.UUID")).Return(nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/tables/"+tableID.String()+"/position", positionRequest)
 	w := httptest.NewRecorder()

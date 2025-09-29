@@ -142,7 +142,20 @@ func (h *ProjectHandler) Update() http.HandlerFunc {
 			return
 		}
 
-		project, err := h.projectService.UpdateProject(id, &req)
+		// Get current user ID from context for collaboration
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
+		if !ok {
+			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
+		project, err := h.projectService.UpdateProject(id, &req, userID)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrProjectNotFound):

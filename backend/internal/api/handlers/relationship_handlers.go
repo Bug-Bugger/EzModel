@@ -37,8 +37,21 @@ func (h *RelationshipHandler) Create() http.HandlerFunc {
 			return
 		}
 
+		// Get current user ID from context for collaboration
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
+		if !ok {
+			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
 		// Create relationship through service
-		relationship, err := h.relationshipService.CreateRelationship(projectID, &req)
+		relationship, err := h.relationshipService.CreateRelationship(projectID, &req, userID)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrProjectNotFound):
@@ -197,8 +210,21 @@ func (h *RelationshipHandler) Update() http.HandlerFunc {
 			return
 		}
 
+		// Get current user ID from context for collaboration
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
+		if !ok {
+			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
 		// Update relationship through service
-		relationship, err := h.relationshipService.UpdateRelationship(relationshipID, &req)
+		relationship, err := h.relationshipService.UpdateRelationship(relationshipID, &req, userID)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrRelationshipNotFound):

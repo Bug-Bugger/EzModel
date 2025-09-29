@@ -14,6 +14,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -227,7 +228,7 @@ func (suite *ProjectHandlerTestSuite) TestUpdateProject_Success() {
 	updatedProject.Name = newName
 	updatedProject.Description = newDescription
 
-	suite.mockService.On("UpdateProject", projectID, &updateRequest).Return(updatedProject, nil)
+	suite.mockService.On("UpdateProject", projectID, &updateRequest, mock.AnythingOfType("uuid.UUID")).Return(updatedProject, nil)
 
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPut, "/projects/"+projectID.String(), updateRequest)
 	w := httptest.NewRecorder()

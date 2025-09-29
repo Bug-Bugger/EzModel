@@ -76,6 +76,7 @@ type RelationshipServiceTestSuite struct {
 	mockTableRepo        *mockRepo.MockTableRepository
 	mockFieldRepo        *mockRepo.MockFieldRepository
 	mockAuthService      *mockRelationshipAuthService
+	mockCollaborationService *mockCollaborationService
 	service              *RelationshipService
 }
 
@@ -85,12 +86,14 @@ func (suite *RelationshipServiceTestSuite) SetupTest() {
 	suite.mockTableRepo = new(mockRepo.MockTableRepository)
 	suite.mockFieldRepo = new(mockRepo.MockFieldRepository)
 	suite.mockAuthService = new(mockRelationshipAuthService)
+	suite.mockCollaborationService = new(mockCollaborationService)
 	suite.service = NewRelationshipService(
 		suite.mockRelationshipRepo,
 		suite.mockProjectRepo,
 		suite.mockTableRepo,
 		suite.mockFieldRepo,
 		suite.mockAuthService,
+		suite.mockCollaborationService,
 	)
 }
 
@@ -135,7 +138,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_Success() {
 			rel.RelationType == "one_to_many"
 	})).Return(relationshipID, nil)
 
-	result, err := suite.service.CreateRelationship(projectID, req)
+	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -185,7 +188,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_DefaultRelatio
 		return rel.RelationType == "one_to_many"
 	})).Return(relationshipID, nil)
 
-	result, err := suite.service.CreateRelationship(projectID, req)
+	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -210,7 +213,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_ProjectNotFoun
 
 	suite.mockProjectRepo.On("GetByID", projectID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.CreateRelationship(projectID, req)
+	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -236,7 +239,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_SourceTableNot
 	suite.mockProjectRepo.On("GetByID", projectID).Return(project, nil)
 	suite.mockTableRepo.On("GetByID", sourceTableID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.CreateRelationship(projectID, req)
+	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -269,7 +272,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_SourceFieldNot
 	suite.mockTableRepo.On("GetByID", targetTableID).Return(targetTable, nil)
 	suite.mockFieldRepo.On("GetByID", sourceFieldID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.CreateRelationship(projectID, req)
+	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -374,7 +377,7 @@ func (suite *RelationshipServiceTestSuite) TestUpdateRelationship_Success() {
 			rel.RelationType == newRelationType
 	})).Return(nil)
 
-	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest)
+	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest, uuid.New())
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -395,7 +398,7 @@ func (suite *RelationshipServiceTestSuite) TestUpdateRelationship_NotFound() {
 
 	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest)
+	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -418,7 +421,7 @@ func (suite *RelationshipServiceTestSuite) TestUpdateRelationship_SourceTableNot
 	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(existingRelationship, nil)
 	suite.mockTableRepo.On("GetByID", newSourceTableID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest)
+	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)

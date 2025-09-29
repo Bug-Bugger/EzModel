@@ -154,7 +154,43 @@
 
 	// Handle edge selection
 	function onEdgeClick(event: any) {
-		const edge = event.detail.edge as RelationshipEdgeType;
+		// Defensive check for event structure variations
+		let edge: RelationshipEdgeType | null = null;
+
+		// Try different event structures that @xyflow/svelte might use
+		if (event.detail?.edge) {
+			edge = event.detail.edge as RelationshipEdgeType;
+		} else if (event.edge) {
+			edge = event.edge as RelationshipEdgeType;
+		} else if (event.detail?.id) {
+			// Fallback: find edge by ID if direct reference is missing
+			const edgeId = event.detail.id;
+			const foundEdge = displayEdges.find(e => e.id === edgeId);
+			if (foundEdge) {
+				edge = foundEdge;
+			}
+		} else if (event.id) {
+			// Another fallback pattern
+			const edgeId = event.id;
+			const foundEdge = displayEdges.find(e => e.id === edgeId);
+			if (foundEdge) {
+				edge = foundEdge;
+			}
+		}
+
+		// Log debug information if edge is still null
+		if (!edge) {
+			console.warn('onEdgeClick: Could not extract edge from event', {
+				event,
+				eventDetail: event.detail,
+				availableEdges: displayEdges.length,
+				eventKeys: Object.keys(event),
+				detailKeys: event.detail ? Object.keys(event.detail) : 'no detail'
+			});
+			return;
+		}
+
+		console.log('onEdgeClick: Successfully extracted edge:', edge.id);
 		flowStore.selectEdge(edge);
 		designerStore.openPropertyPanel('relationship', edge);
 	}

@@ -669,12 +669,7 @@
 					console.log('🗑️ Deleting table:', tableData);
 
 					try {
-						// Send WebSocket event FIRST to ensure real-time collaboration
-						// This ensures other users see the deletion immediately
-						collaborationStore.sendSchemaEvent('table_deleted', tableData);
-						console.log('📡 WebSocket deletion event sent');
-
-						// Then remove from backend and local store
+						// Delete table via API - backend will handle WebSocket notifications
 						await flowStore.removeTableNode(
 							$projectStore.currentProject.id,
 							tableData.id
@@ -686,10 +681,6 @@
 						projectStore.autoSaveCanvasData(canvasData);
 					} catch (error) {
 						console.error('❌ Failed to delete table:', error);
-
-						// Even if backend deletion fails, we already sent the WebSocket event
-						// so other users will see the deletion. We could optionally show
-						// an error message to the user but keep the deletion for consistency.
 					}
 				} else if ($flowStore.selectedEdge) {
 					// Capture selectedEdge data before any operations to prevent null reference errors

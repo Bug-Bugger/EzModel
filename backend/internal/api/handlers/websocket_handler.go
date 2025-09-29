@@ -287,7 +287,7 @@ func (h *WebSocketHandler) handleMessage(client *websocketPkg.Client, message *w
 	case websocketPkg.MessageTypeTableUpdated:
 		h.handleTableUpdate(client, message)
 	case websocketPkg.MessageTypeTableMoved:
-		h.handleTableUpdate(client, message)
+		h.handleTableMove(client, message)
 	default:
 		// For other message types, broadcast to all clients in the project
 		h.hub.BroadcastToProject(client.ProjectID, message, client)
@@ -319,8 +319,8 @@ func (h *WebSocketHandler) handleCursorUpdate(client *websocketPkg.Client, messa
 		return
 	}
 
-	// Broadcast to other clients in the project
-	h.hub.BroadcastToProject(client.ProjectID, newMessage, client)
+	// Broadcast to all clients in the project including sender
+	h.hub.BroadcastToProject(client.ProjectID, newMessage, nil)
 }
 
 // handlePong processes pong messages for heartbeat
@@ -354,8 +354,8 @@ func (h *WebSocketHandler) handleCanvasUpdate(client *websocketPkg.Client, messa
 		}
 	}()
 
-	// Broadcast to other clients in the project
-	h.hub.BroadcastToProject(client.ProjectID, message, client)
+	// Broadcast to all clients in the project including sender
+	h.hub.BroadcastToProject(client.ProjectID, message, nil)
 }
 
 // handleTableUpdate processes table position update messages
@@ -376,7 +376,29 @@ func (h *WebSocketHandler) handleTableUpdate(client *websocketPkg.Client, messag
 		}
 	}()
 
-	// Broadcast to other clients in the project
+	// Broadcast to other clients in the project (exclude sender for position updates)
+	h.hub.BroadcastToProject(client.ProjectID, message, client)
+}
+
+// handleTableMove processes table position move messages (visual only, no activity)
+func (h *WebSocketHandler) handleTableMove(client *websocketPkg.Client, message *websocketPkg.WebSocketMessage) {
+	var payload websocketPkg.TablePayload
+	if err := message.UnmarshalData(&payload); err != nil {
+		log.Printf("Error unmarshaling table move payload: %v", err)
+		return
+	}
+
+	log.Printf("Table position move received: table_id=%s, position=(%f, %f)",
+		payload.TableID, payload.X, payload.Y)
+
+	// Update table position in database asynchronously
+	go func() {
+		if err := h.updateTablePosition(client.ProjectID, payload.TableID, payload.X, payload.Y, client.UserID); err != nil {
+			log.Printf("Error updating table position: %v", err)
+		}
+	}()
+
+	// Broadcast visual position update to other clients only (exclude sender, no activity entries)
 	h.hub.BroadcastToProject(client.ProjectID, message, client)
 }
 

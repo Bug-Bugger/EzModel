@@ -591,32 +591,14 @@ function createCollaborationStore() {
         break;
 
       case "table_moved":
-        // Handle final table position after drag completion
+        // Handle table position updates during drag (visual only, no activity entries)
         if (message.data.table_id && message.data.x !== undefined && message.data.y !== undefined) {
           // Update table position using static import
           flowStore.updateTablePositionFromExternal(message.data.table_id, {
             x: message.data.x,
             y: message.data.y
           });
-
-          // Add activity event for completed table move
-          update((state) => {
-            const userName = getUsernameFromId(message.user_id, state);
-            const newEvent: ActivityEvent = {
-              id: crypto.randomUUID(),
-              type: "table_update", // Use existing activity type for consistency
-              userId: message.user_id,
-              userName: userName,
-              message: `moved table "${message.data.name || 'Unknown Table'}"`,
-              data: message.data,
-              timestamp: Date.now(),
-            };
-
-            return {
-              ...state,
-              activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
-            };
-          });
+          // Note: No activity event created for table moves to avoid spamming activity feed
         }
         break;
 

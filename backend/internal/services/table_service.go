@@ -134,8 +134,8 @@ func (s *TableService) UpdateTable(id uuid.UUID, req *dto.UpdateTableRequest, us
 }
 
 func (s *TableService) UpdateTablePosition(id uuid.UUID, posX, posY float64, userID uuid.UUID) error {
-	// Verify table exists and get table data
-	table, err := s.tableRepo.GetByID(id)
+	// Verify table exists
+	_, err := s.tableRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrTableNotFound
@@ -148,17 +148,8 @@ func (s *TableService) UpdateTablePosition(id uuid.UUID, posX, posY float64, use
 		return err
 	}
 
-	// Update table position for broadcasting
-	table.PosX = posX
-	table.PosY = posY
-
-	// Broadcast table position update to collaborators
-	if s.collaborationService != nil {
-		if err := s.collaborationService.NotifyTableUpdated(table.ProjectID, table, userID); err != nil {
-			// Log error but don't fail the operation
-			// TODO: Add proper logging
-		}
-	}
+	// Note: Position updates are handled via WebSocket MessageTypeTableMoved
+	// and do not create activity feed entries to avoid spam from drag operations
 
 	return nil
 }

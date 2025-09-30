@@ -165,7 +165,11 @@ function createCollaborationStore() {
         console.log("📡 WebSocket sending:", message);
         wsClient.send(message);
       } else {
-        console.warn("⚠️ WebSocket not connected, cannot send schema event:", type, data);
+        console.warn(
+          "⚠️ WebSocket not connected, cannot send schema event:",
+          type,
+          data
+        );
       }
     },
 
@@ -176,8 +180,11 @@ function createCollaborationStore() {
   };
 
   // Helper function to get username from user_id
-  function getUsernameFromId(userId: string, state: CollaborationState): string {
-    const user = state.connectedUsers.find(u => u.id === userId);
+  function getUsernameFromId(
+    userId: string,
+    state: CollaborationState
+  ): string {
+    const user = state.connectedUsers.find((u) => u.id === userId);
     return user?.username || "Unknown User";
   }
 
@@ -225,6 +232,16 @@ function createCollaborationStore() {
 
       case "user_presence":
         // Handle backend UserPresencePayload structure - this sets the complete user list
+        console.log("DEBUG: Received user_presence message:", message);
+        console.log(
+          "DEBUG: Raw active_users array:",
+          message.data.active_users
+        );
+        console.log(
+          "DEBUG: Number of users in active_users:",
+          message.data.active_users?.length || 0
+        );
+
         const activeUsers =
           message.data.active_users?.map((user: any) => ({
             id: user.user_id,
@@ -233,10 +250,19 @@ function createCollaborationStore() {
             lastActivity: Date.now(),
           })) || [];
 
+        console.log("DEBUG: Mapped activeUsers array:", activeUsers);
+        console.log(
+          "DEBUG: Setting connectedUsers to",
+          activeUsers.length,
+          "users"
+        );
+
         update((state) => ({
           ...state,
           connectedUsers: activeUsers,
         }));
+
+        console.log("DEBUG: connectedUsers updated");
         break;
 
       case "user_cursor":
@@ -265,11 +291,16 @@ function createCollaborationStore() {
 
       case "table_created":
         // Handle table creation - add table to canvas and create activity
-        if (message.data.id && message.data.name && message.data.pos_x !== undefined && message.data.pos_y !== undefined) {
+        if (
+          message.data.table_id &&
+          message.data.name &&
+          message.data.x !== undefined &&
+          message.data.y !== undefined
+        ) {
           // Add table to canvas using the flow store
           flowStore.addTableNodeFromExternal(message.data, {
-            x: message.data.pos_x,
-            y: message.data.pos_y
+            x: message.data.x,
+            y: message.data.y,
           });
         }
 
@@ -300,18 +331,23 @@ function createCollaborationStore() {
 
         try {
           // Handle table deletion - remove table from canvas
-          if (message.data && message.data.id) {
-            console.log("🔄 Removing table with ID:", message.data.id);
-            flowStore.removeLocalTableNode(message.data.id);
+          if (message.data && message.data.table_id) {
+            console.log("🔄 Removing table with ID:", message.data.table_id);
+            flowStore.removeLocalTableNode(message.data.table_id);
             console.log("✅ Table removal completed");
           } else {
-            console.warn("⚠️ Missing table ID in deletion message:", message.data);
+            console.warn(
+              "⚠️ Missing table ID in deletion message:",
+              message.data
+            );
           }
 
           // Create activity event for table deletion
           update((state) => {
             try {
-              const userName = message.user_id ? getUsernameFromId(message.user_id, state) : "Unknown User";
+              const userName = message.user_id
+                ? getUsernameFromId(message.user_id, state)
+                : "Unknown User";
               console.log("👤 Resolved username:", userName);
 
               const newEvent: ActivityEvent = {
@@ -319,7 +355,10 @@ function createCollaborationStore() {
                 type: message.type,
                 userId: message.user_id || "unknown",
                 userName: userName,
-                message: generateActivityMessage(message.type, message.data || {}),
+                message: generateActivityMessage(
+                  message.type,
+                  message.data || {}
+                ),
                 data: message.data || {},
                 timestamp: Date.now(),
               };
@@ -328,7 +367,10 @@ function createCollaborationStore() {
 
               return {
                 ...state,
-                activityEvents: [newEvent, ...state.activityEvents.slice(0, 49)], // Keep last 50 events
+                activityEvents: [
+                  newEvent,
+                  ...state.activityEvents.slice(0, 49),
+                ], // Keep last 50 events
               };
             } catch (activityError) {
               console.error("❌ Error creating activity event:", activityError);
@@ -336,7 +378,11 @@ function createCollaborationStore() {
             }
           });
         } catch (error) {
-          console.error("❌ Error handling table_deleted message:", error, message);
+          console.error(
+            "❌ Error handling table_deleted message:",
+            error,
+            message
+          );
         }
         break;
 
@@ -362,14 +408,18 @@ function createCollaborationStore() {
 
       case "relationship_create":
         // Add relationship edge to flow store for real-time collaboration
-        if (message.data.id && message.data.source_table_id && message.data.target_table_id) {
+        if (
+          message.data.relationship_id &&
+          message.data.source_table_id &&
+          message.data.target_table_id
+        ) {
           flowStore.addLocalRelationshipEdge({
-            id: message.data.id,
-            fromTable: message.data.source_table_id,
-            toTable: message.data.target_table_id,
-            fromField: message.data.source_field_id,
-            toField: message.data.target_field_id,
-            type: message.data.relation_type
+            relationship_id: message.data.relationship_id,
+            source_table_id: message.data.source_table_id,
+            target_table_id: message.data.target_table_id,
+            source_field_id: message.data.source_field_id,
+            target_field_id: message.data.target_field_id,
+            relation_type: message.data.relation_type,
           });
         }
 
@@ -394,9 +444,9 @@ function createCollaborationStore() {
 
       case "relationship_update":
         // Update relationship edge in flow store for real-time collaboration
-        if (message.data.id) {
-          flowStore.updateLocalRelationshipEdge(message.data.id, {
-            type: message.data.relation_type
+        if (message.data.relationship_id) {
+          flowStore.updateLocalRelationshipEdge(message.data.relationship_id, {
+            relation_type: message.data.relation_type,
           });
         }
 
@@ -421,8 +471,8 @@ function createCollaborationStore() {
 
       case "relationship_delete":
         // Remove relationship edge from flow store for real-time collaboration
-        if (message.data.id) {
-          flowStore.removeLocalRelationshipEdge(message.data.id);
+        if (message.data.relationship_id) {
+          flowStore.removeLocalRelationshipEdge(message.data.relationship_id);
         }
 
         update((state) => {
@@ -451,24 +501,28 @@ function createCollaborationStore() {
           if (!isOwnMessage) {
             // Use backend field data structure directly
             const fieldData = {
-              id: message.data.field_id,
+              field_id: message.data.field_id,
               table_id: message.data.table_id,
               name: message.data.name,
-              data_type: message.data.type,
-              is_primary_key: message.data.is_primary || false,
+              data_type: message.data.data_type,
+              is_primary_key: message.data.is_primary_key || false,
               is_nullable: message.data.is_nullable,
-              default_value: message.data.default || "",
+              default_value: message.data.default_value || "",
               position: message.data.position || 0,
               created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             };
 
             // Update the table's fields in the flow store
             const currentNodes = get(flowStore).nodes;
-            const tableNode = currentNodes.find(node => node.id === message.data.table_id);
+            const tableNode = currentNodes.find(
+              (node) => node.id === message.data.table_id
+            );
             if (tableNode) {
               const updatedFields = [...tableNode.data.fields, fieldData];
-              flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+              flowStore.updateTableNode(tableNode.id, {
+                fields: updatedFields,
+              });
             }
           }
         }
@@ -501,22 +555,28 @@ function createCollaborationStore() {
             // Use backend field data structure directly
             const fieldUpdates = {
               name: message.data.name,
-              data_type: message.data.type,
-              is_primary_key: message.data.is_primary || false,
+              data_type: message.data.data_type,
+              is_primary_key: message.data.is_primary_key || false,
               is_nullable: message.data.is_nullable,
-              default_value: message.data.default || "",
+              default_value: message.data.default_value || "",
               position: message.data.position || 0,
-              updated_at: new Date().toISOString()
+              updated_at: new Date().toISOString(),
             };
 
             // Update the field in the flow store
             const currentNodes = get(flowStore).nodes;
-            const tableNode = currentNodes.find(node => node.id === message.data.table_id);
+            const tableNode = currentNodes.find(
+              (node) => node.id === message.data.table_id
+            );
             if (tableNode) {
-              const updatedFields = tableNode.data.fields.map(field =>
-                field.id === message.data.field_id ? { ...field, ...fieldUpdates } : field
+              const updatedFields = tableNode.data.fields.map((field) =>
+                field.field_id === message.data.field_id
+                  ? { ...field, ...fieldUpdates }
+                  : field
               );
-              flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+              flowStore.updateTableNode(tableNode.id, {
+                fields: updatedFields,
+              });
             }
           }
         }
@@ -548,10 +608,16 @@ function createCollaborationStore() {
           if (!isOwnMessage) {
             // Remove the field from the flow store
             const currentNodes = get(flowStore).nodes;
-            const tableNode = currentNodes.find(node => node.id === message.data.table_id);
+            const tableNode = currentNodes.find(
+              (node) => node.id === message.data.table_id
+            );
             if (tableNode) {
-              const updatedFields = tableNode.data.fields.filter(field => field.id !== message.data.field_id);
-              flowStore.updateTableNode(tableNode.id, { fields: updatedFields });
+              const updatedFields = tableNode.data.fields.filter(
+                (field) => field.field_id !== message.data.field_id
+              );
+              flowStore.updateTableNode(tableNode.id, {
+                fields: updatedFields,
+              });
             }
           }
         }
@@ -578,11 +644,15 @@ function createCollaborationStore() {
 
       case "table_updated":
         // Handle table position updates from other users
-        if (message.data.table_id && message.data.x !== undefined && message.data.y !== undefined) {
+        if (
+          message.data.table_id &&
+          message.data.x !== undefined &&
+          message.data.y !== undefined
+        ) {
           // Update table position using static import
           flowStore.updateTablePositionFromExternal(message.data.table_id, {
             x: message.data.x,
-            y: message.data.y
+            y: message.data.y,
           });
 
           // No activity event for real-time position updates during dragging
@@ -592,11 +662,15 @@ function createCollaborationStore() {
 
       case "table_moved":
         // Handle table position updates during drag (visual only, no activity entries)
-        if (message.data.table_id && message.data.x !== undefined && message.data.y !== undefined) {
+        if (
+          message.data.table_id &&
+          message.data.x !== undefined &&
+          message.data.y !== undefined
+        ) {
           // Update table position using static import
           flowStore.updateTablePositionFromExternal(message.data.table_id, {
             x: message.data.x,
-            y: message.data.y
+            y: message.data.y,
           });
           // Note: No activity event created for table moves to avoid spamming activity feed
         }

@@ -36,7 +36,7 @@
 	// Handle add field button click
 	function handleAddField(event: MouseEvent) {
 		event.stopPropagation(); // Prevent node selection
-		dispatch('addField', { tableId: data.id, tableName: data.name });
+		dispatch('addField', { tableId: data.table_id, tableName: data.name });
 	}
 </script>
 
@@ -65,14 +65,14 @@
 				<Handle
 					type="source"
 					position={Position.Right}
-					id="{data.id}-{field.id}-source"
+					id="{data.table_id}-{field.field_id}-source"
 					class="field-handle-source"
 					style="position: absolute; right: -8px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #3b82f6; border: 2px solid white; border-radius: 50%; z-index: 10; cursor: pointer; {showHandles ? '' : 'opacity: 0; pointer-events: none;'}"
 				/>
 				<Handle
 					type="target"
 					position={Position.Left}
-					id="{data.id}-{field.id}-target"
+					id="{data.table_id}-{field.field_id}-target"
 					class="field-handle-target"
 					style="position: absolute; left: -8px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #10b981; border: 2px solid white; border-radius: 50%; z-index: 10; cursor: pointer; {showHandles ? '' : 'opacity: 0; pointer-events: none;'}"
 				/>

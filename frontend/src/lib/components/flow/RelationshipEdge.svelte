@@ -16,7 +16,7 @@
 
 	// Cast data to our relationship edge data type
 	const relationshipData = data as RelationshipEdge['data'] | undefined;
-	const relationshipType = relationshipData?.type || 'one_to_many';
+	const relationshipType = relationshipData?.relation_type || 'one_to_many';
 
 	// Generate path using getSmoothStepPath
 	const pathResult = $derived(getSmoothStepPath({

@@ -74,7 +74,7 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 
 	// Initialize services with authorization service
 	s.userService = services.NewUserService(s.userRepo)
-	s.collaborationService = services.NewCollaborationSessionService(s.collaborationRepo, s.projectRepo, s.userRepo, s.tableRepo, s.authService, s.websocketHub)
+	s.collaborationService = services.NewCollaborationSessionService(s.collaborationRepo, s.projectRepo, s.userRepo, s.tableRepo, s.relationshipRepo, s.authService, s.websocketHub)
 	s.projectService = services.NewProjectService(s.projectRepo, s.userRepo, s.collaborationService)
 	s.tableService = services.NewTableService(s.tableRepo, s.projectRepo, s.authService, s.collaborationService)
 	s.fieldService = services.NewFieldService(s.fieldRepo, s.tableRepo, s.authService, s.collaborationService)

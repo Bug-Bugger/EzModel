@@ -93,7 +93,7 @@ func (suite *RelationshipHandlerTestSuite) TestCreate_Success() {
 
 	relationshipResponse, ok := response.Data.(map[string]any)
 	suite.True(ok, "Response data should be a relationship object")
-	suite.Equal(relationship.ID.String(), relationshipResponse["id"])
+	suite.Equal(relationship.ID.String(), relationshipResponse["relationship_id"])
 	suite.Equal(relationship.RelationType, relationshipResponse["relation_type"])
 
 	suite.mockRelationshipService.AssertExpectations(suite.T())
@@ -257,7 +257,7 @@ func (suite *RelationshipHandlerTestSuite) TestGetByID_Success() {
 
 	relationshipResponse, ok := response.Data.(map[string]any)
 	suite.True(ok)
-	suite.Equal(relationship.ID.String(), relationshipResponse["id"])
+	suite.Equal(relationship.ID.String(), relationshipResponse["relationship_id"])
 	suite.Equal(relationship.RelationType, relationshipResponse["relation_type"])
 
 	suite.mockRelationshipService.AssertExpectations(suite.T())
@@ -442,7 +442,7 @@ func (suite *RelationshipHandlerTestSuite) TestUpdate_Success() {
 
 	relationshipResponse, ok := response.Data.(map[string]any)
 	suite.True(ok)
-	suite.Equal(updatedRelationship.ID.String(), relationshipResponse["id"])
+	suite.Equal(updatedRelationship.ID.String(), relationshipResponse["relationship_id"])
 	suite.Equal(updatedRelationship.RelationType, relationshipResponse["relation_type"])
 
 	suite.mockRelationshipService.AssertExpectations(suite.T())

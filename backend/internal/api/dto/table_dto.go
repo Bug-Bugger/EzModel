@@ -24,7 +24,7 @@ type UpdateTablePositionRequest struct {
 }
 
 type TableResponse struct {
-	ID        uuid.UUID `json:"id"`
+	ID        uuid.UUID `json:"table_id"`
 	ProjectID uuid.UUID `json:"project_id"`
 	Name      string    `json:"name"`
 	PosX      float64   `json:"pos_x"`
@@ -34,7 +34,7 @@ type TableResponse struct {
 }
 
 type TableWithFieldsResponse struct {
-	ID        uuid.UUID       `json:"id"`
+	ID        uuid.UUID       `json:"table_id"`
 	ProjectID uuid.UUID       `json:"project_id"`
 	Name      string          `json:"name"`
 	PosX      float64         `json:"pos_x"`

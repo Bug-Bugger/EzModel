@@ -90,25 +90,25 @@ type TablePayload struct {
 }
 
 type FieldPayload struct {
-	FieldID    uuid.UUID `json:"field_id"`
-	TableID    uuid.UUID `json:"table_id"`
-	Name       string    `json:"name"`
-	Type       string    `json:"type"`
-	IsPrimary  bool      `json:"is_primary"`
-	IsNullable bool      `json:"is_nullable"`
-	Default    *string   `json:"default,omitempty"`
-	Position   int       `json:"position"`
+	FieldID      uuid.UUID `json:"field_id"`
+	TableID      uuid.UUID `json:"table_id"`
+	Name         string    `json:"name"`
+	DataType     string    `json:"data_type"`
+	IsPrimaryKey bool      `json:"is_primary_key"`
+	IsNullable   bool      `json:"is_nullable"`
+	DefaultValue *string   `json:"default_value,omitempty"`
+	Position     int       `json:"position"`
 }
 
 type RelationshipPayload struct {
-	RelationshipID uuid.UUID `json:"id"`                   // Frontend expects 'id'
+	RelationshipID uuid.UUID `json:"relationship_id"`
 	SourceTableID  uuid.UUID `json:"source_table_id"`
 	TargetTableID  uuid.UUID `json:"target_table_id"`
 	SourceFieldID  uuid.UUID `json:"source_field_id"`
 	TargetFieldID  uuid.UUID `json:"target_field_id"`
-	Type           string    `json:"relation_type"`        // Frontend expects 'relation_type'
-	FromTableName  string    `json:"from_table"`           // Frontend expects table names for activity
-	ToTableName    string    `json:"to_table"`             // Frontend expects table names for activity
+	Type           string    `json:"relation_type"`
+	FromTableName  string    `json:"from_table"`
+	ToTableName    string    `json:"to_table"`
 }
 
 // Canvas payload

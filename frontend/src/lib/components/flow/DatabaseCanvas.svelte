@@ -311,7 +311,7 @@
 				name: 'New Table',
 				fields: [
 					{
-						id: crypto.randomUUID(),
+						field_id: crypto.randomUUID(),
 						table_id: '', // Will be set by backend
 						name: 'id',
 						data_type: 'UUID',
@@ -421,25 +421,25 @@
 		}
 
 		// 3. Check if fields exist in their respective tables
-		const sourceField = sourceTable.data.fields.find(field => field.id === sourceFieldId);
-		const targetField = targetTable.data.fields.find(field => field.id === targetFieldId);
+		const sourceField = sourceTable.data.fields.find(field => field.field_id === sourceFieldId);
+		const targetField = targetTable.data.fields.find(field => field.field_id === targetFieldId);
 
 		if (!sourceField || !targetField) {
 			console.error('Source or target field not found:', {
 				sourceFieldId,
 				targetFieldId,
-				sourceFields: sourceTable.data.fields.map(f => f.id),
-				targetFields: targetTable.data.fields.map(f => f.id)
+				sourceFields: sourceTable.data.fields.map(f => f.field_id),
+				targetFields: targetTable.data.fields.map(f => f.field_id)
 			});
 			return;
 		}
 
 		// 4. Check if relationship already exists between these fields
 		const existingRelationship = displayEdges.find(edge =>
-			(edge.data.fromTable === sourceTableId && edge.data.toTable === targetTableId &&
-			 edge.data.fromField === sourceFieldId && edge.data.toField === targetFieldId) ||
-			(edge.data.fromTable === targetTableId && edge.data.toTable === sourceTableId &&
-			 edge.data.fromField === targetFieldId && edge.data.toField === sourceFieldId)
+			(edge.data.source_table_id === sourceTableId && edge.data.target_table_id === targetTableId &&
+			 edge.data.source_field_id === sourceFieldId && edge.data.target_field_id === targetFieldId) ||
+			(edge.data.source_table_id === targetTableId && edge.data.target_table_id === sourceTableId &&
+			 edge.data.source_field_id === targetFieldId && edge.data.target_field_id === sourceFieldId)
 		);
 
 		if (existingRelationship) {
@@ -479,12 +479,12 @@
 
 			// Add relationship edge to local store (map backend response to frontend format)
 			const edgeData = {
-				id: newRelationship.id,
-				fromTable: newRelationship.source_table_id,
-				toTable: newRelationship.target_table_id,
-				fromField: newRelationship.source_field_id,
-				toField: newRelationship.target_field_id,
-				type: newRelationship.relation_type
+				relationship_id: newRelationship.relationship_id,
+				source_table_id: newRelationship.source_table_id,
+				target_table_id: newRelationship.target_table_id,
+				source_field_id: newRelationship.source_field_id,
+				target_field_id: newRelationship.target_field_id,
+				relation_type: newRelationship.relation_type
 			};
 
 			flowStore.addLocalRelationshipEdge(edgeData);

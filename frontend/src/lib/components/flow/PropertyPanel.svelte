@@ -133,7 +133,7 @@
 		}
 
 		try {
-			const field = selectedNode.data.fields.find(f => f.id === fieldId);
+			const field = selectedNode.data.fields.find(f => f.field_id === fieldId);
 			if (!field) {
 				return;
 			}
@@ -146,7 +146,7 @@
 			);
 
 			// Update local store
-			const updatedFields = selectedNode.data.fields.filter(f => f.id !== fieldId);
+			const updatedFields = selectedNode.data.fields.filter(f => f.field_id !== fieldId);
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
 			// WebSocket broadcasting is now handled by the backend after successful API call
@@ -167,7 +167,7 @@
 		}
 
 		try {
-			const currentField = selectedNode.data.fields.find(f => f.id === fieldId);
+			const currentField = selectedNode.data.fields.find(f => f.field_id === fieldId);
 			if (!currentField) {
 				return;
 			}
@@ -190,7 +190,7 @@
 
 			// Update local store with the returned field (already in correct format)
 			const updatedFields = selectedNode.data.fields.map(field =>
-				field.id === fieldId ? updatedField : field
+				field.field_id === fieldId ? updatedField : field
 			);
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
@@ -281,7 +281,7 @@
 							<div class="flex items-center justify-between mb-2">
 								<span class="font-medium text-gray-900">{field.name}</span>
 								<button
-									on:click={() => removeField(field.id)}
+									on:click={() => removeField(field.field_id)}
 									class="text-red-600 hover:text-red-800 text-sm"
 								>
 									Remove
@@ -382,7 +382,7 @@
 				<div>
 					<label for="relationship-type" class="block text-sm font-medium text-gray-700 mb-2">Relationship Type</label>
 					<Select
-						bind:value={selectedEdge.data.type}
+						bind:value={selectedEdge.data.relation_type}
 						options={relationshipTypeOptions}
 						onchange={(value) => updateRelationshipType(value)}
 						class="w-full"
@@ -391,22 +391,22 @@
 
 				<div>
 					<label for="from-table" class="block text-sm font-medium text-gray-700 mb-2">From Table</label>
-					<Input id="from-table" value={selectedEdge.data.fromTable} disabled class="w-full" />
+					<Input id="from-table" value={selectedEdge.data.source_table_id} disabled class="w-full" />
 				</div>
 
 				<div>
 					<label for="to-table" class="block text-sm font-medium text-gray-700 mb-2">To Table</label>
-					<Input id="to-table" value={selectedEdge.data.toTable} disabled class="w-full" />
+					<Input id="to-table" value={selectedEdge.data.target_table_id} disabled class="w-full" />
 				</div>
 
 				<div>
 					<label for="from-field" class="block text-sm font-medium text-gray-700 mb-2">From Field</label>
-					<Input id="from-field" value={selectedEdge.data.fromField} disabled class="w-full" />
+					<Input id="from-field" value={selectedEdge.data.source_field_id} disabled class="w-full" />
 				</div>
 
 				<div>
 					<label for="to-field" class="block text-sm font-medium text-gray-700 mb-2">To Field</label>
-					<Input id="to-field" value={selectedEdge.data.toField} disabled class="w-full" />
+					<Input id="to-field" value={selectedEdge.data.target_field_id} disabled class="w-full" />
 				</div>
 
 				<!-- Delete Relationship Button -->

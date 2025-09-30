@@ -89,7 +89,7 @@
 			// Reconstruct table nodes from backend data with field loading
 			console.log('DEBUG: Starting table reconstruction...');
 			for (const table of tables) {
-				const savedPosition = savedPositions[table.id];
+				const savedPosition = savedPositions[table.table_id];
 
 				// For debugging: use fixed position if no saved position found
 				const position = savedPosition || {
@@ -97,7 +97,7 @@
 					y: 100
 				};
 
-				console.log(`DEBUG: Reconstructing table "${table.name}" (${table.id}):`, {
+				console.log(`DEBUG: Reconstructing table "${table.name}" (${table.table_id}):`, {
 					tableFromBackend: table,
 					savedPosition,
 					finalPosition: position,
@@ -107,7 +107,7 @@
 				// Load field data for this table since backend doesn't include it
 				let tableFields = [];
 				try {
-					tableFields = await projectService.getTableFields(projectId, table.id);
+					tableFields = await projectService.getTableFields(projectId, table.table_id);
 					console.log(`DEBUG: Loaded ${tableFields.length} fields for table "${table.name}"`);
 				} catch (error) {
 					console.warn(`Failed to load fields for table "${table.name}":`, error);
@@ -117,7 +117,7 @@
 
 				// Convert backend table to frontend table node format
 				const tableData = {
-					id: table.id,
+					table_id: table.table_id,
 					name: table.name,
 					fields: tableFields
 				};

@@ -95,7 +95,7 @@ func (suite *FieldHandlerTestSuite) TestCreate_Success() {
 
 	fieldResponse, ok := response.Data.(map[string]any)
 	suite.True(ok, "Response data should be a field object")
-	suite.Equal(field.ID.String(), fieldResponse["id"])
+	suite.Equal(field.ID.String(), fieldResponse["field_id"])
 	suite.Equal(field.Name, fieldResponse["name"])
 	suite.Equal(field.DataType, fieldResponse["data_type"])
 
@@ -243,7 +243,7 @@ func (suite *FieldHandlerTestSuite) TestGetByID_Success() {
 
 	fieldResponse, ok := response.Data.(map[string]any)
 	suite.True(ok)
-	suite.Equal(field.ID.String(), fieldResponse["id"])
+	suite.Equal(field.ID.String(), fieldResponse["field_id"])
 	suite.Equal(field.Name, fieldResponse["name"])
 
 	suite.mockFieldService.AssertExpectations(suite.T())
@@ -389,7 +389,7 @@ func (suite *FieldHandlerTestSuite) TestUpdate_Success() {
 
 	fieldResponse, ok := response.Data.(map[string]any)
 	suite.True(ok)
-	suite.Equal(updatedField.ID.String(), fieldResponse["id"])
+	suite.Equal(updatedField.ID.String(), fieldResponse["field_id"])
 	suite.Equal(updatedField.Name, fieldResponse["name"])
 	suite.Equal(updatedField.DataType, fieldResponse["data_type"])
 

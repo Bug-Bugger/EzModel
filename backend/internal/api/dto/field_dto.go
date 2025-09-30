@@ -29,7 +29,7 @@ type ReorderFieldsRequest struct {
 }
 
 type FieldResponse struct {
-	ID           uuid.UUID `json:"id"`
+	ID           uuid.UUID `json:"field_id"`
 	TableID      uuid.UUID `json:"table_id"`
 	Name         string    `json:"name"`
 	DataType     string    `json:"data_type"`

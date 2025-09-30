@@ -218,8 +218,11 @@ func (h *Hub) sendPresenceToClient(targetClient *Client) {
 	if clients, exists := h.projects[targetClient.ProjectID]; exists {
 		var activeUsers []ActiveUser
 
+		log.Printf("DEBUG: Preparing presence for client %s in project %s. Total clients in project: %d", targetClient.UserID, targetClient.ProjectID, len(clients))
+
 		// Include ALL users in the project (including the target client)
 		for client := range clients {
+			log.Printf("DEBUG: Adding user %s (%s) to presence list", client.UserID, client.Username)
 			activeUsers = append(activeUsers, ActiveUser{
 				UserID:    client.UserID,
 				Username:  client.Username,
@@ -227,6 +230,8 @@ func (h *Hub) sendPresenceToClient(targetClient *Client) {
 				LastSeen:  client.LastPing,
 			})
 		}
+
+		log.Printf("DEBUG: Sending presence with %d users to client %s", len(activeUsers), targetClient.UserID)
 
 		presencePayload := UserPresencePayload{
 			ActiveUsers: activeUsers,

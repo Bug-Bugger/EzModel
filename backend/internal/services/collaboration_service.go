@@ -14,12 +14,13 @@ import (
 )
 
 type CollaborationSessionService struct {
-	sessionRepo repository.CollaborationSessionRepositoryInterface
-	projectRepo repository.ProjectRepositoryInterface
-	userRepo    repository.UserRepositoryInterface
-	tableRepo   repository.TableRepositoryInterface
-	authService AuthorizationServiceInterface
-	hub         *websocketPkg.Hub
+	sessionRepo      repository.CollaborationSessionRepositoryInterface
+	projectRepo      repository.ProjectRepositoryInterface
+	userRepo         repository.UserRepositoryInterface
+	tableRepo        repository.TableRepositoryInterface
+	relationshipRepo repository.RelationshipRepositoryInterface
+	authService      AuthorizationServiceInterface
+	hub              *websocketPkg.Hub
 }
 
 func NewCollaborationSessionService(
@@ -27,16 +28,18 @@ func NewCollaborationSessionService(
 	projectRepo repository.ProjectRepositoryInterface,
 	userRepo repository.UserRepositoryInterface,
 	tableRepo repository.TableRepositoryInterface,
+	relationshipRepo repository.RelationshipRepositoryInterface,
 	authService AuthorizationServiceInterface,
 	hub *websocketPkg.Hub,
 ) *CollaborationSessionService {
 	return &CollaborationSessionService{
-		sessionRepo: sessionRepo,
-		projectRepo: projectRepo,
-		userRepo:    userRepo,
-		tableRepo:   tableRepo,
-		authService: authService,
-		hub:         hub,
+		sessionRepo:      sessionRepo,
+		projectRepo:      projectRepo,
+		userRepo:         userRepo,
+		tableRepo:        tableRepo,
+		relationshipRepo: relationshipRepo,
+		authService:      authService,
+		hub:              hub,
 	}
 }
 
@@ -252,14 +255,14 @@ func (s *CollaborationSessionService) NotifyTableDeleted(projectID, tableID uuid
 // NotifyFieldCreated notifies collaborators about a new field
 func (s *CollaborationSessionService) NotifyFieldCreated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error {
 	payload := websocketPkg.FieldPayload{
-		FieldID:    field.ID,
-		TableID:    field.TableID,
-		Name:       field.Name,
-		Type:       field.DataType,
-		IsPrimary:  field.IsPrimaryKey,
-		IsNullable: field.IsNullable,
-		Default:    &field.DefaultValue,
-		Position:   field.Position,
+		FieldID:      field.ID,
+		TableID:      field.TableID,
+		Name:         field.Name,
+		DataType:     field.DataType,
+		IsPrimaryKey: field.IsPrimaryKey,
+		IsNullable:   field.IsNullable,
+		DefaultValue: &field.DefaultValue,
+		Position:     field.Position,
 	}
 
 	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeFieldCreated, payload, senderUserID)
@@ -268,14 +271,14 @@ func (s *CollaborationSessionService) NotifyFieldCreated(projectID uuid.UUID, fi
 // NotifyFieldUpdated notifies collaborators about a field update
 func (s *CollaborationSessionService) NotifyFieldUpdated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error {
 	payload := websocketPkg.FieldPayload{
-		FieldID:    field.ID,
-		TableID:    field.TableID,
-		Name:       field.Name,
-		Type:       field.DataType,
-		IsPrimary:  field.IsPrimaryKey,
-		IsNullable: field.IsNullable,
-		Default:    &field.DefaultValue,
-		Position:   field.Position,
+		FieldID:      field.ID,
+		TableID:      field.TableID,
+		Name:         field.Name,
+		DataType:     field.DataType,
+		IsPrimaryKey: field.IsPrimaryKey,
+		IsNullable:   field.IsNullable,
+		DefaultValue: &field.DefaultValue,
+		Position:     field.Position,
 	}
 
 	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeFieldUpdated, payload, senderUserID)
@@ -351,8 +354,28 @@ func (s *CollaborationSessionService) NotifyRelationshipUpdated(projectID uuid.U
 
 // NotifyRelationshipDeleted notifies collaborators about a relationship deletion
 func (s *CollaborationSessionService) NotifyRelationshipDeleted(projectID, relationshipID uuid.UUID, senderUserID uuid.UUID) error {
+	// Get relationship to fetch table names for activity messages
+	relationship, err := s.relationshipRepo.GetByID(relationshipID)
+	sourceTableName := "Unknown Table"
+	targetTableName := "Unknown Table"
+
+	if err == nil {
+		// Get table names
+		sourceTable, err := s.tableRepo.GetByID(relationship.SourceTableID)
+		if err == nil {
+			sourceTableName = sourceTable.Name
+		}
+
+		targetTable, err := s.tableRepo.GetByID(relationship.TargetTableID)
+		if err == nil {
+			targetTableName = targetTable.Name
+		}
+	}
+
 	payload := websocketPkg.RelationshipPayload{
 		RelationshipID: relationshipID,
+		FromTableName:  sourceTableName,
+		ToTableName:    targetTableName,
 	}
 
 	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeRelationshipDeleted, payload, senderUserID)

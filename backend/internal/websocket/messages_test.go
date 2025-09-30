@@ -172,13 +172,13 @@ func (suite *MessageTestSuite) TestFieldPayload() {
 	tableID := uuid.New()
 	defaultValue := "default_value"
 	payload := FieldPayload{
-		FieldID:    fieldID,
-		TableID:    tableID,
-		Name:       "email",
-		Type:       "VARCHAR(255)",
-		IsPrimary:  false,
-		IsNullable: false,
-		Default:    &defaultValue,
+		FieldID:      fieldID,
+		TableID:      tableID,
+		Name:         "email",
+		DataType:     "VARCHAR(255)",
+		IsPrimaryKey: false,
+		IsNullable:   false,
+		DefaultValue: &defaultValue,
 	}
 
 	message, err := NewWebSocketMessage(MessageTypeFieldCreated, payload, userID, projectID)
@@ -191,10 +191,10 @@ func (suite *MessageTestSuite) TestFieldPayload() {
 	assert.Equal(suite.T(), payload.FieldID, unmarshaledPayload.FieldID)
 	assert.Equal(suite.T(), payload.TableID, unmarshaledPayload.TableID)
 	assert.Equal(suite.T(), payload.Name, unmarshaledPayload.Name)
-	assert.Equal(suite.T(), payload.Type, unmarshaledPayload.Type)
-	assert.Equal(suite.T(), payload.IsPrimary, unmarshaledPayload.IsPrimary)
+	assert.Equal(suite.T(), payload.DataType, unmarshaledPayload.DataType)
+	assert.Equal(suite.T(), payload.IsPrimaryKey, unmarshaledPayload.IsPrimaryKey)
 	assert.Equal(suite.T(), payload.IsNullable, unmarshaledPayload.IsNullable)
-	assert.Equal(suite.T(), *payload.Default, *unmarshaledPayload.Default)
+	assert.Equal(suite.T(), *payload.DefaultValue, *unmarshaledPayload.DefaultValue)
 }
 
 // Test RelationshipPayload

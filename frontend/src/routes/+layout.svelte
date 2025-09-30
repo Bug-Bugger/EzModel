@@ -16,7 +16,10 @@
 
 <svelte:head>
 	<title>EzModel - Visual Database Schema Designer</title>
-	<meta name="description" content="Design database schemas visually with real-time collaboration" />
+	<meta
+		name="description"
+		content="Design database schemas visually with real-time collaboration"
+	/>
 	<link rel="icon" href={favicon} />
 </svelte:head>
 

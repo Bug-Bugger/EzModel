@@ -17,16 +17,13 @@
 			<span class="text-primary">Visually</span>
 		</h1>
 		<p class="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-			EzModel is like Figma for databases. Create, collaborate, and generate SQL schemas with an intuitive visual interface.
+			EzModel is like Figma for databases. Create, collaborate, and generate SQL schemas with an
+			intuitive visual interface.
 		</p>
 
 		<div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-			<Button size="lg" onclick={() => goto('/register')}>
-				Get Started Free
-			</Button>
-			<Button variant="outline" size="lg" onclick={() => goto('/login')}>
-				Sign In
-			</Button>
+			<Button size="lg" onclick={() => goto('/register')}>Get Started Free</Button>
+			<Button variant="outline" size="lg" onclick={() => goto('/login')}>Sign In</Button>
 		</div>
 
 		<!-- Hero Image Placeholder -->
@@ -41,11 +38,10 @@
 <section class="bg-muted/30 py-24">
 	<div class="container mx-auto px-4">
 		<div class="text-center mb-16">
-			<h2 class="text-3xl md:text-4xl font-bold mb-4">
-				Everything you need to design databases
-			</h2>
+			<h2 class="text-3xl md:text-4xl font-bold mb-4">Everything you need to design databases</h2>
 			<p class="text-xl text-muted-foreground max-w-2xl mx-auto">
-				From concept to production, EzModel provides all the tools you need for database schema design.
+				From concept to production, EzModel provides all the tools you need for database schema
+				design.
 			</p>
 		</div>
 
@@ -58,7 +54,8 @@
 				</div>
 				<h3 class="text-xl font-semibold mb-2">Visual Design</h3>
 				<p class="text-muted-foreground">
-					Drag and drop tables, define relationships, and design your database schema with an intuitive visual interface.
+					Drag and drop tables, define relationships, and design your database schema with an
+					intuitive visual interface.
 				</p>
 			</Card>
 
@@ -70,7 +67,8 @@
 				</div>
 				<h3 class="text-xl font-semibold mb-2">Real-time Collaboration</h3>
 				<p class="text-muted-foreground">
-					Work together with your team in real-time. See live cursors, changes, and collaborate seamlessly.
+					Work together with your team in real-time. See live cursors, changes, and collaborate
+					seamlessly.
 				</p>
 			</Card>
 
@@ -94,7 +92,8 @@
 				</div>
 				<h3 class="text-xl font-semibold mb-2">Code Generation</h3>
 				<p class="text-muted-foreground">
-					Automatically generate ORM models, API schemas, and database migrations from your visual designs.
+					Automatically generate ORM models, API schemas, and database migrations from your visual
+					designs.
 				</p>
 			</Card>
 
@@ -106,7 +105,8 @@
 				</div>
 				<h3 class="text-xl font-semibold mb-2">Schema Validation</h3>
 				<p class="text-muted-foreground">
-					Built-in validation ensures your schemas are consistent and follow database best practices.
+					Built-in validation ensures your schemas are consistent and follow database best
+					practices.
 				</p>
 			</Card>
 
@@ -118,7 +118,8 @@
 				</div>
 				<h3 class="text-xl font-semibold mb-2">Version Control</h3>
 				<p class="text-muted-foreground">
-					Track schema changes over time, create branches, and manage database evolution with confidence.
+					Track schema changes over time, create branches, and manage database evolution with
+					confidence.
 				</p>
 			</Card>
 		</div>
@@ -128,9 +129,7 @@
 <!-- CTA Section -->
 <section class="py-24">
 	<div class="container mx-auto px-4 text-center">
-		<h2 class="text-3xl md:text-4xl font-bold mb-4">
-			Ready to start designing?
-		</h2>
+		<h2 class="text-3xl md:text-4xl font-bold mb-4">Ready to start designing?</h2>
 		<p class="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
 			Join thousands of developers who use EzModel to design better databases faster.
 		</p>

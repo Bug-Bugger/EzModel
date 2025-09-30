@@ -14,7 +14,7 @@ class ApiClient {
 	constructor() {
 		// Use environment variables or fallback to development defaults
 		const apiUrl = browser
-			? (import.meta.env.VITE_API_URL || 'http://localhost:8080/api')
+			? import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
 			: 'http://backend:8080/api';
 
 		this.client = axios.create({
@@ -50,12 +50,14 @@ class ApiClient {
 						// Another request is already refreshing tokens, queue this request
 						return new Promise((resolve, reject) => {
 							this.failedQueue.push({ resolve, reject });
-						}).then((token) => {
-							originalRequest.headers.Authorization = `Bearer ${token}`;
-							return this.client(originalRequest);
-						}).catch((err) => {
-							return Promise.reject(err);
-						});
+						})
+							.then((token) => {
+								originalRequest.headers.Authorization = `Bearer ${token}`;
+								return this.client(originalRequest);
+							})
+							.catch((err) => {
+								return Promise.reject(err);
+							});
 					}
 
 					originalRequest._retry = true;
@@ -64,9 +66,12 @@ class ApiClient {
 					const refreshToken = localStorage.getItem('refresh_token');
 					if (refreshToken) {
 						try {
-							const response = await this.client.post<ApiResponse<LoginResponse>>('/refresh-token', {
-								refresh_token: refreshToken
-							});
+							const response = await this.client.post<ApiResponse<LoginResponse>>(
+								'/refresh-token',
+								{
+									refresh_token: refreshToken
+								}
+							);
 
 							if (response.data.success && response.data.data) {
 								const newTokens = response.data.data;

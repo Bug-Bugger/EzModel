@@ -29,7 +29,11 @@
 		// Get current viewport to make this reactive to viewport changes
 		const newViewport = getViewport();
 		// Only update if viewport actually changed and is valid (avoid infinite loops)
-		if (newViewport && newViewport.zoom !== undefined && JSON.stringify(newViewport) !== JSON.stringify(currentViewport)) {
+		if (
+			newViewport &&
+			newViewport.zoom !== undefined &&
+			JSON.stringify(newViewport) !== JSON.stringify(currentViewport)
+		) {
 			currentViewport = newViewport;
 			updateTargetPosition();
 		}
@@ -127,7 +131,7 @@
 			'#f97316', // orange
 			'#84cc16', // lime
 			'#ec4899', // pink
-			'#6366f1'  // indigo
+			'#6366f1' // indigo
 		];
 
 		// Simple hash function to get consistent color
@@ -139,8 +143,7 @@
 	}
 
 	$: userColor = getUserColor(user.id);
-	$: isActive = user.cursor && (Date.now() - user.cursor.timestamp) < 5000; // Show cursor for 5 seconds after last movement
-
+	$: isActive = user.cursor && Date.now() - user.cursor.timestamp < 5000; // Show cursor for 5 seconds after last movement
 </script>
 
 {#if isActive && user.cursor}
@@ -154,7 +157,9 @@
 			fill="currentColor"
 			viewBox="0 0 24 24"
 		>
-			<path d="M12 2L2 7L3 8L12 5L21 8L22 7L12 2ZM12 5L3 8V18C3 19.1 3.9 20 5 20H19C20.1 20 21 19.1 21 18V8L12 5Z"/>
+			<path
+				d="M12 2L2 7L3 8L12 5L21 8L22 7L12 2ZM12 5L3 8V18C3 19.1 3.9 20 5 20H19C20.1 20 21 19.1 21 18V8L12 5Z"
+			/>
 		</svg>
 
 		<!-- User Name Label -->

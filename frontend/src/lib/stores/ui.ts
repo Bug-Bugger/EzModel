@@ -26,16 +26,16 @@ function createUIStore() {
 		// Add toast notification
 		addToast(toast: Omit<Toast, 'id'>) {
 			const id = Math.random().toString(36).substr(2, 9);
-			update(state => ({
+			update((state) => ({
 				...state,
 				toasts: [...state.toasts, { ...toast, id }]
 			}));
 
 			// Auto-remove toast after 5 seconds
 			setTimeout(() => {
-				update(state => ({
+				update((state) => ({
 					...state,
-					toasts: state.toasts.filter(t => t.id !== id)
+					toasts: state.toasts.filter((t) => t.id !== id)
 				}));
 			}, 5000);
 
@@ -44,20 +44,20 @@ function createUIStore() {
 
 		// Remove specific toast
 		removeToast(id: string) {
-			update(state => ({
+			update((state) => ({
 				...state,
-				toasts: state.toasts.filter(t => t.id !== id)
+				toasts: state.toasts.filter((t) => t.id !== id)
 			}));
 		},
 
 		// Clear all toasts
 		clearToasts() {
-			update(state => ({ ...state, toasts: [] }));
+			update((state) => ({ ...state, toasts: [] }));
 		},
 
 		// Set global loading state
 		setLoading(isLoading: boolean) {
-			update(state => ({ ...state, isLoading }));
+			update((state) => ({ ...state, isLoading }));
 		},
 
 		// Show success toast

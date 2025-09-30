@@ -54,12 +54,7 @@
 				)}
 				{...props}
 			>
-				<Button
-					variant="ghost"
-					size="icon"
-					class="absolute right-4 top-4 h-6 w-6"
-					onclick={close}
-				>
+				<Button variant="ghost" size="icon" class="absolute right-4 top-4 h-6 w-6" onclick={close}>
 					<X class="h-4 w-4" />
 					<span class="sr-only">Close</span>
 				</Button>

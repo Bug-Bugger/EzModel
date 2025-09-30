@@ -21,21 +21,23 @@
 	let selectedUser = $state<User | null>(null);
 
 	const currentProject = $derived($projectStore.currentProject);
-	const existingCollaboratorIds = $derived(currentProject?.collaborators?.map(c => c.id) || []);
+	const existingCollaboratorIds = $derived(currentProject?.collaborators?.map((c) => c.id) || []);
 
 	// Filter users based on search query and exclude existing collaborators and owner
-	const filteredUsers = $derived(users
-		.filter(user => {
-			const matchesSearch = searchQuery === '' ||
-				(user.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-				(user.username || '').toLowerCase().includes(searchQuery.toLowerCase());
+	const filteredUsers = $derived(
+		users
+			.filter((user) => {
+				const matchesSearch =
+					searchQuery === '' ||
+					(user.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+					(user.username || '').toLowerCase().includes(searchQuery.toLowerCase());
 
-			const isNotOwner = user.id !== currentProject?.owner_id;
-			const isNotCollaborator = !existingCollaboratorIds.includes(user.id);
+				const isNotOwner = user.id !== currentProject?.owner_id;
+				const isNotCollaborator = !existingCollaboratorIds.includes(user.id);
 
-			return matchesSearch && isNotOwner && isNotCollaborator;
-		})
-		.slice(0, 10) // Limit to 10 results
+				return matchesSearch && isNotOwner && isNotCollaborator;
+			})
+			.slice(0, 10) // Limit to 10 results
 	);
 
 	onMount(async () => {
@@ -113,8 +115,19 @@
 				{#if isLoading}
 					<div class="flex items-center justify-center py-8">
 						<svg class="animate-spin h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24">
-							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							<circle
+								class="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								stroke-width="4"
+							></circle>
+							<path
+								class="opacity-75"
+								fill="currentColor"
+								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+							></path>
 						</svg>
 						<span class="ml-2 text-gray-600">Loading users...</span>
 					</div>
@@ -123,8 +136,18 @@
 					<div class="space-y-2 max-h-64 overflow-y-auto">
 						{#if searchQuery && filteredUsers.length === 0}
 							<div class="text-center py-6 text-gray-500">
-								<svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+								<svg
+									class="w-12 h-12 mx-auto mb-2 text-gray-300"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="1"
+										d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+									/>
 								</svg>
 								<p class="text-sm">No users found</p>
 							</div>
@@ -135,11 +158,15 @@
 									onclick={() => selectUser(user)}
 								>
 									<div class="flex items-center space-x-3">
-										<div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+										<div
+											class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium"
+										>
 											{(user.username || 'U').charAt(0).toUpperCase()}
 										</div>
 										<div class="flex-1 min-w-0">
-											<p class="text-sm font-medium text-gray-900 truncate">{user.username || 'Unknown User'}</p>
+											<p class="text-sm font-medium text-gray-900 truncate">
+												{user.username || 'Unknown User'}
+											</p>
 											<p class="text-xs text-gray-500 truncate">{user.email || 'No email'}</p>
 										</div>
 									</div>
@@ -147,8 +174,18 @@
 							{/each}
 						{:else}
 							<div class="text-center py-6 text-gray-500">
-								<svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+								<svg
+									class="w-12 h-12 mx-auto mb-2 text-gray-300"
+									fill="none"
+									stroke="currentColor"
+									viewBox="0 0 24 24"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="1"
+										d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+									/>
 								</svg>
 								<p class="text-sm">Start typing to search for users</p>
 							</div>
@@ -159,9 +196,7 @@
 
 			<!-- Actions -->
 			<div class="flex justify-end space-x-3 pt-4 border-t">
-				<Button variant="outline" onclick={close} disabled={isAddingCollaborator}>
-					Cancel
-				</Button>
+				<Button variant="outline" onclick={close} disabled={isAddingCollaborator}>Cancel</Button>
 				<Button
 					onclick={() => selectedUser && addCollaborator(selectedUser)}
 					disabled={!selectedUser || isAddingCollaborator}
@@ -169,8 +204,19 @@
 				>
 					{#if isAddingCollaborator}
 						<svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
-							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+							<circle
+								class="opacity-25"
+								cx="12"
+								cy="12"
+								r="10"
+								stroke="currentColor"
+								stroke-width="4"
+							></circle>
+							<path
+								class="opacity-75"
+								fill="currentColor"
+								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+							></path>
 						</svg>
 						Adding...
 					{:else}

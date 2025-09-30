@@ -12,7 +12,6 @@
 	// Show handles only when relationship tool is selected (for visual feedback)
 	$: showHandles = $designerStore.toolbar.selectedTool === 'relationship';
 
-
 	// Icons for different field types and constraints
 	function getFieldIcon(field: any) {
 		if (field.is_primary) return '🔑';
@@ -22,13 +21,13 @@
 
 	function getFieldTypeColor(type: string) {
 		const typeColors: { [key: string]: string } = {
-			'UUID': 'text-purple-600',
-			'STRING': 'text-green-600',
-			'INTEGER': 'text-blue-600',
-			'BOOLEAN': 'text-yellow-600',
-			'TIMESTAMP': 'text-red-600',
-			'TEXT': 'text-gray-600',
-			'DECIMAL': 'text-indigo-600'
+			UUID: 'text-purple-600',
+			STRING: 'text-green-600',
+			INTEGER: 'text-blue-600',
+			BOOLEAN: 'text-yellow-600',
+			TIMESTAMP: 'text-red-600',
+			TEXT: 'text-gray-600',
+			DECIMAL: 'text-indigo-600'
 		};
 		return typeColors[type] || 'text-gray-500';
 	}
@@ -40,16 +39,17 @@
 	}
 </script>
 
-<div class="table-node bg-white border-2 border-gray-200 rounded-lg shadow-lg min-w-[200px] max-w-[300px]" class:selected>
+<div
+	class="table-node bg-white border-2 border-gray-200 rounded-lg shadow-lg min-w-[200px] max-w-[300px]"
+	class:selected
+>
 	<!-- Table Header -->
 	<div class="table-header bg-blue-50 px-4 py-3 border-b border-gray-200 rounded-t-lg">
 		<div class="flex items-center justify-between">
 			<h3 class="font-semibold text-gray-900 truncate">{data.name}</h3>
 			<div class="flex items-center space-x-1">
 				<!-- Database type indicator -->
-				<span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-					TABLE
-				</span>
+				<span class="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded"> TABLE </span>
 			</div>
 		</div>
 	</div>
@@ -67,14 +67,18 @@
 					position={Position.Right}
 					id="{data.table_id}-{field.field_id}-source"
 					class="field-handle-source"
-					style="position: absolute; right: -8px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #3b82f6; border: 2px solid white; border-radius: 50%; z-index: 10; cursor: pointer; {showHandles ? '' : 'opacity: 0; pointer-events: none;'}"
+					style="position: absolute; right: -8px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #3b82f6; border: 2px solid white; border-radius: 50%; z-index: 10; cursor: pointer; {showHandles
+						? ''
+						: 'opacity: 0; pointer-events: none;'}"
 				/>
 				<Handle
 					type="target"
 					position={Position.Left}
 					id="{data.table_id}-{field.field_id}-target"
 					class="field-handle-target"
-					style="position: absolute; left: -8px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #10b981; border: 2px solid white; border-radius: 50%; z-index: 10; cursor: pointer; {showHandles ? '' : 'opacity: 0; pointer-events: none;'}"
+					style="position: absolute; left: -8px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; background: #10b981; border: 2px solid white; border-radius: 50%; z-index: 10; cursor: pointer; {showHandles
+						? ''
+						: 'opacity: 0; pointer-events: none;'}"
 				/>
 
 				<!-- Field Icon -->
@@ -95,10 +99,14 @@
 					{#if field.is_primary_key || !field.is_nullable}
 						<div class="field-constraints flex space-x-1 mt-1">
 							{#if field.is_primary_key}
-								<span class="constraint-badge bg-yellow-100 text-yellow-800 text-xs px-1 rounded">PK</span>
+								<span class="constraint-badge bg-yellow-100 text-yellow-800 text-xs px-1 rounded"
+									>PK</span
+								>
 							{/if}
 							{#if !field.is_nullable}
-								<span class="constraint-badge bg-red-100 text-red-800 text-xs px-1 rounded">NOT NULL</span>
+								<span class="constraint-badge bg-red-100 text-red-800 text-xs px-1 rounded"
+									>NOT NULL</span
+								>
 							{/if}
 						</div>
 					{/if}

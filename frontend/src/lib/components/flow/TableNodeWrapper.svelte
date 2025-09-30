@@ -12,7 +12,12 @@
 		const { tableId, tableName } = event.detail;
 
 		// Find the table node
-		const tableNode = { id: tableId, data, type: 'table', position: data.position } as TableNodeType;
+		const tableNode = {
+			id: tableId,
+			data,
+			type: 'table',
+			position: data.position
+		} as TableNodeType;
 
 		// Select the table and open property panel
 		flowStore.selectNode(tableNode);

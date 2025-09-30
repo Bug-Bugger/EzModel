@@ -12,9 +12,10 @@ export class UserService {
 
 	async searchUsers(query: string): Promise<User[]> {
 		const users = await this.getAllUsers();
-		return users.filter(user =>
-			(user.email || '').toLowerCase().includes(query.toLowerCase()) ||
-			(user.username || '').toLowerCase().includes(query.toLowerCase())
+		return users.filter(
+			(user) =>
+				(user.email || '').toLowerCase().includes(query.toLowerCase()) ||
+				(user.username || '').toLowerCase().includes(query.toLowerCase())
 		);
 	}
 }

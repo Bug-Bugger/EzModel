@@ -63,7 +63,7 @@
 			is_primary_key: field.is_primary_key,
 			is_nullable: field.is_nullable,
 			default_value: field.default_value || '',
-			position: (selectedNode && selectedNode.data) ? selectedNode.data.fields.length : 0
+			position: selectedNode && selectedNode.data ? selectedNode.data.fields.length : 0
 		};
 	}
 
@@ -133,20 +133,16 @@
 		}
 
 		try {
-			const field = selectedNode.data.fields.find(f => f.field_id === fieldId);
+			const field = selectedNode.data.fields.find((f) => f.field_id === fieldId);
 			if (!field) {
 				return;
 			}
 
 			// Delete field via API
-			await projectService.deleteField(
-				$projectStore.currentProject.id,
-				selectedNode.id,
-				fieldId
-			);
+			await projectService.deleteField($projectStore.currentProject.id, selectedNode.id, fieldId);
 
 			// Update local store
-			const updatedFields = selectedNode.data.fields.filter(f => f.field_id !== fieldId);
+			const updatedFields = selectedNode.data.fields.filter((f) => f.field_id !== fieldId);
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
 
 			// WebSocket broadcasting is now handled by the backend after successful API call
@@ -167,7 +163,7 @@
 		}
 
 		try {
-			const currentField = selectedNode.data.fields.find(f => f.field_id === fieldId);
+			const currentField = selectedNode.data.fields.find((f) => f.field_id === fieldId);
 			if (!currentField) {
 				return;
 			}
@@ -176,7 +172,8 @@
 			const backendUpdates: UpdateFieldRequest = {};
 			if (updates.name !== undefined) backendUpdates.name = updates.name;
 			if (updates.data_type !== undefined) backendUpdates.data_type = updates.data_type;
-			if (updates.is_primary_key !== undefined) backendUpdates.is_primary_key = updates.is_primary_key;
+			if (updates.is_primary_key !== undefined)
+				backendUpdates.is_primary_key = updates.is_primary_key;
 			if (updates.is_nullable !== undefined) backendUpdates.is_nullable = updates.is_nullable;
 			if (updates.default_value !== undefined) backendUpdates.default_value = updates.default_value;
 
@@ -189,7 +186,7 @@
 			);
 
 			// Update local store with the returned field (already in correct format)
-			const updatedFields = selectedNode.data.fields.map(field =>
+			const updatedFields = selectedNode.data.fields.map((field) =>
 				field.field_id === fieldId ? updatedField : field
 			);
 			flowStore.updateTableNode(selectedNode.id, { fields: updatedFields });
@@ -213,11 +210,9 @@
 
 		try {
 			// Update relationship via API
-			await flowStore.updateRelationshipEdge(
-				$projectStore.currentProject.id,
-				selectedEdge.id,
-				{ relation_type: relationshipType as 'one_to_one' | 'one_to_many' | 'many_to_many' }
-			);
+			await flowStore.updateRelationshipEdge($projectStore.currentProject.id, selectedEdge.id, {
+				relation_type: relationshipType as 'one_to_one' | 'one_to_many' | 'many_to_many'
+			});
 
 			// WebSocket broadcasting is now handled by the backend after successful API call
 
@@ -238,10 +233,7 @@
 
 		try {
 			// Delete relationship via API
-			await flowStore.removeRelationshipEdge(
-				$projectStore.currentProject.id,
-				selectedEdge.id
-			);
+			await flowStore.removeRelationshipEdge($projectStore.currentProject.id, selectedEdge.id);
 
 			// WebSocket broadcasting is now handled by the backend after successful API call
 
@@ -263,7 +255,9 @@
 
 			<!-- Table Name -->
 			<div class="mb-4">
-				<label for="table-name" class="block text-sm font-medium text-gray-700 mb-2">Table Name</label>
+				<label for="table-name" class="block text-sm font-medium text-gray-700 mb-2"
+					>Table Name</label
+				>
 				<Input
 					id="table-name"
 					bind:value={tableName}
@@ -308,7 +302,9 @@
 				<div class="space-y-3">
 					<!-- Field Name -->
 					<div>
-						<label for="field-name" class="block text-xs font-medium text-gray-600 mb-1">Field Name</label>
+						<label for="field-name" class="block text-xs font-medium text-gray-600 mb-1"
+							>Field Name</label
+						>
 						<Input
 							id="field-name"
 							bind:value={fieldName}
@@ -319,12 +315,9 @@
 
 					<!-- Field Type -->
 					<div>
-						<label for="field-type" class="block text-xs font-medium text-gray-600 mb-1">Type</label>
-						<Select
-							bind:value={fieldType}
-							options={fieldTypeOptions}
-							class="w-full text-sm"
-						/>
+						<label for="field-type" class="block text-xs font-medium text-gray-600 mb-1">Type</label
+						>
+						<Select bind:value={fieldType} options={fieldTypeOptions} class="w-full text-sm" />
 					</div>
 
 					<!-- Field Constraints -->
@@ -349,7 +342,9 @@
 
 					<!-- Default Value -->
 					<div>
-						<label for="field-default" class="block text-xs font-medium text-gray-600 mb-1">Default Value</label>
+						<label for="field-default" class="block text-xs font-medium text-gray-600 mb-1"
+							>Default Value</label
+						>
 						<Input
 							id="field-default"
 							bind:value={defaultValue}
@@ -359,12 +354,7 @@
 					</div>
 
 					<!-- Add Button -->
-					<Button
-						onclick={addField}
-						disabled={!fieldName.trim()}
-						size="sm"
-						class="w-full"
-					>
+					<Button onclick={addField} disabled={!fieldName.trim()} size="sm" class="w-full">
 						{#snippet children()}
 							Add Field
 						{/snippet}
@@ -372,7 +362,6 @@
 				</div>
 			</div>
 		</div>
-
 	{:else if panel.isOpen && panel.type === 'relationship' && selectedEdge}
 		<!-- Relationship Properties -->
 		<div class="property-section">
@@ -380,7 +369,9 @@
 
 			<div class="space-y-4">
 				<div>
-					<label for="relationship-type" class="block text-sm font-medium text-gray-700 mb-2">Relationship Type</label>
+					<label for="relationship-type" class="block text-sm font-medium text-gray-700 mb-2"
+						>Relationship Type</label
+					>
 					<Select
 						bind:value={selectedEdge.data.relation_type}
 						options={relationshipTypeOptions}
@@ -390,33 +381,44 @@
 				</div>
 
 				<div>
-					<label for="from-table" class="block text-sm font-medium text-gray-700 mb-2">From Table</label>
-					<Input id="from-table" value={selectedEdge.data.source_table_id} disabled class="w-full" />
+					<label for="from-table" class="block text-sm font-medium text-gray-700 mb-2"
+						>From Table</label
+					>
+					<Input
+						id="from-table"
+						value={selectedEdge.data.source_table_id}
+						disabled
+						class="w-full"
+					/>
 				</div>
 
 				<div>
-					<label for="to-table" class="block text-sm font-medium text-gray-700 mb-2">To Table</label>
+					<label for="to-table" class="block text-sm font-medium text-gray-700 mb-2">To Table</label
+					>
 					<Input id="to-table" value={selectedEdge.data.target_table_id} disabled class="w-full" />
 				</div>
 
 				<div>
-					<label for="from-field" class="block text-sm font-medium text-gray-700 mb-2">From Field</label>
-					<Input id="from-field" value={selectedEdge.data.source_field_id} disabled class="w-full" />
+					<label for="from-field" class="block text-sm font-medium text-gray-700 mb-2"
+						>From Field</label
+					>
+					<Input
+						id="from-field"
+						value={selectedEdge.data.source_field_id}
+						disabled
+						class="w-full"
+					/>
 				</div>
 
 				<div>
-					<label for="to-field" class="block text-sm font-medium text-gray-700 mb-2">To Field</label>
+					<label for="to-field" class="block text-sm font-medium text-gray-700 mb-2">To Field</label
+					>
 					<Input id="to-field" value={selectedEdge.data.target_field_id} disabled class="w-full" />
 				</div>
 
 				<!-- Delete Relationship Button -->
 				<div class="border-t pt-4">
-					<Button
-						onclick={deleteRelationship}
-						variant="destructive"
-						size="sm"
-						class="w-full"
-					>
+					<Button onclick={deleteRelationship} variant="destructive" size="sm" class="w-full">
 						{#snippet children()}
 							Delete Relationship
 						{/snippet}
@@ -424,13 +426,22 @@
 				</div>
 			</div>
 		</div>
-
 	{:else}
 		<!-- No Selection -->
 		<div class="property-section">
 			<div class="text-center py-8 text-gray-500">
-				<svg class="w-12 h-12 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.121 2.122" />
+				<svg
+					class="w-12 h-12 mx-auto mb-4 opacity-50"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.121 2.122"
+					/>
 				</svg>
 				<p class="text-sm">Select a table or relationship to edit properties</p>
 			</div>

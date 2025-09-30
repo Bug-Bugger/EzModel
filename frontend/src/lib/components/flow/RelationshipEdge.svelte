@@ -19,15 +19,17 @@
 	const relationshipType = relationshipData?.relation_type || 'one_to_many';
 
 	// Generate path using getSmoothStepPath
-	const pathResult = $derived(getSmoothStepPath({
-		sourceX,
-		sourceY,
-		sourcePosition,
-		targetX,
-		targetY,
-		targetPosition,
-		borderRadius: 10
-	}));
+	const pathResult = $derived(
+		getSmoothStepPath({
+			sourceX,
+			sourceY,
+			sourcePosition,
+			targetX,
+			targetY,
+			targetPosition,
+			borderRadius: 10
+		})
+	);
 
 	const path = $derived(pathResult[0]); // getSmoothStepPath returns array, first element is the path
 
@@ -39,24 +41,32 @@
 	function getRelationshipSymbol(type: string) {
 		switch (type) {
 			case 'one-to-one':
-			case 'one_to_one': return '1:1';
+			case 'one_to_one':
+				return '1:1';
 			case 'one-to-many':
-			case 'one_to_many': return '1:N';
+			case 'one_to_many':
+				return '1:N';
 			case 'many-to-many':
-			case 'many_to_many': return 'N:M';
-			default: return '1:N';
+			case 'many_to_many':
+				return 'N:M';
+			default:
+				return '1:N';
 		}
 	}
 
 	function getRelationshipColor(type: string) {
 		switch (type) {
 			case 'one-to-one':
-			case 'one_to_one': return '#10b981'; // green
+			case 'one_to_one':
+				return '#10b981'; // green
 			case 'one-to-many':
-			case 'one_to_many': return '#3b82f6'; // blue
+			case 'one_to_many':
+				return '#3b82f6'; // blue
 			case 'many-to-many':
-			case 'many_to_many': return '#f59e0b'; // yellow
-			default: return '#64748b'; // gray
+			case 'many_to_many':
+				return '#f59e0b'; // yellow
+			default:
+				return '#64748b'; // gray
 		}
 	}
 </script>
@@ -65,13 +75,7 @@
 <BaseEdge {path} style={`stroke: ${getRelationshipColor(relationshipType)}; stroke-width: 2px;`} />
 
 <!-- Custom relationship type label -->
-<foreignObject
-	x={labelX - 20}
-	y={labelY - 10}
-	width="40"
-	height="20"
-	class="edge-label"
->
+<foreignObject x={labelX - 20} y={labelY - 10} width="40" height="20" class="edge-label">
 	<div
 		class="relationship-label"
 		style={`

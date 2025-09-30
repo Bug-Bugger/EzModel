@@ -10,7 +10,7 @@
 	import CollaborationStatus from '$lib/components/collaboration/CollaborationStatus.svelte';
 	import PresenceList from '$lib/components/collaboration/PresenceList.svelte';
 	import ActivityFeed from '$lib/components/collaboration/ActivityFeed.svelte';
-	
+
 	import { projectStore } from '$lib/stores/project.js';
 	import { collaborationStore } from '$lib/stores/collaboration.js';
 	import { flowStore } from '$lib/stores/flow.js';
@@ -33,7 +33,7 @@
 			// Wait for project store to be fully populated (reactive store might need time)
 			let retryCount = 0;
 			while (!$projectStore.currentProject && retryCount < 10) {
-				await new Promise(resolve => setTimeout(resolve, 50));
+				await new Promise((resolve) => setTimeout(resolve, 50));
 				retryCount++;
 			}
 
@@ -57,7 +57,10 @@
 
 			// Parse existing canvas data to get positioning information
 			let savedPositions: Record<string, { x: number; y: number }> = {};
-			console.log('DEBUG: Raw canvas_data from project:', $projectStore.currentProject?.canvas_data);
+			console.log(
+				'DEBUG: Raw canvas_data from project:',
+				$projectStore.currentProject?.canvas_data
+			);
 
 			if ($projectStore.currentProject?.canvas_data) {
 				try {
@@ -93,7 +96,7 @@
 
 				// For debugging: use fixed position if no saved position found
 				const position = savedPosition || {
-					x: 100 + (Object.keys(savedPositions).length * 200), // Fixed position based on index
+					x: 100 + Object.keys(savedPositions).length * 200, // Fixed position based on index
 					y: 100
 				};
 
@@ -126,7 +129,7 @@
 			}
 
 			// Wait a brief moment for tables to be fully rendered
-			await new Promise(resolve => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 100));
 
 			// Load relationships using the flow store method
 			await flowStore.loadProjectRelationships(projectId);
@@ -148,7 +151,10 @@
 
 			console.log(`DEBUG: Loaded ${tables.length} tables and relationships`);
 			console.log('DEBUG: Final saved positions used:', savedPositions);
-			console.log('DEBUG: Current project canvas_data length:', $projectStore.currentProject?.canvas_data?.length || 0);
+			console.log(
+				'DEBUG: Current project canvas_data length:',
+				$projectStore.currentProject?.canvas_data?.length || 0
+			);
 		} catch (error) {
 			console.error('Failed to load project data:', error);
 		}
@@ -173,7 +179,9 @@
 
 <div class="designer-layout h-screen flex flex-col bg-gray-50">
 	<!-- Header -->
-	<header class="designer-header bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+	<header
+		class="designer-header bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between"
+	>
 		<div class="flex items-center space-x-4">
 			<a href="/projects/{projectId}" class="text-blue-600 hover:text-blue-800">
 				← Back to Project
@@ -220,11 +228,21 @@
 			>
 				{#if showLeftSidebar}
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+						/>
 					</svg>
 				{:else}
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M13 5l7 7-7 7M5 5l7 7-7 7"
+						/>
 					</svg>
 				{/if}
 			</button>
@@ -236,11 +254,21 @@
 			>
 				{#if showRightSidebar}
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M13 5l7 7-7 7M5 5l7 7-7 7"
+						/>
 					</svg>
 				{:else}
 					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+						/>
 					</svg>
 				{/if}
 			</button>
@@ -248,21 +276,29 @@
 			<!-- Live Cursors are now rendered inside DatabaseCanvas/SvelteFlow -->
 
 			<!-- Debug Info -->
-			<div class="absolute top-8 left-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs font-mono z-50">
+			<div
+				class="absolute top-8 left-4 bg-black bg-opacity-75 text-white p-2 rounded text-xs font-mono z-50"
+			>
 				<div>Connected Users: {$collaborationStore.connectedUsers.length}</div>
-				<div>Users with cursors: {$collaborationStore.connectedUsers.filter(u => u.cursor).length}</div>
+				<div>
+					Users with cursors: {$collaborationStore.connectedUsers.filter((u) => u.cursor).length}
+				</div>
 
 				<!-- Current User -->
 				<div class="mt-1 text-yellow-300">
 					{$authStore.user?.username || 'You'} (current):
-					{$collaborationStore.currentUserCursor ? `(${$collaborationStore.currentUserCursor.x.toFixed(1)}, ${$collaborationStore.currentUserCursor.y.toFixed(1)})` : 'No cursor'}
+					{$collaborationStore.currentUserCursor
+						? `(${$collaborationStore.currentUserCursor.x.toFixed(1)}, ${$collaborationStore.currentUserCursor.y.toFixed(1)})`
+						: 'No cursor'}
 				</div>
 
 				<!-- Other Users -->
 				{#each $collaborationStore.connectedUsers as user}
 					<div class="mt-1">
 						{user.username || 'Unknown'}:
-						{user.cursor ? `(${user.cursor.x.toFixed(1)}, ${user.cursor.y.toFixed(1)})` : 'No cursor'}
+						{user.cursor
+							? `(${user.cursor.x.toFixed(1)}, ${user.cursor.y.toFixed(1)})`
+							: 'No cursor'}
 					</div>
 				{/each}
 			</div>
@@ -289,8 +325,7 @@
 
 	.canvas-area {
 		background: #f8fafc;
-		background-image:
-			radial-gradient(circle, #e2e8f0 1px, transparent 1px);
+		background-image: radial-gradient(circle, #e2e8f0 1px, transparent 1px);
 		background-size: 20px 20px;
 	}
 </style>

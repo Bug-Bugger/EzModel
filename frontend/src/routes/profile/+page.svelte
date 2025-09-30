@@ -165,9 +165,7 @@
 	<!-- Header -->
 	<div class="mb-8">
 		<h1 class="text-3xl font-bold">Profile Settings</h1>
-		<p class="text-muted-foreground mt-2">
-			Manage your account settings and preferences
-		</p>
+		<p class="text-muted-foreground mt-2">Manage your account settings and preferences</p>
 	</div>
 
 	<div class="space-y-6">
@@ -215,12 +213,11 @@
 				</div>
 
 				<div class="flex justify-end">
-					<Button
-						type="submit"
-						disabled={isUpdatingProfile}
-					>
+					<Button type="submit" disabled={isUpdatingProfile}>
 						{#if isUpdatingProfile}
-							<div class="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-2"></div>
+							<div
+								class="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-2"
+							></div>
 							Updating...
 						{:else}
 							<Save class="mr-2 h-4 w-4" />
@@ -292,12 +289,11 @@
 				</div>
 
 				<div class="flex justify-end">
-					<Button
-						type="submit"
-						disabled={isUpdatingPassword}
-					>
+					<Button type="submit" disabled={isUpdatingPassword}>
 						{#if isUpdatingPassword}
-							<div class="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-2"></div>
+							<div
+								class="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-2"
+							></div>
 							Updating...
 						{:else}
 							<Key class="mr-2 h-4 w-4" />

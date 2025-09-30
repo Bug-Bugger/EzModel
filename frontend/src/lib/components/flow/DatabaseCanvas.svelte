@@ -1,11 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import {
-		SvelteFlow,
-		Controls,
-		Background,
-		MiniMap
-	} from '@xyflow/svelte';
+	import { SvelteFlow, Controls, Background, MiniMap } from '@xyflow/svelte';
 	import '@xyflow/svelte/dist/style.css';
 
 	import TableNodeWrapper from './TableNodeWrapper.svelte';
@@ -14,7 +9,11 @@
 	import UserCursor from '../collaboration/UserCursor.svelte';
 	import CanvasHookManager from './CanvasHookManager.svelte';
 
-	import { flowStore, type TableNode as TableNodeType, type RelationshipEdge as RelationshipEdgeType } from '$lib/stores/flow';
+	import {
+		flowStore,
+		type TableNode as TableNodeType,
+		type RelationshipEdge as RelationshipEdgeType
+	} from '$lib/stores/flow';
 	import { designerStore } from '$lib/stores/designer';
 	import { collaborationStore } from '$lib/stores/collaboration';
 	import { projectStore } from '$lib/stores/project';
@@ -52,7 +51,11 @@
 
 	// Proper throttling for real-time position broadcasts
 	let lastBroadcastTime = 0;
-	let pendingBroadcastData: { nodeId: string; position: { x: number; y: number }; tableName: string } | null = null;
+	let pendingBroadcastData: {
+		nodeId: string;
+		position: { x: number; y: number };
+		tableName: string;
+	} | null = null;
 	let broadcastTimer: ReturnType<typeof setTimeout> | null = null;
 	const BROADCAST_THROTTLE_MS = 50; // ~20 FPS for smooth collaboration
 
@@ -72,7 +75,11 @@
 		}
 	}
 
-	function throttledBroadcastPosition(nodeId: string, position: { x: number; y: number }, tableName: string) {
+	function throttledBroadcastPosition(
+		nodeId: string,
+		position: { x: number; y: number },
+		tableName: string
+	) {
 		const now = Date.now();
 		const timeSinceLastBroadcast = now - lastBroadcastTime;
 
@@ -114,14 +121,14 @@
 		} else if (event.detail?.id) {
 			// Fallback: find node by ID if direct reference is missing
 			const nodeId = event.detail.id;
-			const foundNode = displayNodes.find(n => n.id === nodeId);
+			const foundNode = displayNodes.find((n) => n.id === nodeId);
 			if (foundNode) {
 				node = foundNode;
 			}
 		} else if (event.id) {
 			// Another fallback pattern
 			const nodeId = event.id;
-			const foundNode = displayNodes.find(n => n.id === nodeId);
+			const foundNode = displayNodes.find((n) => n.id === nodeId);
 			if (foundNode) {
 				node = foundNode;
 			}
@@ -165,14 +172,14 @@
 		} else if (event.detail?.id) {
 			// Fallback: find edge by ID if direct reference is missing
 			const edgeId = event.detail.id;
-			const foundEdge = displayEdges.find(e => e.id === edgeId);
+			const foundEdge = displayEdges.find((e) => e.id === edgeId);
 			if (foundEdge) {
 				edge = foundEdge;
 			}
 		} else if (event.id) {
 			// Another fallback pattern
 			const edgeId = event.id;
-			const foundEdge = displayEdges.find(e => e.id === edgeId);
+			const foundEdge = displayEdges.find((e) => e.id === edgeId);
 			if (foundEdge) {
 				edge = foundEdge;
 			}
@@ -195,7 +202,6 @@
 		designerStore.openPropertyPanel('relationship', edge);
 	}
 
-
 	// Handle canvas click based on selected tool
 	async function onPaneClick(event: any) {
 		const currentTool = $designerStore.toolbar.selectedTool;
@@ -212,10 +218,6 @@
 	}
 
 	// Selection change handling is now done via onNodeClick/onEdgeClick events
-
-
-
-
 
 	// Update container bounds when element or viewport changes
 	function updateContainerBounds() {
@@ -261,7 +263,11 @@
 		let screenPosition = { x: 0, y: 0 };
 
 		// Try to extract coordinates from various event properties
-		if (event.detail && typeof event.detail.clientX === 'number' && typeof event.detail.clientY === 'number') {
+		if (
+			event.detail &&
+			typeof event.detail.clientX === 'number' &&
+			typeof event.detail.clientY === 'number'
+		) {
 			// Some SvelteFlow versions provide clientX/clientY in detail
 			screenPosition = { x: event.detail.clientX, y: event.detail.clientY };
 		} else if (event.clientX !== undefined && event.clientY !== undefined) {
@@ -297,7 +303,10 @@
 				// Use the hook manager for proper coordinate conversion
 				const converted = canvasHookManager.convertScreenToFlow(screenPosition.x, screenPosition.y);
 				finalPosition = converted;
-				console.log('Converted coordinates:', { original: screenPosition, converted: finalPosition });
+				console.log('Converted coordinates:', {
+					original: screenPosition,
+					converted: finalPosition
+				});
 			} catch (error) {
 				console.warn('Coordinate conversion failed, using screen position:', error);
 				// Fallback to screen position if conversion fails
@@ -412,8 +421,8 @@
 		}
 
 		// 2. Check if tables exist in current flow
-		const sourceTable = displayNodes.find(node => node.id === sourceTableId);
-		const targetTable = displayNodes.find(node => node.id === targetTableId);
+		const sourceTable = displayNodes.find((node) => node.id === sourceTableId);
+		const targetTable = displayNodes.find((node) => node.id === targetTableId);
 
 		if (!sourceTable || !targetTable) {
 			console.error('Source or target table not found:', { sourceTableId, targetTableId });
@@ -421,25 +430,30 @@
 		}
 
 		// 3. Check if fields exist in their respective tables
-		const sourceField = sourceTable.data.fields.find(field => field.field_id === sourceFieldId);
-		const targetField = targetTable.data.fields.find(field => field.field_id === targetFieldId);
+		const sourceField = sourceTable.data.fields.find((field) => field.field_id === sourceFieldId);
+		const targetField = targetTable.data.fields.find((field) => field.field_id === targetFieldId);
 
 		if (!sourceField || !targetField) {
 			console.error('Source or target field not found:', {
 				sourceFieldId,
 				targetFieldId,
-				sourceFields: sourceTable.data.fields.map(f => f.field_id),
-				targetFields: targetTable.data.fields.map(f => f.field_id)
+				sourceFields: sourceTable.data.fields.map((f) => f.field_id),
+				targetFields: targetTable.data.fields.map((f) => f.field_id)
 			});
 			return;
 		}
 
 		// 4. Check if relationship already exists between these fields
-		const existingRelationship = displayEdges.find(edge =>
-			(edge.data.source_table_id === sourceTableId && edge.data.target_table_id === targetTableId &&
-			 edge.data.source_field_id === sourceFieldId && edge.data.target_field_id === targetFieldId) ||
-			(edge.data.source_table_id === targetTableId && edge.data.target_table_id === sourceTableId &&
-			 edge.data.source_field_id === targetFieldId && edge.data.target_field_id === sourceFieldId)
+		const existingRelationship = displayEdges.find(
+			(edge) =>
+				(edge.data.source_table_id === sourceTableId &&
+					edge.data.target_table_id === targetTableId &&
+					edge.data.source_field_id === sourceFieldId &&
+					edge.data.target_field_id === targetFieldId) ||
+				(edge.data.source_table_id === targetTableId &&
+					edge.data.target_table_id === sourceTableId &&
+					edge.data.source_field_id === targetFieldId &&
+					edge.data.target_field_id === sourceFieldId)
 		);
 
 		if (existingRelationship) {
@@ -516,7 +530,7 @@
 		}
 
 		// Get table name for the broadcast
-		const tableData = displayNodes.find(n => n.id === node.id)?.data;
+		const tableData = displayNodes.find((n) => n.id === node.id)?.data;
 		const tableName = tableData?.name || 'Unknown Table';
 
 		// Broadcast position in real-time (throttled)
@@ -569,7 +583,7 @@
 			}
 
 			// Send separate "table moved" event for activity logging
-			const tableData = displayNodes.find(n => n.id === node.id)?.data;
+			const tableData = displayNodes.find((n) => n.id === node.id)?.data;
 			collaborationStore.sendSchemaEvent('table_moved', {
 				table_id: node.id,
 				name: tableData?.name || 'Unknown Table',
@@ -579,11 +593,7 @@
 
 			// Update position in backend and local store
 			console.log('SAVE DEBUG: Calling updateTablePosition...');
-			await flowStore.updateTablePosition(
-				$projectStore.currentProject.id,
-				node.id,
-				position
-			);
+			await flowStore.updateTablePosition($projectStore.currentProject.id, node.id, position);
 			console.log('SAVE DEBUG: updateTablePosition completed');
 
 			// Final position already sent by broadcastNow() above
@@ -602,11 +612,9 @@
 		}
 	}
 
-
 	onMount(() => {
 		// Initialize container bounds
 		updateContainerBounds();
-
 
 		// Update bounds on window resize
 		function handleResize() {
@@ -670,10 +678,7 @@
 
 					try {
 						// Delete table via API - backend will handle WebSocket notifications
-						await flowStore.removeTableNode(
-							$projectStore.currentProject.id,
-							tableData.id
-						);
+						await flowStore.removeTableNode($projectStore.currentProject.id, tableData.id);
 						console.log('✅ Table deletion completed');
 
 						// Auto-save canvas data
@@ -772,25 +777,19 @@
 		{/each}
 
 		<!-- Background with grid -->
-		<Background
-			gap={$designerStore.gridSize}
-		/>
+		<Background gap={$designerStore.gridSize} />
 
 		<!-- Controls for zoom/pan -->
 		<Controls />
 
 		<!-- Minimap -->
 		{#if $designerStore.showMinimap}
-			<MiniMap
-				nodeColor="#3b82f6"
-				maskColor="rgba(0, 0, 0, 0.1)"
-				position="bottom-right"
-			/>
+			<MiniMap nodeColor="#3b82f6" maskColor="rgba(0, 0, 0, 0.1)" position="bottom-right" />
 		{/if}
 	</SvelteFlow>
 
 	<!-- Tool Instructions Overlay -->
-	{#if instructionText && ($designerStore.toolbar.selectedTool !== 'select')}
+	{#if instructionText && $designerStore.toolbar.selectedTool !== 'select'}
 		<div class="tool-instructions">
 			{instructionText}
 		</div>

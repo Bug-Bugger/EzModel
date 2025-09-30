@@ -65,7 +65,9 @@ export class ProjectService {
 	}
 
 	async removeCollaborator(projectId: string, collaboratorId: string): Promise<void> {
-		const response = await apiClient.delete(`/projects/${projectId}/collaborators/${collaboratorId}`);
+		const response = await apiClient.delete(
+			`/projects/${projectId}/collaborators/${collaboratorId}`
+		);
 		if (!response.success) {
 			throw new Error(response.message || 'Failed to remove collaborator');
 		}
@@ -96,16 +98,30 @@ export class ProjectService {
 		throw new Error(response.message || 'Failed to fetch table');
 	}
 
-	async updateTable(projectId: string, tableId: string, tableData: UpdateTableRequest): Promise<Table> {
-		const response = await apiClient.put<Table>(`/projects/${projectId}/tables/${tableId}`, tableData);
+	async updateTable(
+		projectId: string,
+		tableId: string,
+		tableData: UpdateTableRequest
+	): Promise<Table> {
+		const response = await apiClient.put<Table>(
+			`/projects/${projectId}/tables/${tableId}`,
+			tableData
+		);
 		if (response.success && response.data) {
 			return response.data;
 		}
 		throw new Error(response.message || 'Failed to update table');
 	}
 
-	async updateTablePosition(projectId: string, tableId: string, positionData: UpdateTablePositionRequest): Promise<void> {
-		const response = await apiClient.put(`/projects/${projectId}/tables/${tableId}/position`, positionData);
+	async updateTablePosition(
+		projectId: string,
+		tableId: string,
+		positionData: UpdateTablePositionRequest
+	): Promise<void> {
+		const response = await apiClient.put(
+			`/projects/${projectId}/tables/${tableId}/position`,
+			positionData
+		);
 		if (!response.success) {
 			throw new Error(response.message || 'Failed to update table position');
 		}
@@ -134,8 +150,14 @@ export class ProjectService {
 	}
 
 	// Relationship Management Methods
-	async createRelationship(projectId: string, relationshipData: CreateRelationshipRequest): Promise<Relationship> {
-		const response = await apiClient.post<Relationship>(`/projects/${projectId}/relationships`, relationshipData);
+	async createRelationship(
+		projectId: string,
+		relationshipData: CreateRelationshipRequest
+	): Promise<Relationship> {
+		const response = await apiClient.post<Relationship>(
+			`/projects/${projectId}/relationships`,
+			relationshipData
+		);
 		if (response.success && response.data) {
 			return response.data;
 		}
@@ -151,15 +173,24 @@ export class ProjectService {
 	}
 
 	async getRelationship(projectId: string, relationshipId: string): Promise<Relationship> {
-		const response = await apiClient.get<Relationship>(`/projects/${projectId}/relationships/${relationshipId}`);
+		const response = await apiClient.get<Relationship>(
+			`/projects/${projectId}/relationships/${relationshipId}`
+		);
 		if (response.success && response.data) {
 			return response.data;
 		}
 		throw new Error(response.message || 'Failed to fetch relationship');
 	}
 
-	async updateRelationship(projectId: string, relationshipId: string, relationshipData: UpdateRelationshipRequest): Promise<Relationship> {
-		const response = await apiClient.put<Relationship>(`/projects/${projectId}/relationships/${relationshipId}`, relationshipData);
+	async updateRelationship(
+		projectId: string,
+		relationshipId: string,
+		relationshipData: UpdateRelationshipRequest
+	): Promise<Relationship> {
+		const response = await apiClient.put<Relationship>(
+			`/projects/${projectId}/relationships/${relationshipId}`,
+			relationshipData
+		);
 		if (response.success && response.data) {
 			return response.data;
 		}
@@ -167,23 +198,40 @@ export class ProjectService {
 	}
 
 	async deleteRelationship(projectId: string, relationshipId: string): Promise<void> {
-		const response = await apiClient.delete(`/projects/${projectId}/relationships/${relationshipId}`);
+		const response = await apiClient.delete(
+			`/projects/${projectId}/relationships/${relationshipId}`
+		);
 		if (!response.success) {
 			throw new Error(response.message || 'Failed to delete relationship');
 		}
 	}
 
 	// Field Management Methods
-	async createField(projectId: string, tableId: string, fieldData: CreateFieldRequest): Promise<Field> {
-		const response = await apiClient.post<Field>(`/projects/${projectId}/tables/${tableId}/fields`, fieldData);
+	async createField(
+		projectId: string,
+		tableId: string,
+		fieldData: CreateFieldRequest
+	): Promise<Field> {
+		const response = await apiClient.post<Field>(
+			`/projects/${projectId}/tables/${tableId}/fields`,
+			fieldData
+		);
 		if (response.success && response.data) {
 			return response.data;
 		}
 		throw new Error(response.message || 'Failed to create field');
 	}
 
-	async updateField(projectId: string, tableId: string, fieldId: string, fieldData: UpdateFieldRequest): Promise<Field> {
-		const response = await apiClient.put<Field>(`/projects/${projectId}/tables/${tableId}/fields/${fieldId}`, fieldData);
+	async updateField(
+		projectId: string,
+		tableId: string,
+		fieldId: string,
+		fieldData: UpdateFieldRequest
+	): Promise<Field> {
+		const response = await apiClient.put<Field>(
+			`/projects/${projectId}/tables/${tableId}/fields/${fieldId}`,
+			fieldData
+		);
 		if (response.success && response.data) {
 			return response.data;
 		}
@@ -191,7 +239,9 @@ export class ProjectService {
 	}
 
 	async deleteField(projectId: string, tableId: string, fieldId: string): Promise<void> {
-		const response = await apiClient.delete(`/projects/${projectId}/tables/${tableId}/fields/${fieldId}`);
+		const response = await apiClient.delete(
+			`/projects/${projectId}/tables/${tableId}/fields/${fieldId}`
+		);
 		if (!response.success) {
 			throw new Error(response.message || 'Failed to delete field');
 		}

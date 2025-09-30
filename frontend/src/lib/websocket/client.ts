@@ -40,7 +40,10 @@ export class WebSocketClient {
 				// We need to pass the token as a query parameter instead
 				const urlWithAuth = `${this.config.url}?token=${encodeURIComponent(this.config.token)}`;
 				console.log('WebSocket: Final URL with auth:', urlWithAuth);
-				console.log('WebSocket: Token in URL (first 100 chars):', urlWithAuth.match(/token=([^&]*)/)?.[1]?.substring(0, 100) + '...');
+				console.log(
+					'WebSocket: Token in URL (first 100 chars):',
+					urlWithAuth.match(/token=([^&]*)/)?.[1]?.substring(0, 100) + '...'
+				);
 				this.ws = new WebSocket(urlWithAuth);
 
 				this.ws.onopen = () => {
@@ -58,7 +61,10 @@ export class WebSocketClient {
 						console.log('Message length:', event.data.length);
 
 						// Handle newline-separated JSON messages from backend
-						const messages = event.data.trim().split('\n').filter((line: string) => line.trim());
+						const messages = event.data
+							.trim()
+							.split('\n')
+							.filter((line: string) => line.trim());
 
 						for (const messageText of messages) {
 							try {
@@ -91,7 +97,6 @@ export class WebSocketClient {
 					this.config.onError?.(error);
 					reject(error);
 				};
-
 			} catch (error) {
 				console.error('Failed to create WebSocket:', error);
 				reject(error);
@@ -108,11 +113,13 @@ export class WebSocketClient {
 		this.reconnectAttempts++;
 		const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
-		console.log(`Scheduling reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
+		console.log(
+			`Scheduling reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`
+		);
 
 		setTimeout(() => {
 			if (!this.isDestroyed) {
-				this.connect().catch(error => {
+				this.connect().catch((error) => {
 					console.error('Reconnection failed:', error);
 				});
 			}
@@ -220,7 +227,8 @@ export function createCollaborationClient(
 			onMessage: callbacks?.onMessage || (() => {}),
 			onOpen: callbacks?.onOpen || (() => console.log('Collaboration WebSocket connected')),
 			onClose: callbacks?.onClose || (() => console.log('Collaboration WebSocket disconnected')),
-			onError: callbacks?.onError || ((error) => console.error('Collaboration WebSocket error:', error))
+			onError:
+				callbacks?.onError || ((error) => console.error('Collaboration WebSocket error:', error))
 		});
 
 		resolve(client);

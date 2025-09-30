@@ -4,8 +4,16 @@
 	// Generate consistent avatar colors
 	function getUserColor(userId: string): string {
 		const colors = [
-			'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-purple-500',
-			'bg-cyan-500', 'bg-orange-500', 'bg-lime-500', 'bg-pink-500', 'bg-indigo-500'
+			'bg-blue-500',
+			'bg-green-500',
+			'bg-yellow-500',
+			'bg-red-500',
+			'bg-purple-500',
+			'bg-cyan-500',
+			'bg-orange-500',
+			'bg-lime-500',
+			'bg-pink-500',
+			'bg-indigo-500'
 		];
 
 		let hash = 0;
@@ -20,20 +28,22 @@
 		if (!name || name.trim() === '') {
 			return 'U';
 		}
-		return name
-			.split(' ')
-			.map(word => word.trim())
-			.filter(word => word.length > 0)
-			.map(word => word.charAt(0))
-			.join('')
-			.slice(0, 2)
-			.toUpperCase() || 'U';
+		return (
+			name
+				.split(' ')
+				.map((word) => word.trim())
+				.filter((word) => word.length > 0)
+				.map((word) => word.charAt(0))
+				.join('')
+				.slice(0, 2)
+				.toUpperCase() || 'U'
+		);
 	}
 
 	// Check if user is currently active (moved cursor recently)
 	function isUserActive(user: any): boolean {
 		if (!user.cursor) return false;
-		return (Date.now() - user.cursor.timestamp) < 10000; // Active within last 10 seconds
+		return Date.now() - user.cursor.timestamp < 10000; // Active within last 10 seconds
 	}
 </script>
 
@@ -42,10 +52,7 @@
 		<!-- Connected Users Avatars -->
 		<div class="user-avatars flex -space-x-2">
 			{#each $collaborationStore.connectedUsers as user}
-				<div
-					class="user-avatar relative"
-					title={user.username || 'Unknown User'}
-				>
+				<div class="user-avatar relative" title={user.username || 'Unknown User'}>
 					<!-- Avatar -->
 					{#if user.avatar}
 						<img
@@ -55,7 +62,9 @@
 						/>
 					{:else}
 						<div
-							class="w-8 h-8 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-medium {getUserColor(user.id)}"
+							class="w-8 h-8 rounded-full border-2 border-white shadow-sm flex items-center justify-center text-white text-xs font-medium {getUserColor(
+								user.id
+							)}"
 						>
 							{getUserInitials(user.username || 'Unknown User')}
 						</div>
@@ -63,7 +72,9 @@
 
 					<!-- Activity Indicator -->
 					{#if isUserActive(user)}
-						<div class="activity-indicator absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 border-2 border-white rounded-full"></div>
+						<div
+							class="activity-indicator absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 border-2 border-white rounded-full"
+						></div>
 					{/if}
 				</div>
 			{/each}
@@ -83,12 +94,19 @@
 				aria-label="Show connected users"
 			>
 				<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M19 9l-7 7-7-7"
+					/>
 				</svg>
 			</button>
 
 			<!-- Dropdown Content -->
-			<div class="dropdown-content absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+			<div
+				class="dropdown-content absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-48 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+			>
 				<div class="text-xs font-medium text-gray-900 mb-2 px-2">Online Users</div>
 
 				{#each $collaborationStore.connectedUsers as user}
@@ -102,7 +120,9 @@
 							/>
 						{:else}
 							<div
-								class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium {getUserColor(user.id)}"
+								class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium {getUserColor(
+									user.id
+								)}"
 							>
 								{getUserInitials(user.username || 'Unknown User')}
 							</div>
@@ -110,7 +130,9 @@
 
 						<!-- User Info -->
 						<div class="flex-1 min-w-0">
-							<div class="text-sm font-medium text-gray-900 truncate">{user.username || 'Unknown User'}</div>
+							<div class="text-sm font-medium text-gray-900 truncate">
+								{user.username || 'Unknown User'}
+							</div>
 							<div class="text-xs text-gray-500 truncate">{user.email || 'No email'}</div>
 						</div>
 
@@ -145,7 +167,8 @@
 	}
 
 	@keyframes pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 1;
 		}
 		50% {

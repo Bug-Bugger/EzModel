@@ -89,7 +89,10 @@
 			<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
 			<form on:submit|preventDefault={handleLogin} on:keydown={handleKeydown} class="space-y-4">
 				<div class="space-y-2">
-					<label for="email" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+					<label
+						for="email"
+						class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+					>
 						Email
 					</label>
 					<Input
@@ -107,7 +110,10 @@
 				</div>
 
 				<div class="space-y-2">
-					<label for="password" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+					<label
+						for="password"
+						class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+					>
 						Password
 					</label>
 					<Input
@@ -124,13 +130,11 @@
 					{/if}
 				</div>
 
-				<Button
-					type="submit"
-					class="w-full"
-					disabled={isLoading}
-				>
+				<Button type="submit" class="w-full" disabled={isLoading}>
 					{#if isLoading}
-						<div class="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-2"></div>
+						<div
+							class="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent mr-2"
+						></div>
 						Signing in...
 					{:else}
 						<LogIn class="mr-2 h-4 w-4" />
@@ -141,9 +145,7 @@
 
 			<div class="mt-6 text-center text-sm">
 				<span class="text-muted-foreground">Don't have an account? </span>
-				<a href="/register" class="font-medium text-primary hover:underline">
-					Sign up
-				</a>
+				<a href="/register" class="font-medium text-primary hover:underline"> Sign up </a>
 			</div>
 		</Card>
 	</div>

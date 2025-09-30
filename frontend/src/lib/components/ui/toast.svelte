@@ -8,16 +8,22 @@
 
 	function getIcon(type: string) {
 		switch (type) {
-			case 'success': return CheckCircle;
-			case 'error': return XCircle;
-			case 'warning': return AlertTriangle;
-			case 'info': return Info;
-			default: return Info;
+			case 'success':
+				return CheckCircle;
+			case 'error':
+				return XCircle;
+			case 'warning':
+				return AlertTriangle;
+			case 'info':
+				return Info;
+			default:
+				return Info;
 		}
 	}
 
 	function getToastClasses(type: string) {
-		const baseClasses = 'relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-4 pr-8 shadow-lg transition-all';
+		const baseClasses =
+			'relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-4 pr-8 shadow-lg transition-all';
 
 		switch (type) {
 			case 'success':

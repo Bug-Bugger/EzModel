@@ -17,6 +17,7 @@
 	import { designerStore } from '$lib/stores/designer';
 	import { collaborationStore } from '$lib/stores/collaboration';
 	import { projectStore } from '$lib/stores/project';
+	import { authStore } from '$lib/stores/auth';
 	import { projectService } from '$lib/services/project';
 
 	// Custom node and edge types
@@ -771,7 +772,7 @@
 
 		<!-- Live Cursors - inside SvelteFlow context for hook access -->
 		{#each $collaborationStore.connectedUsers as user}
-			{#if user.cursor}
+			{#if user.cursor && user.id !== $authStore.user?.id}
 				<UserCursor {user} />
 			{/if}
 		{/each}

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { ConnectedUser } from '$lib/stores/collaboration';
-	import { flowStore } from '$lib/stores/flow';
 	import { useSvelteFlow, type Viewport } from '@xyflow/svelte';
 	import { onMount } from 'svelte';
 
@@ -13,6 +12,7 @@
 	let targetPosition = { x: 0, y: 0 };
 	let smoothingInterval: ReturnType<typeof setInterval> | null = null;
 	let currentViewport: Viewport | null = null;
+	let containerRect: DOMRect | null = null;
 
 	// Smoothing configuration
 	const SMOOTHING_FACTOR = 0.3; // How much to move towards target each frame (increased for responsiveness)
@@ -39,6 +39,14 @@
 		}
 	}
 
+	function updateContainerRect() {
+		// Get the SvelteFlow container's position relative to the viewport
+		const flowContainer = document.querySelector('.svelte-flow');
+		if (flowContainer) {
+			containerRect = flowContainer.getBoundingClientRect();
+		}
+	}
+
 	function updateTargetPosition() {
 		if (!user.cursor) return;
 
@@ -46,6 +54,9 @@
 			console.warn('SvelteFlow flowToScreenPosition not available');
 			return;
 		}
+
+		// Update container rect to account for layout changes
+		updateContainerRect();
 
 		try {
 			// Convert flow coordinates (received from other user) to screen coordinates
@@ -60,9 +71,19 @@
 				return;
 			}
 
+			// Adjust for container offset - flowToScreenPosition returns viewport-relative coords
+			// but we need container-relative coords since cursor uses absolute positioning
+			let adjustedX = screenCoords.x;
+			let adjustedY = screenCoords.y;
+
+			if (containerRect) {
+				adjustedX = screenCoords.x - containerRect.left;
+				adjustedY = screenCoords.y - containerRect.top;
+			}
+
 			targetPosition = {
-				x: screenCoords.x,
-				y: screenCoords.y
+				x: adjustedX,
+				y: adjustedY
 			};
 
 			// Start smoothing if not already running
@@ -111,11 +132,23 @@
 				currentViewport = initialViewport;
 			}
 		}
+
+		// Initialize container rect
+		updateContainerRect();
 		updateTargetPosition();
+
+		// Update container rect on window resize or layout changes
+		function handleResize() {
+			updateContainerRect();
+			updateTargetPosition();
+		}
+
+		window.addEventListener('resize', handleResize);
 
 		return () => {
 			// Clean up smoothing interval on unmount
 			stopSmoothing();
+			window.removeEventListener('resize', handleResize);
 		};
 	});
 

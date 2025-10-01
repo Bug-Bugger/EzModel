@@ -175,8 +175,8 @@ func (s *TableService) DeleteTable(id uuid.UUID, userID uuid.UUID) error {
 		return ErrForbidden
 	}
 
-	// Verify table exists
-	_, err = s.tableRepo.GetByID(id)
+	// Verify table exists and get table name
+	table, err := s.tableRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrTableNotFound
@@ -186,7 +186,7 @@ func (s *TableService) DeleteTable(id uuid.UUID, userID uuid.UUID) error {
 
 	// Notify collaborators about table deletion FIRST
 	if s.collaborationService != nil {
-		if err := s.collaborationService.NotifyTableDeleted(projectID, id, userID); err != nil {
+		if err := s.collaborationService.NotifyTableDeleted(projectID, id, table.Name, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}

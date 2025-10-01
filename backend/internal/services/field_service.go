@@ -180,7 +180,7 @@ func (s *FieldService) DeleteField(id uuid.UUID, userID uuid.UUID) error {
 		return ErrForbidden
 	}
 
-	// Verify field exists and get its table_id
+	// Verify field exists and get its table_id and name
 	field, err := s.fieldRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -191,7 +191,7 @@ func (s *FieldService) DeleteField(id uuid.UUID, userID uuid.UUID) error {
 
 	// Notify collaborators about field deletion FIRST
 	if s.collaborationService != nil {
-		if err := s.collaborationService.NotifyFieldDeleted(projectID, field.TableID, id, userID); err != nil {
+		if err := s.collaborationService.NotifyFieldDeleted(projectID, field.TableID, id, field.Name, userID); err != nil {
 			// Log error but don't fail the operation
 			// TODO: Add proper logging
 		}

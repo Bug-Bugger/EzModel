@@ -71,12 +71,12 @@ type CollaborationSessionServiceInterface interface {
 	// Field collaboration methods
 	NotifyFieldCreated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error
 	NotifyFieldUpdated(projectID uuid.UUID, field *models.Field, senderUserID uuid.UUID) error
-	NotifyFieldDeleted(projectID, tableID, fieldID uuid.UUID, senderUserID uuid.UUID) error
+	NotifyFieldDeleted(projectID, tableID, fieldID uuid.UUID, fieldName string, senderUserID uuid.UUID) error
 
 	// Table collaboration methods
 	NotifyTableCreated(projectID uuid.UUID, table *models.Table, senderUserID uuid.UUID) error
 	NotifyTableUpdated(projectID uuid.UUID, table *models.Table, senderUserID uuid.UUID) error
-	NotifyTableDeleted(projectID, tableID uuid.UUID, senderUserID uuid.UUID) error
+	NotifyTableDeleted(projectID, tableID uuid.UUID, tableName string, senderUserID uuid.UUID) error
 
 	// Relationship collaboration methods
 	NotifyRelationshipCreated(projectID uuid.UUID, relationship *models.Relationship, senderUserID uuid.UUID) error

@@ -244,9 +244,10 @@ func (s *CollaborationSessionService) NotifyTableUpdated(projectID uuid.UUID, ta
 }
 
 // NotifyTableDeleted notifies collaborators about a table deletion
-func (s *CollaborationSessionService) NotifyTableDeleted(projectID, tableID uuid.UUID, senderUserID uuid.UUID) error {
+func (s *CollaborationSessionService) NotifyTableDeleted(projectID, tableID uuid.UUID, tableName string, senderUserID uuid.UUID) error {
 	payload := websocketPkg.TablePayload{
 		TableID: tableID,
+		Name:    tableName,
 	}
 
 	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeTableDeleted, payload, senderUserID)
@@ -285,10 +286,11 @@ func (s *CollaborationSessionService) NotifyFieldUpdated(projectID uuid.UUID, fi
 }
 
 // NotifyFieldDeleted notifies collaborators about a field deletion
-func (s *CollaborationSessionService) NotifyFieldDeleted(projectID, tableID, fieldID uuid.UUID, senderUserID uuid.UUID) error {
+func (s *CollaborationSessionService) NotifyFieldDeleted(projectID, tableID, fieldID uuid.UUID, fieldName string, senderUserID uuid.UUID) error {
 	payload := websocketPkg.FieldPayload{
 		FieldID: fieldID,
 		TableID: tableID,
+		Name:    fieldName,
 	}
 
 	return s.BroadcastSchemaChange(projectID, websocketPkg.MessageTypeFieldDeleted, payload, senderUserID)

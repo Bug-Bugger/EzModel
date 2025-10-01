@@ -118,8 +118,8 @@ func (m *mockCollaborationService) NotifyFieldUpdated(projectID uuid.UUID, field
 	return args.Error(0)
 }
 
-func (m *mockCollaborationService) NotifyFieldDeleted(projectID, tableID, fieldID uuid.UUID, senderUserID uuid.UUID) error {
-	args := m.Called(projectID, tableID, fieldID, senderUserID)
+func (m *mockCollaborationService) NotifyFieldDeleted(projectID, tableID, fieldID uuid.UUID, fieldName string, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, tableID, fieldID, fieldName, senderUserID)
 	return args.Error(0)
 }
 
@@ -134,8 +134,8 @@ func (m *mockCollaborationService) NotifyTableUpdated(projectID uuid.UUID, table
 	return args.Error(0)
 }
 
-func (m *mockCollaborationService) NotifyTableDeleted(projectID, tableID uuid.UUID, senderUserID uuid.UUID) error {
-	args := m.Called(projectID, tableID, senderUserID)
+func (m *mockCollaborationService) NotifyTableDeleted(projectID, tableID uuid.UUID, tableName string, senderUserID uuid.UUID) error {
+	args := m.Called(projectID, tableID, tableName, senderUserID)
 	return args.Error(0)
 }
 
@@ -528,7 +528,7 @@ func (suite *FieldServiceTestSuite) TestDeleteField_Success() {
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(existingField, nil)
 	suite.mockFieldRepo.On("Delete", fieldID).Return(nil)
-	suite.mockCollabService.On("NotifyFieldDeleted", projectID, existingField.TableID, fieldID, userID).Return(nil)
+	suite.mockCollabService.On("NotifyFieldDeleted", projectID, existingField.TableID, fieldID, existingField.Name, userID).Return(nil)
 
 	err := suite.service.DeleteField(fieldID, userID)
 
@@ -581,7 +581,7 @@ func (suite *FieldServiceTestSuite) TestDeleteField_RepositoryError() {
 	suite.mockAuthService.On("GetProjectIDFromField", fieldID).Return(projectID, nil)
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockFieldRepo.On("GetByID", fieldID).Return(existingField, nil)
-	suite.mockCollabService.On("NotifyFieldDeleted", projectID, existingField.TableID, fieldID, userID).Return(nil)
+	suite.mockCollabService.On("NotifyFieldDeleted", projectID, existingField.TableID, fieldID, existingField.Name, userID).Return(nil)
 	suite.mockFieldRepo.On("Delete", fieldID).Return(assert.AnError)
 
 	err := suite.service.DeleteField(fieldID, userID)

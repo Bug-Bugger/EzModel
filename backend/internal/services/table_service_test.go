@@ -377,7 +377,7 @@ func (suite *TableServiceTestSuite) TestDeleteTable_Success() {
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockTableRepo.On("GetByID", tableID).Return(existingTable, nil)
 	suite.mockTableRepo.On("Delete", tableID).Return(nil)
-	suite.mockCollaborationService.On("NotifyTableDeleted", projectID, tableID, userID).Return(nil)
+	suite.mockCollaborationService.On("NotifyTableDeleted", projectID, tableID, existingTable.Name, userID).Return(nil)
 
 	err := suite.service.DeleteTable(tableID, userID)
 
@@ -429,7 +429,7 @@ func (suite *TableServiceTestSuite) TestDeleteTable_RepositoryError() {
 	suite.mockAuthService.On("GetProjectIDFromTable", tableID).Return(projectID, nil)
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockTableRepo.On("GetByID", tableID).Return(existingTable, nil)
-	suite.mockCollaborationService.On("NotifyTableDeleted", projectID, tableID, userID).Return(nil)
+	suite.mockCollaborationService.On("NotifyTableDeleted", projectID, tableID, existingTable.Name, userID).Return(nil)
 	suite.mockTableRepo.On("Delete", tableID).Return(assert.AnError)
 
 	err := suite.service.DeleteTable(tableID, userID)

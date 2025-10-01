@@ -202,7 +202,7 @@ jobs:
       - name: Build frontend
         working-directory: ./frontend
         env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://api.ezmodel.com' }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://ezmodel-backend-sfo3.ondigitalocean.app/api' }}
         run: pnpm build
 
       - name: Install doctl

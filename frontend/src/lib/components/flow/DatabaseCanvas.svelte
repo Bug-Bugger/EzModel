@@ -323,20 +323,7 @@
 			// Create new table data (without ID, backend will generate)
 			const newTableData = {
 				name: 'New Table',
-				fields: [
-					{
-						field_id: crypto.randomUUID(),
-						table_id: '', // Will be set by backend
-						name: 'id',
-						data_type: 'UUID',
-						is_primary_key: true,
-						is_nullable: false,
-						default_value: '',
-						position: 0,
-						created_at: new Date().toISOString(),
-						updated_at: new Date().toISOString()
-					}
-				]
+				fields: [] // Start with empty table - fields are added via property panel UI
 			};
 
 			// Create table via API-integrated store method

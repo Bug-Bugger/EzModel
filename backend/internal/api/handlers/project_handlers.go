@@ -99,19 +99,68 @@ func (h *ProjectHandler) GetByID() http.HandlerFunc {
 			})
 		}
 
+		// Convert tables with fields
+		var tableResponses []dto.TableWithFieldsResponse
+		for _, table := range project.Tables {
+			var fieldResponses []dto.FieldResponse
+			for _, field := range table.Fields {
+				fieldResponses = append(fieldResponses, dto.FieldResponse{
+					ID:           field.ID,
+					TableID:      field.TableID,
+					Name:         field.Name,
+					DataType:     field.DataType,
+					IsPrimaryKey: field.IsPrimaryKey,
+					IsNullable:   field.IsNullable,
+					DefaultValue: field.DefaultValue,
+					Position:     field.Position,
+					CreatedAt:    field.CreatedAt,
+					UpdatedAt:    field.UpdatedAt,
+				})
+			}
+
+			tableResponses = append(tableResponses, dto.TableWithFieldsResponse{
+				ID:        table.ID,
+				ProjectID: table.ProjectID,
+				Name:      table.Name,
+				PosX:      table.PosX,
+				PosY:      table.PosY,
+				Fields:    fieldResponses,
+				CreatedAt: table.CreatedAt,
+				UpdatedAt: table.UpdatedAt,
+			})
+		}
+
+		// Convert relationships
+		var relationshipResponses []dto.RelationshipResponse
+		for _, relationship := range project.Relationships {
+			relationshipResponses = append(relationshipResponses, dto.RelationshipResponse{
+				ID:            relationship.ID,
+				ProjectID:     relationship.ProjectID,
+				SourceTableID: relationship.SourceTableID,
+				SourceFieldID: relationship.SourceFieldID,
+				TargetTableID: relationship.TargetTableID,
+				TargetFieldID: relationship.TargetFieldID,
+				RelationType:  relationship.RelationType,
+				CreatedAt:     relationship.CreatedAt,
+				UpdatedAt:     relationship.UpdatedAt,
+			})
+		}
+
 		projectResponse := dto.ProjectResponse{
-			ID:           project.ID,
-			Name:         project.Name,
-			Description:  project.Description,
-			OwnerID:      project.OwnerID,
-			DatabaseType: project.DatabaseType,
-			CanvasData:   project.CanvasData,
+			ID:            project.ID,
+			Name:          project.Name,
+			Description:   project.Description,
+			OwnerID:       project.OwnerID,
+			DatabaseType:  project.DatabaseType,
+			CanvasData:    project.CanvasData,
 			Owner: dto.UserResponse{
 				ID:       project.Owner.ID,
 				Email:    project.Owner.Email,
 				Username: project.Owner.Username,
 			},
 			Collaborators: collaboratorResponses,
+			Tables:        tableResponses,
+			Relationships: relationshipResponses,
 			CreatedAt:     project.CreatedAt,
 			UpdatedAt:     project.UpdatedAt,
 		}

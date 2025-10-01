@@ -126,6 +126,7 @@ services:
 databases:
   # Read replica in NYC3
   - name: db-replica-nyc3
+    cluster_name: db-replica-nyc3
     engine: PG
     version: "15"
     size: db-s-1vcpu-1gb

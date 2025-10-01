@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Deployment environment'
+        description: "Deployment environment"
         required: true
-        default: 'production'
+        default: "production"
         type: choice
         options:
           - staging
@@ -326,27 +326,6 @@ jobs:
           3. Monitor application logs for errors
           4. Run manual smoke tests
           EOF
-
-      - name: Send Slack notification (optional)
-        if: always()
-        run: |
-          # Uncomment and configure if you have a Slack webhook
-          # curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
-          #   -H 'Content-Type: application/json' \
-          #   -d '{
-          #     "text": "Multi-Region Deployment ${{ job.status }}",
-          #     "blocks": [
-          #       {
-          #         "type": "section",
-          #         "text": {
-          #           "type": "mrkdwn",
-          #           "text": "*Multi-Region Deployment ${{ job.status }}*\n\nCommit: `${{ github.sha }}`\nBranch: `${{ github.ref_name }}`"
-          #         }
-          #       }
-          #     ]
-          #   }'
-
-          echo "Deployment notification sent (if configured)"
 
   # Rollback capability
   rollback:

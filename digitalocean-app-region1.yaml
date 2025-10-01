@@ -101,6 +101,7 @@ services:
 
 databases:
   - name: ezmodel-db-primary
+    cluster_name: ezmodel-db-primary
     engine: PG
     version: "15"
     size: db-s-1vcpu-1gb

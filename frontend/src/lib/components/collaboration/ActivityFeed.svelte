@@ -23,17 +23,17 @@
 	// Get icon for activity type
 	function getActivityIcon(type: string): string {
 		switch (type) {
-			case 'table_create':
+			case 'table_created':
 				return '🗂️';
 			case 'table_update':
 				return '✏️';
-			case 'table_delete':
+			case 'table_deleted':
 				return '🗑️';
-			case 'field_create':
+			case 'field_created':
 				return '📝';
-			case 'field_update':
+			case 'field_updated':
 				return '🔧';
-			case 'field_delete':
+			case 'field_deleted':
 				return '❌';
 			case 'relationship_create':
 				return '🔗';
@@ -51,17 +51,17 @@
 	// Get color class for activity type
 	function getActivityColor(type: string): string {
 		switch (type) {
-			case 'table_create':
-			case 'field_create':
+			case 'table_created':
+			case 'field_created':
 			case 'relationship_create':
 			case 'user_joined':
 				return 'text-green-600 bg-green-50 border-green-200';
 			case 'table_update':
-			case 'field_update':
+			case 'field_updated':
 			case 'relationship_update':
 				return 'text-blue-600 bg-blue-50 border-blue-200';
-			case 'table_delete':
-			case 'field_delete':
+			case 'table_deleted':
+			case 'field_deleted':
 			case 'relationship_delete':
 				return 'text-red-600 bg-red-50 border-red-200';
 			default:

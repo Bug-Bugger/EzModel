@@ -271,11 +271,14 @@ function createCollaborationStore() {
 					message.data.x !== undefined &&
 					message.data.y !== undefined
 				) {
-					// Add table to canvas using the flow store
-					flowStore.addTableNodeFromExternal(message.data, {
-						x: message.data.x,
-						y: message.data.y
-					});
+					// Only update local state if this is NOT from the current user (prevent duplicates)
+					if (!isOwnMessage) {
+						// Add table to canvas using the flow store
+						flowStore.addTableNodeFromExternal(message.data, {
+							x: message.data.x,
+							y: message.data.y
+						});
+					}
 				}
 
 				// Create activity event for table creation

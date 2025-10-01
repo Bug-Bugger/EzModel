@@ -346,14 +346,8 @@
 				finalPosition
 			);
 
-			// Send collaboration event with essential table data
-			collaborationStore.sendSchemaEvent('table_created', {
-				id: tableNode.id,
-				name: tableNode.data.name,
-				pos_x: finalPosition.x,
-				pos_y: finalPosition.y,
-				fields: tableNode.data.fields
-			});
+			// WebSocket broadcasting is handled by the backend after successful API call
+			// No need to manually broadcast here (prevents duplicate events)
 
 			// Select the new table for editing
 			flowStore.selectNode(tableNode);

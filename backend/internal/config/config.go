@@ -9,6 +9,7 @@ import (
 type Config struct {
 	Port     string
 	Env      string
+	Region   string
 	Database struct {
 		Host     string
 		Port     string
@@ -16,6 +17,23 @@ type Config struct {
 		Password string
 		DBName   string
 		SSLMode  string
+	}
+	DatabaseReplica struct {
+		Enabled  bool
+		Host     string
+		Port     string
+		User     string
+		Password string
+		DBName   string
+		SSLMode  string
+	}
+	Redis struct {
+		Enabled  bool
+		Host     string
+		Port     string
+		Password string
+		DB       int
+		TLS      bool
 	}
 	JWT struct {
 		Secret          string
@@ -32,16 +50,40 @@ func New() *Config {
 	}
 
 	cfg := &Config{
-		Port: port,
-		Env:  getEnv("ENV", "development"),
+		Port:   port,
+		Env:    getEnv("ENV", "development"),
+		Region: getEnv("REGION", "region1"),
 	}
 
+	// Primary Database Configuration
 	cfg.Database.Host = getEnv("DB_HOST", "localhost")
 	cfg.Database.Port = getEnv("DB_PORT", "5432")
 	cfg.Database.User = getEnv("DB_USER", "postgres")
 	cfg.Database.Password = getEnv("DB_PASSWORD", "")
 	cfg.Database.DBName = getEnv("DB_NAME", "ezmodel_backend")
 	cfg.Database.SSLMode = getEnv("DB_SSL_MODE", "disable")
+
+	// Read Replica Configuration
+	cfg.DatabaseReplica.Enabled = getEnv("DB_REPLICA_ENABLED", "false") == "true"
+	cfg.DatabaseReplica.Host = getEnv("DB_REPLICA_HOST", "")
+	cfg.DatabaseReplica.Port = getEnv("DB_REPLICA_PORT", "5432")
+	cfg.DatabaseReplica.User = getEnv("DB_REPLICA_USER", cfg.Database.User)
+	cfg.DatabaseReplica.Password = getEnv("DB_REPLICA_PASSWORD", cfg.Database.Password)
+	cfg.DatabaseReplica.DBName = getEnv("DB_REPLICA_NAME", cfg.Database.DBName)
+	cfg.DatabaseReplica.SSLMode = getEnv("DB_REPLICA_SSL_MODE", cfg.Database.SSLMode)
+
+	// Redis Configuration
+	cfg.Redis.Enabled = getEnv("REDIS_ENABLED", "false") == "true"
+	cfg.Redis.Host = getEnv("REDIS_HOST", "localhost")
+	cfg.Redis.Port = getEnv("REDIS_PORT", "6379")
+	cfg.Redis.Password = getEnv("REDIS_PASSWORD", "")
+	cfg.Redis.TLS = getEnv("REDIS_TLS", "false") == "true"
+	cfg.Redis.DB = 0
+	if dbStr := getEnv("REDIS_DB", "0"); dbStr != "0" {
+		if db, err := time.ParseDuration(dbStr + "s"); err == nil {
+			cfg.Redis.DB = int(db.Seconds())
+		}
+	}
 
 	// JWT Configuration
 	cfg.JWT.Secret = getEnv("JWT_SECRET", "")

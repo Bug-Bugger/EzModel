@@ -1,11 +1,13 @@
 package server
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/middleware"
 	"github.com/Bug-Bugger/ezmodel/internal/api/routes"
 	"github.com/Bug-Bugger/ezmodel/internal/config"
+	redisClient "github.com/Bug-Bugger/ezmodel/internal/redis"
 	"github.com/Bug-Bugger/ezmodel/internal/repository"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
 	websocketPkg "github.com/Bug-Bugger/ezmodel/internal/websocket"
@@ -60,6 +62,12 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 
 	// Initialize WebSocket hub
 	s.websocketHub = websocketPkg.NewHub()
+
+	// Initialize Redis client and connect to hub
+	redis := redisClient.NewClient(cfg)
+	s.websocketHub.SetRedisClient(redis)
+
+	log.Printf("Server initialized for region: %s", cfg.Region)
 
 	// Initialize repositories
 	s.userRepo = repository.NewUserRepository(db)

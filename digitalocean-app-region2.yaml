@@ -1,0 +1,136 @@
+# DigitalOcean App Platform Spec - Region 2 (NYC3)
+# Deploy EzModel backend to NYC3 with read replica
+
+name: ezmodel-backend-nyc3
+region: nyc3
+
+services:
+  - name: backend-nyc3
+    github:
+      repo: Bug-Bugger/EzModel
+      branch: main
+      deploy_on_push: true
+
+    source_dir: /backend
+
+    build_command: go build -o bin/ezmodel cmd/api/main.go
+    run_command: ./bin/ezmodel
+
+    dockerfile_path: backend/Dockerfile.prod
+
+    http_port: 8080
+
+    instance_count: 1
+    instance_size_slug: professional-xs # 1 vCPU, 1 GB RAM
+
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 20
+      period_seconds: 10
+      timeout_seconds: 3
+      success_threshold: 1
+      failure_threshold: 3
+
+    envs:
+      - key: REGION
+        value: "nyc3"
+
+      - key: ENV
+        value: "production"
+
+      - key: PORT
+        value: "8080"
+
+      # Primary Database Configuration (SFO3 - for writes)
+      # Note: These should point to the SFO3 primary database
+      - key: DB_HOST
+        value: "REPLACE_WITH_DB_PRIMARY_HOST"
+        type: SECRET
+
+      - key: DB_PORT
+        value: "25060"
+        type: SECRET
+
+      - key: DB_USER
+        value: "doadmin"
+        type: SECRET
+
+      - key: DB_PASSWORD
+        value: "REPLACE_WITH_DB_PASSWORD"
+        type: SECRET
+
+      - key: DB_NAME
+        value: "defaultdb"
+        type: SECRET
+
+      - key: DB_SSL_MODE
+        value: "require"
+
+      # Read Replica Configuration (NYC3 - for reads)
+      - key: DB_REPLICA_ENABLED
+        value: "true"
+
+      - key: DB_REPLICA_HOST
+        value: "${db-replica-nyc3.HOSTNAME}"
+        type: SECRET
+
+      - key: DB_REPLICA_PORT
+        value: "${db-replica-nyc3.PORT}"
+        type: SECRET
+
+      - key: DB_REPLICA_USER
+        value: "${db-replica-nyc3.USERNAME}"
+        type: SECRET
+
+      - key: DB_REPLICA_PASSWORD
+        value: "${db-replica-nyc3.PASSWORD}"
+        type: SECRET
+
+      - key: DB_REPLICA_NAME
+        value: "${db-replica-nyc3.DATABASE}"
+        type: SECRET
+
+      - key: DB_REPLICA_SSL_MODE
+        value: "require"
+
+      # Redis Configuration (use Upstash Redis for Pub/Sub sync)
+      - key: REDIS_ENABLED
+        value: "true"
+
+      - key: REDIS_HOST
+        value: "REPLACE_WITH_REDIS_HOST"
+        type: SECRET
+
+      - key: REDIS_PORT
+        value: "6379"
+        type: SECRET
+
+      - key: REDIS_PASSWORD
+        value: "REPLACE_WITH_REDIS_PASSWORD"
+        type: SECRET
+
+      - key: REDIS_DB
+        value: "0"
+
+      - key: REDIS_TLS
+        value: "true" # Upstash requires TLS
+
+      # JWT Configuration (MUST match Region 1 exactly)
+      - key: JWT_SECRET
+        value: "REPLACE_WITH_SAME_JWT_SECRET_AS_REGION1"
+        type: SECRET
+
+      - key: JWT_ACCESS_TOKEN_EXP
+        value: "15m"
+
+      - key: JWT_REFRESH_TOKEN_EXP
+        value: "168h"
+
+databases:
+  # Read replica in NYC3
+  - name: db-replica-nyc3
+    engine: PG
+    version: "15"
+    size: db-s-1vcpu-1gb
+    num_nodes: 1
+    production: true

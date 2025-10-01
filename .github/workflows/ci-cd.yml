@@ -238,81 +238,36 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
-  deploy:
-    name: Deploy to Production
+  # Note: Multi-region deployment is handled by deploy-multiregion.yml workflow
+  # This workflow only builds and tests. Deployment is separate for better control.
+
+  deployment-status:
+    name: Deployment Status
     runs-on: ubuntu-latest
-    needs:
-      [test-backend, test-frontend, build-backend-docker, build-frontend-docker]
-    if: false # Disable deployment for now
-    environment: production
+    needs: [test-backend, test-frontend, build-backend-docker, build-frontend-docker]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download build artifacts
-        uses: actions/downlToad-artifact@v4
-        with:
-          name: ezmodel-binary
-          path: ./artifacts
-
-      - name: Deploy to Digital Ocean
+      - name: Notify about deployment
         run: |
-          echo "🚀 Deploying to Digital Ocean..."
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # ✅ Build Completed Successfully
 
-          # Create SSH directory
-          mkdir -p ~/.ssh
+          Docker images have been built and pushed to GHCR.
 
-          # Add SSH key
-          echo "${{ secrets.DO_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          ## Next Steps
+          The **Multi-Region Deployment** workflow will deploy to:
+          - 🌎 Region 1 (NYC3)
+          - 🌎 Region 2 (SFO3)
+          - 🌐 Frontend CDN
 
-          # Add server to known hosts
-          ssh-keyscan -H ${{ secrets.DO_HOST }} >> ~/.ssh/known_hosts
+          [View Deployment →](https://github.com/${{ github.repository }}/actions/workflows/deploy-multiregion.yml)
 
-          # Deploy using SSH
-          ssh ${{ secrets.DO_USER }}@${{ secrets.DO_HOST }} << 'EOF'
-            cd /opt/ezmodel
+          ## Docker Images
+          - Backend: \`ghcr.io/${{ github.repository }}-backend:latest\`
+          - Frontend: \`ghcr.io/${{ github.repository }}-frontend:latest\`
 
-            # Pull latest docker-compose files
-            git pull origin main
-
-            # Create production environment file with Supabase credentials
-            cat > .env.prod << 'ENVEOF'
-            DB_HOST=${{ secrets.SUPABASE_DB_HOST }}
-            DB_PORT=5432
-            DB_USER=postgres
-            DB_PASSWORD=${{ secrets.SUPABASE_DB_PASSWORD }}
-            DB_NAME=postgres
-            DB_SSLMODE=require
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            JWT_ACCESS_TOKEN_EXP=15m
-            JWT_REFRESH_TOKEN_EXP=168h
-            PORT=8080
-            ENV=production
-            ENVEOF
-
-            # Pull latest Docker images
-            docker pull ghcr.io/${{ github.repository }}-backend:latest
-            docker pull ghcr.io/${{ github.repository }}-frontend:latest
-
-            # Update and restart services
-            docker-compose -f docker-compose.prod.yml down
-            docker-compose -f docker-compose.prod.yml up -d
-
-            # Wait for services to be ready
-            sleep 10
-
-            # Health check
-            curl -f http://localhost/api/health || exit 1
-
-            echo "✅ Deployment completed successfully"
+          ## Commit
+          - SHA: \`${{ github.sha }}\`
+          - Message: ${{ github.event.head_commit.message }}
           EOF
-
-      - name: Deployment Success Notification
-        if: success()
-        run: |
-          echo "✅ Deployment completed successfully"
-          echo "Version: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Server: ${{ secrets.DO_HOST }}"

@@ -536,6 +536,28 @@
 
 		// Broadcast position in real-time (throttled)
 		throttledBroadcastPosition(node.id, node.position, tableName);
+
+		// Broadcast cursor position during drag
+		// Mouse coordinates are available in event.event (MouseEvent)
+		if (canvasHookManager && event.event) {
+			const mouseEvent = event.event;
+			if (mouseEvent.clientX !== undefined && mouseEvent.clientY !== undefined) {
+				try {
+					// Convert screen coordinates to flow coordinates
+					const flowCoords = canvasHookManager.convertScreenToFlow(
+						mouseEvent.clientX,
+						mouseEvent.clientY
+					);
+
+					// Broadcast cursor position
+					if (isFinite(flowCoords.x) && isFinite(flowCoords.y)) {
+						collaborationStore.sendCursorPosition(flowCoords.x, flowCoords.y);
+					}
+				} catch (error) {
+					console.warn('Error broadcasting cursor during drag:', error);
+				}
+			}
+		}
 	}
 
 	// Handle node drag end to save position

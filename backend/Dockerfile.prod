@@ -39,9 +39,6 @@ COPY --from=builder /app/ezmodel-api /ezmodel-api
 # Expose API port
 EXPOSE 8080
 
-# Add health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD ["/ezmodel-api", "health"]
-
 # Run the API server
+# Note: DigitalOcean App Platform handles health checks via HTTP (configured in app spec)
 ENTRYPOINT ["/ezmodel-api"]

@@ -53,6 +53,11 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 		log.Println("Read replica not enabled, using primary database only")
 	}
 
+	// Ensure pgcrypto extension exists for UUID generation defaults
+	if err := db.Exec(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`).Error; err != nil {
+		return nil, fmt.Errorf("failed to enable pgcrypto extension: %w", err)
+	}
+
 	// Auto Migrate the schema (safe migration that handles existing tables)
 	err = db.AutoMigrate(
 		&models.User{},

@@ -71,13 +71,13 @@ func relationshipUUIDPtr(id uuid.UUID) *uuid.UUID {
 
 type RelationshipServiceTestSuite struct {
 	suite.Suite
-	mockRelationshipRepo *mockRepo.MockRelationshipRepository
-	mockProjectRepo      *mockRepo.MockProjectRepository
-	mockTableRepo        *mockRepo.MockTableRepository
-	mockFieldRepo        *mockRepo.MockFieldRepository
-	mockAuthService      *mockRelationshipAuthService
+	mockRelationshipRepo     *mockRepo.MockRelationshipRepository
+	mockProjectRepo          *mockRepo.MockProjectRepository
+	mockTableRepo            *mockRepo.MockTableRepository
+	mockFieldRepo            *mockRepo.MockFieldRepository
+	mockAuthService          *mockRelationshipAuthService
 	mockCollaborationService *mockCollaborationService
-	service              *RelationshipService
+	service                  *RelationshipService
 }
 
 func (suite *RelationshipServiceTestSuite) SetupTest() {

@@ -65,11 +65,11 @@ func tableStringPtr(s string) *string {
 
 type TableServiceTestSuite struct {
 	suite.Suite
-	mockTableRepo   *mockRepo.MockTableRepository
-	mockProjectRepo *mockRepo.MockProjectRepository
-	mockAuthService *mockTableAuthService
+	mockTableRepo            *mockRepo.MockTableRepository
+	mockProjectRepo          *mockRepo.MockProjectRepository
+	mockAuthService          *mockTableAuthService
 	mockCollaborationService *mockCollaborationService
-	service         *TableService
+	service                  *TableService
 }
 
 func (suite *TableServiceTestSuite) SetupTest() {

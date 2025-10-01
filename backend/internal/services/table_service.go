@@ -12,17 +12,17 @@ import (
 )
 
 type TableService struct {
-	tableRepo           repository.TableRepositoryInterface
-	projectRepo         repository.ProjectRepositoryInterface
-	authService         AuthorizationServiceInterface
+	tableRepo            repository.TableRepositoryInterface
+	projectRepo          repository.ProjectRepositoryInterface
+	authService          AuthorizationServiceInterface
 	collaborationService CollaborationSessionServiceInterface
 }
 
 func NewTableService(tableRepo repository.TableRepositoryInterface, projectRepo repository.ProjectRepositoryInterface, authService AuthorizationServiceInterface, collaborationService CollaborationSessionServiceInterface) *TableService {
 	return &TableService{
-		tableRepo:           tableRepo,
-		projectRepo:         projectRepo,
-		authService:         authService,
+		tableRepo:            tableRepo,
+		projectRepo:          projectRepo,
+		authService:          authService,
 		collaborationService: collaborationService,
 	}
 }

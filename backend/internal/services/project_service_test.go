@@ -13,7 +13,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 // Helper functions
 func createTestProjectUser() *models.User {
 	return &models.User{
@@ -41,10 +40,10 @@ func projectStringPtr(s string) *string {
 
 type ProjectServiceTestSuite struct {
 	suite.Suite
-	mockProjectRepo       *mockRepo.MockProjectRepository
-	mockUserRepo          *mockRepo.MockUserRepository
+	mockProjectRepo          *mockRepo.MockProjectRepository
+	mockUserRepo             *mockRepo.MockUserRepository
 	mockCollaborationService *mockCollaborationService
-	service               *ProjectService
+	service                  *ProjectService
 }
 
 func (suite *ProjectServiceTestSuite) SetupTest() {

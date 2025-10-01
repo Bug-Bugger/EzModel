@@ -147,12 +147,12 @@ func (h *ProjectHandler) GetByID() http.HandlerFunc {
 		}
 
 		projectResponse := dto.ProjectResponse{
-			ID:            project.ID,
-			Name:          project.Name,
-			Description:   project.Description,
-			OwnerID:       project.OwnerID,
-			DatabaseType:  project.DatabaseType,
-			CanvasData:    project.CanvasData,
+			ID:           project.ID,
+			Name:         project.Name,
+			Description:  project.Description,
+			OwnerID:      project.OwnerID,
+			DatabaseType: project.DatabaseType,
+			CanvasData:   project.CanvasData,
 			Owner: dto.UserResponse{
 				ID:       project.Owner.ID,
 				Email:    project.Owner.Email,

@@ -1,11 +1,14 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 	"time"
 
+	"github.com/Bug-Bugger/ezmodel/internal/redis"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
@@ -45,6 +48,13 @@ type Hub struct {
 
 	// Done channel for graceful shutdown
 	done chan struct{}
+
+	// Redis client for cross-region synchronization
+	redisClient *redis.Client
+
+	// Active Redis subscriptions by project ID
+	subscriptions map[uuid.UUID]context.CancelFunc
+	subMu         sync.Mutex
 }
 
 // BroadcastMessage represents a message to be broadcasted
@@ -57,12 +67,21 @@ type BroadcastMessage struct {
 // NewHub creates a new WebSocket hub
 func NewHub() *Hub {
 	return &Hub{
-		projects:   make(map[uuid.UUID]map[*Client]bool),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		broadcast:  make(chan *BroadcastMessage),
-		ticker:     time.NewTicker(30 * time.Second),
-		done:       make(chan struct{}),
+		projects:      make(map[uuid.UUID]map[*Client]bool),
+		register:      make(chan *Client),
+		unregister:    make(chan *Client),
+		broadcast:     make(chan *BroadcastMessage),
+		ticker:        time.NewTicker(30 * time.Second),
+		done:          make(chan struct{}),
+		subscriptions: make(map[uuid.UUID]context.CancelFunc),
+	}
+}
+
+// SetRedisClient sets the Redis client for cross-region synchronization
+func (h *Hub) SetRedisClient(client *redis.Client) {
+	h.redisClient = client
+	if client != nil && client.IsEnabled() {
+		log.Println("Redis client enabled for WebSocket hub - cross-region sync active")
 	}
 }
 
@@ -115,7 +134,7 @@ func (h *Hub) BroadcastToProject(projectID uuid.UUID, message *WebSocketMessage,
 // registerClient handles client registration
 func (h *Hub) registerClient(client *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
+	isFirstClient := h.projects[client.ProjectID] == nil || len(h.projects[client.ProjectID]) == 0
 
 	// Initialize project map if it doesn't exist
 	if h.projects[client.ProjectID] == nil {
@@ -125,8 +144,14 @@ func (h *Hub) registerClient(client *Client) {
 	// Add client to project
 	h.projects[client.ProjectID][client] = true
 	client.LastPing = time.Now()
+	h.mu.Unlock()
 
 	log.Printf("Client %s joined project %s", client.UserID, client.ProjectID)
+
+	// Start Redis subscription if this is the first client for this project
+	if isFirstClient {
+		h.subscribeToRedis(client.ProjectID)
+	}
 
 	// Notify other clients about the new user
 	userJoinedPayload := UserJoinedPayload{
@@ -151,7 +176,7 @@ func (h *Hub) registerClient(client *Client) {
 // unregisterClient handles client disconnection
 func (h *Hub) unregisterClient(client *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
+	var shouldCloseSubscription bool
 
 	if clients, exists := h.projects[client.ProjectID]; exists {
 		if _, exists := clients[client]; exists {
@@ -159,27 +184,34 @@ func (h *Hub) unregisterClient(client *Client) {
 			// Safely close the channel
 			h.safeCloseChannel(client.Send)
 
-			// Clean up empty project maps
+			// Clean up empty project maps and stop Redis subscription
 			if len(clients) == 0 {
 				delete(h.projects, client.ProjectID)
+				shouldCloseSubscription = true
 			}
-
-			log.Printf("Client %s left project %s", client.UserID, client.ProjectID)
-
-			// Notify other clients about the user leaving
-			userLeftPayload := UserLeftPayload{
-				UserID: client.UserID,
-			}
-
-			message, err := NewWebSocketMessage(MessageTypeUserLeft, userLeftPayload, client.UserID, client.ProjectID)
-			if err != nil {
-				log.Printf("Error creating user left message: %v", err)
-				return
-			}
-
-			h.broadcastToProjectExcept(client.ProjectID, message, client)
 		}
 	}
+	h.mu.Unlock()
+
+	// Stop Redis subscription if no more clients in project
+	if shouldCloseSubscription {
+		h.unsubscribeFromRedis(client.ProjectID)
+	}
+
+	log.Printf("Client %s left project %s", client.UserID, client.ProjectID)
+
+	// Notify other clients about the user leaving
+	userLeftPayload := UserLeftPayload{
+		UserID: client.UserID,
+	}
+
+	message, err := NewWebSocketMessage(MessageTypeUserLeft, userLeftPayload, client.UserID, client.ProjectID)
+	if err != nil {
+		log.Printf("Error creating user left message: %v", err)
+		return
+	}
+
+	h.broadcastToProjectExcept(client.ProjectID, message, client)
 }
 
 // broadcastMessage handles message broadcasting
@@ -210,7 +242,25 @@ func (h *Hub) broadcastToProjectExcept(projectID uuid.UUID, message *WebSocketMe
 				}
 			}
 		}
+
+		// Publish to Redis for cross-region synchronization (async)
+		h.publishToRedis(projectID, messageBytes)
 	}
+}
+
+// publishToRedis publishes a message to Redis for cross-region synchronization
+func (h *Hub) publishToRedis(projectID uuid.UUID, messageBytes []byte) {
+	if h.redisClient == nil || !h.redisClient.IsEnabled() {
+		return
+	}
+
+	// Publish asynchronously to avoid blocking local broadcasts
+	go func() {
+		channel := fmt.Sprintf("project:%s", projectID.String())
+		if err := h.redisClient.Publish(channel, messageBytes); err != nil {
+			log.Printf("Failed to publish to Redis channel %s: %v", channel, err)
+		}
+	}()
 }
 
 // sendPresenceToClient sends current presence information to a specific client
@@ -333,6 +383,15 @@ func (h *Hub) Shutdown() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	// Close all Redis subscriptions
+	h.subMu.Lock()
+	for projectID, cancel := range h.subscriptions {
+		log.Printf("Closing Redis subscription for project %s", projectID)
+		cancel()
+	}
+	h.subscriptions = make(map[uuid.UUID]context.CancelFunc)
+	h.subMu.Unlock()
+
 	// Close all client connections
 	for _, clients := range h.projects {
 		for client := range clients {
@@ -348,6 +407,97 @@ func (h *Hub) Shutdown() {
 
 	// Safely close the done channel
 	h.safeCloseDoneChannel()
+}
+
+// subscribeToRedis subscribes to a Redis channel for cross-region messages
+func (h *Hub) subscribeToRedis(projectID uuid.UUID) {
+	if h.redisClient == nil || !h.redisClient.IsEnabled() {
+		return
+	}
+
+	h.subMu.Lock()
+	// Check if already subscribed
+	if _, exists := h.subscriptions[projectID]; exists {
+		h.subMu.Unlock()
+		return
+	}
+
+	channel := fmt.Sprintf("project:%s", projectID.String())
+	pubsub := h.redisClient.Subscribe(channel)
+	if pubsub == nil {
+		h.subMu.Unlock()
+		return
+	}
+
+	// Create cancellable context for this subscription
+	ctx, cancel := context.WithCancel(context.Background())
+	h.subscriptions[projectID] = cancel
+	h.subMu.Unlock()
+
+	log.Printf("Started Redis subscription for project %s on channel %s", projectID, channel)
+
+	// Start listening in a goroutine
+	go func() {
+		defer pubsub.Close()
+		ch := pubsub.Channel()
+
+		for {
+			select {
+			case <-ctx.Done():
+				log.Printf("Redis subscription cancelled for project %s", projectID)
+				return
+
+			case msg, ok := <-ch:
+				if !ok {
+					log.Printf("Redis channel closed for project %s", projectID)
+					return
+				}
+
+				// Broadcast message to local clients only (no re-publishing to Redis)
+				h.broadcastFromRedis(projectID, []byte(msg.Payload))
+			}
+		}
+	}()
+}
+
+// unsubscribeFromRedis unsubscribes from a Redis channel
+func (h *Hub) unsubscribeFromRedis(projectID uuid.UUID) {
+	h.subMu.Lock()
+	defer h.subMu.Unlock()
+
+	if cancel, exists := h.subscriptions[projectID]; exists {
+		log.Printf("Unsubscribing from Redis for project %s", projectID)
+		cancel()
+		delete(h.subscriptions, projectID)
+	}
+}
+
+// broadcastFromRedis broadcasts a message received from Redis to local clients
+func (h *Hub) broadcastFromRedis(projectID uuid.UUID, messageBytes []byte) {
+	h.mu.RLock()
+	clients, exists := h.projects[projectID]
+	h.mu.RUnlock()
+
+	if !exists {
+		return
+	}
+
+	// Parse the message to check if it's from this hub
+	var message WebSocketMessage
+	if err := json.Unmarshal(messageBytes, &message); err != nil {
+		log.Printf("Error unmarshaling Redis message: %v", err)
+		return
+	}
+
+	// Broadcast to all local clients
+	for client := range clients {
+		select {
+		case client.Send <- messageBytes:
+		default:
+			// Client's send channel is full, skip
+			log.Printf("Skipping Redis message for client %s (channel full)", client.UserID)
+		}
+	}
 }
 
 // safeCloseChannel safely closes a channel if it's not already closed

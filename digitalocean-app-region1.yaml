@@ -1,0 +1,111 @@
+# DigitalOcean App Platform Spec - Region 1 (SFO3)
+# Deploy EzModel backend to SFO3 with primary database
+
+name: ezmodel-backend-sfo3
+region: sfo3
+
+services:
+  - name: backend-sfo3
+    github:
+      repo: Bug-Bugger/EzModel
+      branch: main
+      deploy_on_push: true
+
+    source_dir: /backend
+
+    build_command: go build -o bin/ezmodel cmd/api/main.go
+    run_command: ./bin/ezmodel
+
+    dockerfile_path: backend/Dockerfile.prod
+
+    http_port: 8080
+
+    instance_count: 1
+    instance_size_slug: professional-xs # 1 vCPU, 1 GB RAM
+
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 20
+      period_seconds: 10
+      timeout_seconds: 3
+      success_threshold: 1
+      failure_threshold: 3
+
+    envs:
+      - key: REGION
+        value: "sfo3"
+
+      - key: ENV
+        value: "production"
+
+      - key: PORT
+        value: "8080"
+
+      # Database Configuration (Primary - SFO3)
+      - key: DB_HOST
+        value: "${ezmodel-db-primary.HOSTNAME}" # Will be replaced by DigitalOcean Managed DB
+        type: SECRET
+
+      - key: DB_PORT
+        value: "${ezmodel-db-primary.PORT}"
+        type: SECRET
+
+      - key: DB_USER
+        value: "${ezmodel-db-primary.USERNAME}"
+        type: SECRET
+
+      - key: DB_PASSWORD
+        value: "${ezmodel-db-primary.PASSWORD}"
+        type: SECRET
+
+      - key: DB_NAME
+        value: "${ezmodel-db-primary.DATABASE}"
+        type: SECRET
+
+      - key: DB_SSL_MODE
+        value: "require"
+
+      # Read Replica (disabled for primary region)
+      - key: DB_REPLICA_ENABLED
+        value: "false"
+
+      # Redis Configuration (Upstash)
+      - key: REDIS_ENABLED
+        value: "true"
+
+      - key: REDIS_HOST
+        value: "REPLACE_WITH_REDIS_HOST"
+        type: SECRET
+
+      - key: REDIS_PORT
+        value: "6379"
+        type: SECRET
+
+      - key: REDIS_PASSWORD
+        value: "REPLACE_WITH_REDIS_PASSWORD"
+        type: SECRET
+
+      - key: REDIS_DB
+        value: "0"
+
+      - key: REDIS_TLS
+        value: "true" # Upstash requires TLS
+
+      # JWT Configuration (must match across all regions)
+      - key: JWT_SECRET
+        value: "REPLACE_WITH_YOUR_JWT_SECRET"
+        type: SECRET
+
+      - key: JWT_ACCESS_TOKEN_EXP
+        value: "15m"
+
+      - key: JWT_REFRESH_TOKEN_EXP
+        value: "168h"
+
+databases:
+  - name: ezmodel-db-primary
+    engine: PG
+    version: "15"
+    size: db-s-1vcpu-1gb
+    num_nodes: 1
+    production: true

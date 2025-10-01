@@ -20,15 +20,16 @@ const (
 	// Schema modification events
 	MessageTypeTableCreated MessageType = "table_created"
 	MessageTypeTableUpdated MessageType = "table_updated"
+	MessageTypeTableMoved   MessageType = "table_moved"
 	MessageTypeTableDeleted MessageType = "table_deleted"
 	MessageTypeFieldCreated MessageType = "field_created"
 	MessageTypeFieldUpdated MessageType = "field_updated"
 	MessageTypeFieldDeleted MessageType = "field_deleted"
 
 	// Relationship events
-	MessageTypeRelationshipCreated MessageType = "relationship_created"
-	MessageTypeRelationshipUpdated MessageType = "relationship_updated"
-	MessageTypeRelationshipDeleted MessageType = "relationship_deleted"
+	MessageTypeRelationshipCreated MessageType = "relationship_create"
+	MessageTypeRelationshipUpdated MessageType = "relationship_update"
+	MessageTypeRelationshipDeleted MessageType = "relationship_delete"
 
 	// Canvas events
 	MessageTypeCanvasUpdated MessageType = "canvas_updated"
@@ -63,8 +64,8 @@ type UserCursorPayload struct {
 	UserID    uuid.UUID `json:"user_id"`
 	Username  string    `json:"username"`
 	UserColor string    `json:"user_color"`
-	CursorX   float64   `json:"cursor_x"`
-	CursorY   float64   `json:"cursor_y"`
+	CursorX   float64   `json:"cursor_x"` // Global coordinates in SvelteFlow space
+	CursorY   float64   `json:"cursor_y"` // Global coordinates in SvelteFlow space
 }
 
 type UserPresencePayload struct {
@@ -75,8 +76,8 @@ type ActiveUser struct {
 	UserID    uuid.UUID `json:"user_id"`
 	Username  string    `json:"username"`
 	UserColor string    `json:"user_color"`
-	CursorX   *float64  `json:"cursor_x,omitempty"`
-	CursorY   *float64  `json:"cursor_y,omitempty"`
+	CursorX   *float64  `json:"cursor_x,omitempty"` // Global coordinates in SvelteFlow space
+	CursorY   *float64  `json:"cursor_y,omitempty"` // Global coordinates in SvelteFlow space
 	LastSeen  time.Time `json:"last_seen"`
 }
 
@@ -89,13 +90,14 @@ type TablePayload struct {
 }
 
 type FieldPayload struct {
-	FieldID    uuid.UUID `json:"field_id"`
-	TableID    uuid.UUID `json:"table_id"`
-	Name       string    `json:"name"`
-	Type       string    `json:"type"`
-	IsPrimary  bool      `json:"is_primary"`
-	IsNullable bool      `json:"is_nullable"`
-	Default    *string   `json:"default,omitempty"`
+	FieldID      uuid.UUID `json:"field_id"`
+	TableID      uuid.UUID `json:"table_id"`
+	Name         string    `json:"name"`
+	DataType     string    `json:"data_type"`
+	IsPrimaryKey bool      `json:"is_primary_key"`
+	IsNullable   bool      `json:"is_nullable"`
+	DefaultValue *string   `json:"default_value,omitempty"`
+	Position     int       `json:"position"`
 }
 
 type RelationshipPayload struct {
@@ -104,7 +106,9 @@ type RelationshipPayload struct {
 	TargetTableID  uuid.UUID `json:"target_table_id"`
 	SourceFieldID  uuid.UUID `json:"source_field_id"`
 	TargetFieldID  uuid.UUID `json:"target_field_id"`
-	Type           string    `json:"type"`
+	Type           string    `json:"relation_type"`
+	FromTableName  string    `json:"from_table"`
+	ToTableName    string    `json:"to_table"`
 }
 
 // Canvas payload

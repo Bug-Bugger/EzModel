@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
@@ -98,20 +99,75 @@ func (h *ProjectHandler) GetByID() http.HandlerFunc {
 			})
 		}
 
+		// Convert tables with fields
+		var tableResponses []dto.TableWithFieldsResponse
+		for _, table := range project.Tables {
+			var fieldResponses []dto.FieldResponse
+			for _, field := range table.Fields {
+				fieldResponses = append(fieldResponses, dto.FieldResponse{
+					ID:           field.ID,
+					TableID:      field.TableID,
+					Name:         field.Name,
+					DataType:     field.DataType,
+					IsPrimaryKey: field.IsPrimaryKey,
+					IsNullable:   field.IsNullable,
+					DefaultValue: field.DefaultValue,
+					Position:     field.Position,
+					CreatedAt:    field.CreatedAt,
+					UpdatedAt:    field.UpdatedAt,
+				})
+			}
+
+			tableResponses = append(tableResponses, dto.TableWithFieldsResponse{
+				ID:        table.ID,
+				ProjectID: table.ProjectID,
+				Name:      table.Name,
+				PosX:      table.PosX,
+				PosY:      table.PosY,
+				Fields:    fieldResponses,
+				CreatedAt: table.CreatedAt,
+				UpdatedAt: table.UpdatedAt,
+			})
+		}
+
+		// Convert relationships
+		var relationshipResponses []dto.RelationshipResponse
+		for _, relationship := range project.Relationships {
+			relationshipResponses = append(relationshipResponses, dto.RelationshipResponse{
+				ID:            relationship.ID,
+				ProjectID:     relationship.ProjectID,
+				SourceTableID: relationship.SourceTableID,
+				SourceFieldID: relationship.SourceFieldID,
+				TargetTableID: relationship.TargetTableID,
+				TargetFieldID: relationship.TargetFieldID,
+				RelationType:  relationship.RelationType,
+				CreatedAt:     relationship.CreatedAt,
+				UpdatedAt:     relationship.UpdatedAt,
+			})
+		}
+
 		projectResponse := dto.ProjectResponse{
-			ID:          project.ID,
-			Name:        project.Name,
-			Description: project.Description,
-			OwnerID:     project.OwnerID,
+			ID:           project.ID,
+			Name:         project.Name,
+			Description:  project.Description,
+			OwnerID:      project.OwnerID,
+			DatabaseType: project.DatabaseType,
+			CanvasData:   project.CanvasData,
 			Owner: dto.UserResponse{
 				ID:       project.Owner.ID,
 				Email:    project.Owner.Email,
 				Username: project.Owner.Username,
 			},
 			Collaborators: collaboratorResponses,
+			Tables:        tableResponses,
+			Relationships: relationshipResponses,
 			CreatedAt:     project.CreatedAt,
 			UpdatedAt:     project.UpdatedAt,
 		}
+
+		// Debug logging for project retrieval
+		log.Printf("CANVAS DEBUG: Returning project %s with canvas data length: %d",
+			project.ID.String(), len(project.CanvasData))
 
 		responses.RespondWithSuccess(w, http.StatusOK, "Project retrieved successfully", projectResponse)
 	}
@@ -130,12 +186,25 @@ func (h *ProjectHandler) Update() http.HandlerFunc {
 		}
 
 		// Empty update request
-		if req.Name == nil && req.Description == nil {
+		if req.Name == nil && req.Description == nil && req.CanvasData == nil {
 			responses.RespondWithError(w, http.StatusBadRequest, "No fields to update provided")
 			return
 		}
 
-		project, err := h.projectService.UpdateProject(id, &req)
+		// Get current user ID from context for collaboration
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
+		if !ok {
+			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
+		project, err := h.projectService.UpdateProject(id, &req, userID)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrProjectNotFound):

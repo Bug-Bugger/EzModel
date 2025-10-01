@@ -23,7 +23,7 @@ type UpdateRelationshipRequest struct {
 }
 
 type RelationshipResponse struct {
-	ID            uuid.UUID `json:"id"`
+	ID            uuid.UUID `json:"relationship_id"`
 	ProjectID     uuid.UUID `json:"project_id"`
 	SourceTableID uuid.UUID `json:"source_table_id"`
 	SourceFieldID uuid.UUID `json:"source_field_id"`

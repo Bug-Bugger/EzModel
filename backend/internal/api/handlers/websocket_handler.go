@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
-	"github.com/Bug-Bugger/ezmodel/internal/api/responses"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
 	websocketPkg "github.com/Bug-Bugger/ezmodel/internal/websocket"
@@ -42,6 +41,7 @@ type WebSocketHandler struct {
 	jwtService     services.JWTServiceInterface
 	userService    services.UserServiceInterface
 	projectService services.ProjectServiceInterface
+	tableService   services.TableServiceInterface
 }
 
 func NewWebSocketHandler(
@@ -49,38 +49,42 @@ func NewWebSocketHandler(
 	jwtService services.JWTServiceInterface,
 	userService services.UserServiceInterface,
 	projectService services.ProjectServiceInterface,
+	tableService services.TableServiceInterface,
 ) *WebSocketHandler {
 	return &WebSocketHandler{
 		hub:            hub,
 		jwtService:     jwtService,
 		userService:    userService,
 		projectService: projectService,
+		tableService:   tableService,
 	}
 }
 
 // HandleWebSocket upgrades HTTP connection to WebSocket for real-time collaboration
 func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	log.Printf("WebSocket: Connection attempt from %s to %s", r.RemoteAddr, r.URL.String())
+
 	// Get project ID from URL - now using standardized "project_id" parameter
 	projectIDStr := chi.URLParam(r, "project_id")
 	log.Printf("WebSocket: Extracted projectIDStr from 'project_id' param: '%s'", projectIDStr)
 	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
 		log.Printf("WebSocket: UUID parsing error for '%s': %v", projectIDStr, err)
-		responses.RespondWithError(w, http.StatusBadRequest, "Invalid project ID")
+		http.Error(w, "Invalid project ID", http.StatusBadRequest)
 		return
 	}
 
 	// Authenticate user from token
 	user, err := h.authenticateWebSocketRequest(r)
 	if err != nil {
-		responses.RespondWithError(w, http.StatusUnauthorized, err.Error())
+		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	// Verify user has access to the project
 	project, err := h.projectService.GetProjectByID(projectID)
 	if err != nil {
-		responses.RespondWithError(w, http.StatusNotFound, "Project not found")
+		http.Error(w, "Project not found", http.StatusNotFound)
 		return
 	}
 
@@ -96,7 +100,7 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	}
 
 	if !hasAccess {
-		responses.RespondWithError(w, http.StatusForbidden, "Access denied to project")
+		http.Error(w, "Access denied to project", http.StatusForbidden)
 		return
 	}
 
@@ -130,31 +134,52 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	go h.readPump(client)
 }
 
-// authenticateWebSocketRequest authenticates the WebSocket connection using Authorization header
-// This maintains consistency with the standard REST API authentication middleware
+// authenticateWebSocketRequest authenticates the WebSocket connection using token from query parameter or Authorization header
+// Browser WebSocket API doesn't support custom headers, so we primarily use query parameters, but support headers for testing
 func (h *WebSocketHandler) authenticateWebSocketRequest(r *http.Request) (*models.User, error) {
-	// Extract token from Authorization header (consistent with AuthMiddleware)
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return nil, fmt.Errorf("no authorization header provided")
+	var token string
+
+	// First try to get token from query parameter (preferred for WebSocket)
+	token = r.URL.Query().Get("token")
+	if token == "" {
+		// Fallback to Authorization header (for testing purposes)
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			log.Printf("WebSocket: No token provided in query parameter")
+			return nil, fmt.Errorf("no token provided in query parameter")
+		}
+
+		// Check if it's a Bearer token
+		const bearerPrefix = "Bearer "
+		if !strings.HasPrefix(authHeader, bearerPrefix) {
+			return nil, fmt.Errorf("invalid authorization format")
+		}
+
+		token = authHeader[len(bearerPrefix):]
+		if token == "" {
+			return nil, fmt.Errorf("no authorization header provided")
+		}
 	}
 
-	// Check if the format is "Bearer <token>"
-	parts := strings.Split(authHeader, " ")
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return nil, fmt.Errorf("invalid authorization format")
+	tokenLength := len(token)
+	previewLength := 50
+	if tokenLength < previewLength {
+		previewLength = tokenLength
 	}
-
-	token := parts[1]
+	log.Printf("WebSocket: Received token (first 50 chars): %s...", token[:previewLength])
+	log.Printf("WebSocket: Token length: %d", tokenLength)
 
 	// Validate token
 	claims, err := h.jwtService.ValidateToken(token)
 	if err != nil {
+		log.Printf("WebSocket: Token validation failed: %v", err)
 		if err == services.ErrExpiredToken {
 			return nil, fmt.Errorf("token has expired")
 		}
 		return nil, fmt.Errorf("invalid token")
 	}
+
+	log.Printf("WebSocket: Token validation successful for user: %s", claims.UserID)
 
 	// Get user information
 	user, err := h.userService.GetUserByID(claims.UserID)
@@ -259,6 +284,10 @@ func (h *WebSocketHandler) handleMessage(client *websocketPkg.Client, message *w
 		h.handlePong(client, message)
 	case websocketPkg.MessageTypeCanvasUpdated:
 		h.handleCanvasUpdate(client, message)
+	case websocketPkg.MessageTypeTableUpdated:
+		h.handleTableUpdate(client, message)
+	case websocketPkg.MessageTypeTableMoved:
+		h.handleTableMove(client, message)
 	default:
 		// For other message types, broadcast to all clients in the project
 		h.hub.BroadcastToProject(client.ProjectID, message, client)
@@ -290,8 +319,8 @@ func (h *WebSocketHandler) handleCursorUpdate(client *websocketPkg.Client, messa
 		return
 	}
 
-	// Broadcast to other clients in the project
-	h.hub.BroadcastToProject(client.ProjectID, newMessage, client)
+	// Broadcast to all clients in the project including sender
+	h.hub.BroadcastToProject(client.ProjectID, newMessage, nil)
 }
 
 // handlePong processes pong messages for heartbeat
@@ -320,22 +349,72 @@ func (h *WebSocketHandler) handleCanvasUpdate(client *websocketPkg.Client, messa
 	// This is a simple implementation - in production you might want to
 	// implement operational transformation or conflict resolution
 	go func() {
-		if err := h.updateProjectCanvasData(client.ProjectID, payload.CanvasData); err != nil {
+		if err := h.updateProjectCanvasData(client.ProjectID, payload.CanvasData, client.UserID); err != nil {
 			log.Printf("Error updating canvas data: %v", err)
 		}
 	}()
 
-	// Broadcast to other clients in the project
+	// Broadcast to all clients in the project including sender
+	h.hub.BroadcastToProject(client.ProjectID, message, nil)
+}
+
+// handleTableUpdate processes table position update messages
+func (h *WebSocketHandler) handleTableUpdate(client *websocketPkg.Client, message *websocketPkg.WebSocketMessage) {
+	var payload websocketPkg.TablePayload
+	if err := message.UnmarshalData(&payload); err != nil {
+		log.Printf("Error unmarshaling table payload: %v", err)
+		return
+	}
+
+	log.Printf("Table position update received: table_id=%s, position=(%f, %f)",
+		payload.TableID, payload.X, payload.Y)
+
+	// Update table position in database asynchronously
+	go func() {
+		if err := h.updateTablePosition(client.ProjectID, payload.TableID, payload.X, payload.Y, client.UserID); err != nil {
+			log.Printf("Error updating table position: %v", err)
+		}
+	}()
+
+	// Broadcast to other clients in the project (exclude sender for position updates)
+	h.hub.BroadcastToProject(client.ProjectID, message, client)
+}
+
+// handleTableMove processes table position move messages (visual only, no activity)
+func (h *WebSocketHandler) handleTableMove(client *websocketPkg.Client, message *websocketPkg.WebSocketMessage) {
+	var payload websocketPkg.TablePayload
+	if err := message.UnmarshalData(&payload); err != nil {
+		log.Printf("Error unmarshaling table move payload: %v", err)
+		return
+	}
+
+	log.Printf("Table position move received: table_id=%s, position=(%f, %f)",
+		payload.TableID, payload.X, payload.Y)
+
+	// Update table position in database asynchronously
+	go func() {
+		if err := h.updateTablePosition(client.ProjectID, payload.TableID, payload.X, payload.Y, client.UserID); err != nil {
+			log.Printf("Error updating table position: %v", err)
+		}
+	}()
+
+	// Broadcast visual position update to other clients only (exclude sender, no activity entries)
 	h.hub.BroadcastToProject(client.ProjectID, message, client)
 }
 
 // updateProjectCanvasData updates the canvas data in the database
-func (h *WebSocketHandler) updateProjectCanvasData(projectID uuid.UUID, canvasData string) error {
+func (h *WebSocketHandler) updateProjectCanvasData(projectID uuid.UUID, canvasData string, userID uuid.UUID) error {
 	// Use the project service to update canvas data
 	_, err := h.projectService.UpdateProject(projectID, &dto.UpdateProjectRequest{
 		CanvasData: &canvasData,
-	})
+	}, userID)
 	return err
+}
+
+// updateTablePosition updates a table's position in the database
+func (h *WebSocketHandler) updateTablePosition(projectID, tableID uuid.UUID, x, y float64, userID uuid.UUID) error {
+	// Use the table service to update table position
+	return h.tableService.UpdateTablePosition(tableID, x, y, userID)
 }
 
 // generateRandomColor generates a random hex color for user identification

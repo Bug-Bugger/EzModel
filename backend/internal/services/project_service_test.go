@@ -40,15 +40,17 @@ func projectStringPtr(s string) *string {
 
 type ProjectServiceTestSuite struct {
 	suite.Suite
-	mockProjectRepo *mockRepo.MockProjectRepository
-	mockUserRepo    *mockRepo.MockUserRepository
-	service         *ProjectService
+	mockProjectRepo          *mockRepo.MockProjectRepository
+	mockUserRepo             *mockRepo.MockUserRepository
+	mockCollaborationService *mockCollaborationService
+	service                  *ProjectService
 }
 
 func (suite *ProjectServiceTestSuite) SetupTest() {
 	suite.mockProjectRepo = new(mockRepo.MockProjectRepository)
 	suite.mockUserRepo = new(mockRepo.MockUserRepository)
-	suite.service = NewProjectService(suite.mockProjectRepo, suite.mockUserRepo)
+	suite.mockCollaborationService = new(mockCollaborationService)
+	suite.service = NewProjectService(suite.mockProjectRepo, suite.mockUserRepo, suite.mockCollaborationService)
 }
 
 func TestProjectServiceSuite(t *testing.T) {
@@ -243,7 +245,7 @@ func (suite *ProjectServiceTestSuite) TestUpdateProject_Success() {
 		return project.ID == projectID && project.Name == newName && project.Description == newDescription
 	})).Return(nil)
 
-	result, err := suite.service.UpdateProject(projectID, updateRequest)
+	result, err := suite.service.UpdateProject(projectID, updateRequest, uuid.New())
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -263,7 +265,7 @@ func (suite *ProjectServiceTestSuite) TestUpdateProject_ProjectNotFound() {
 
 	suite.mockProjectRepo.On("GetByID", projectID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.UpdateProject(projectID, updateRequest)
+	result, err := suite.service.UpdateProject(projectID, updateRequest, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -285,7 +287,7 @@ func (suite *ProjectServiceTestSuite) TestUpdateProject_InvalidName() {
 
 	suite.mockProjectRepo.On("GetByID", projectID).Return(existingProject, nil)
 
-	result, err := suite.service.UpdateProject(projectID, updateRequest)
+	result, err := suite.service.UpdateProject(projectID, updateRequest, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)

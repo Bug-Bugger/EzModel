@@ -37,14 +37,29 @@ func (h *TableHandler) Create() http.HandlerFunc {
 			return
 		}
 
+		// Get current user ID from context for authorization
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
+		if !ok {
+			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
 		// Create table through service
-		table, err := h.tableService.CreateTable(projectID, req.Name, req.PosX, req.PosY)
+		table, err := h.tableService.CreateTable(projectID, req.Name, req.PosX, req.PosY, userID)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrProjectNotFound):
 				responses.RespondWithError(w, http.StatusNotFound, "Project not found")
 			case errors.Is(err, services.ErrInvalidInput):
 				responses.RespondWithError(w, http.StatusBadRequest, "Invalid input")
+			case errors.Is(err, services.ErrForbidden):
+				responses.RespondWithError(w, http.StatusForbidden, "You don't have permission to create tables in this project")
 			default:
 				responses.RespondWithError(w, http.StatusInternalServerError, "Internal server error")
 			}
@@ -151,8 +166,21 @@ func (h *TableHandler) Update() http.HandlerFunc {
 			return
 		}
 
+		// Get current user ID from context for collaboration
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
+		if !ok {
+			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
 		// Update table through service
-		table, err := h.tableService.UpdateTable(tableID, &req)
+		table, err := h.tableService.UpdateTable(tableID, &req, userID)
 		if err != nil {
 			switch {
 			case errors.Is(err, services.ErrTableNotFound):
@@ -195,8 +223,21 @@ func (h *TableHandler) UpdatePosition() http.HandlerFunc {
 			return
 		}
 
+		// Get current user ID from context for collaboration
+		userIDStr, ok := middleware.GetUserIDFromContext(r.Context())
+		if !ok {
+			responses.RespondWithError(w, http.StatusUnauthorized, "User context not found")
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			responses.RespondWithError(w, http.StatusBadRequest, "Invalid user ID")
+			return
+		}
+
 		// Update table position through service
-		if err := h.tableService.UpdateTablePosition(tableID, req.PosX, req.PosY); err != nil {
+		if err := h.tableService.UpdateTablePosition(tableID, req.PosX, req.PosY, userID); err != nil {
 			switch {
 			case errors.Is(err, services.ErrTableNotFound):
 				responses.RespondWithError(w, http.StatusNotFound, "Table not found")

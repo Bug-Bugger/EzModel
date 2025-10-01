@@ -137,18 +137,21 @@ func ConnectWebSocket(t *testing.T, serverURL string) *websocket.Conn {
 	return conn
 }
 
-// ConnectWebSocketWithAuth creates a WebSocket connection with authentication via Authorization header
+// ConnectWebSocketWithAuth creates a WebSocket connection with authentication via query parameter
 func ConnectWebSocketWithAuth(t *testing.T, serverURL, token string) *websocket.Conn {
 	// Convert http:// to ws://
 	wsURL := strings.Replace(serverURL, "http://", "ws://", 1)
 
-	// Create headers with Authorization Bearer token
-	headers := http.Header{}
+	// Add token as query parameter if provided
 	if token != "" {
-		headers.Set("Authorization", "Bearer "+token)
+		separator := "?"
+		if strings.Contains(wsURL, "?") {
+			separator = "&"
+		}
+		wsURL += separator + "token=" + token
 	}
 
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	require.NoError(t, err)
 
 	return conn
@@ -279,8 +282,30 @@ func MockWebSocketHandler(hub *websocketPkg.Hub) http.HandlerFunc {
 	}
 }
 
-// CreateWebSocketRequestWithAuth creates an HTTP request with WebSocket headers and auth
+// CreateWebSocketRequestWithAuth creates an HTTP request with WebSocket headers and auth via query parameter
 func CreateWebSocketRequestWithAuth(t *testing.T, url, token string, projectID uuid.UUID) *http.Request {
+	// Add token as query parameter if provided
+	if token != "" {
+		separator := "?"
+		if strings.Contains(url, "?") {
+			separator = "&"
+		}
+		url += separator + "token=" + token
+	}
+
+	req := httptest.NewRequest(http.MethodGet, url, nil)
+	req.Header.Set("Connection", "upgrade")
+	req.Header.Set("Upgrade", "websocket")
+	req.Header.Set("Sec-WebSocket-Version", "13")
+	req.Header.Set("Sec-WebSocket-Key", "test-key")
+
+	// Add project ID to context or URL params
+	ctx := context.WithValue(req.Context(), "projectID", projectID.String())
+	return req.WithContext(ctx)
+}
+
+// CreateWebSocketRequestWithHeaderAuth creates an HTTP request with WebSocket headers and auth via Authorization header (for specific header tests)
+func CreateWebSocketRequestWithHeaderAuth(t *testing.T, url, token string, projectID uuid.UUID) *http.Request {
 	req := httptest.NewRequest(http.MethodGet, url, nil)
 	req.Header.Set("Connection", "upgrade")
 	req.Header.Set("Upgrade", "websocket")

@@ -24,7 +24,7 @@ function createAuthStore() {
 		init() {
 			if (!browser) return;
 
-			update(state => ({ ...state, isLoading: true }));
+			update((state) => ({ ...state, isLoading: true }));
 
 			const token = localStorage.getItem('access_token');
 			const userStr = localStorage.getItem('user');
@@ -85,7 +85,7 @@ function createAuthStore() {
 
 		// Update loading state
 		setLoading(isLoading: boolean) {
-			update(state => ({ ...state, isLoading }));
+			update((state) => ({ ...state, isLoading }));
 		}
 	};
 }

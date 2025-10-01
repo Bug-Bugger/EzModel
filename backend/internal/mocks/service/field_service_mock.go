@@ -11,8 +11,8 @@ type MockFieldService struct {
 	mock.Mock
 }
 
-func (m *MockFieldService) CreateField(tableID uuid.UUID, req *dto.CreateFieldRequest) (*models.Field, error) {
-	args := m.Called(tableID, req)
+func (m *MockFieldService) CreateField(tableID uuid.UUID, req *dto.CreateFieldRequest, userID uuid.UUID) (*models.Field, error) {
+	args := m.Called(tableID, req, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -35,8 +35,8 @@ func (m *MockFieldService) GetFieldsByTableID(tableID uuid.UUID) ([]*models.Fiel
 	return args.Get(0).([]*models.Field), args.Error(1)
 }
 
-func (m *MockFieldService) UpdateField(id uuid.UUID, req *dto.UpdateFieldRequest) (*models.Field, error) {
-	args := m.Called(id, req)
+func (m *MockFieldService) UpdateField(id uuid.UUID, req *dto.UpdateFieldRequest, userID uuid.UUID) (*models.Field, error) {
+	args := m.Called(id, req, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

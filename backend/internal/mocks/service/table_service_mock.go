@@ -11,8 +11,8 @@ type MockTableService struct {
 	mock.Mock
 }
 
-func (m *MockTableService) CreateTable(projectID uuid.UUID, name string, posX, posY float64) (*models.Table, error) {
-	args := m.Called(projectID, name, posX, posY)
+func (m *MockTableService) CreateTable(projectID uuid.UUID, name string, posX, posY float64, userID uuid.UUID) (*models.Table, error) {
+	args := m.Called(projectID, name, posX, posY, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -35,16 +35,16 @@ func (m *MockTableService) GetTablesByProjectID(projectID uuid.UUID) ([]*models.
 	return args.Get(0).([]*models.Table), args.Error(1)
 }
 
-func (m *MockTableService) UpdateTable(id uuid.UUID, req *dto.UpdateTableRequest) (*models.Table, error) {
-	args := m.Called(id, req)
+func (m *MockTableService) UpdateTable(id uuid.UUID, req *dto.UpdateTableRequest, userID uuid.UUID) (*models.Table, error) {
+	args := m.Called(id, req, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*models.Table), args.Error(1)
 }
 
-func (m *MockTableService) UpdateTablePosition(id uuid.UUID, posX, posY float64) error {
-	args := m.Called(id, posX, posY)
+func (m *MockTableService) UpdateTablePosition(id uuid.UUID, posX, posY float64, userID uuid.UUID) error {
+	args := m.Called(id, posX, posY, userID)
 	return args.Error(0)
 }
 

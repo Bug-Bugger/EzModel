@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"log"
 	"strings"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
@@ -12,14 +13,16 @@ import (
 )
 
 type ProjectService struct {
-	projectRepo repository.ProjectRepositoryInterface
-	userRepo    repository.UserRepositoryInterface
+	projectRepo          repository.ProjectRepositoryInterface
+	userRepo             repository.UserRepositoryInterface
+	collaborationService CollaborationSessionServiceInterface
 }
 
-func NewProjectService(projectRepo repository.ProjectRepositoryInterface, userRepo repository.UserRepositoryInterface) *ProjectService {
+func NewProjectService(projectRepo repository.ProjectRepositoryInterface, userRepo repository.UserRepositoryInterface, collaborationService CollaborationSessionServiceInterface) *ProjectService {
 	return &ProjectService{
-		projectRepo: projectRepo,
-		userRepo:    userRepo,
+		projectRepo:          projectRepo,
+		userRepo:             userRepo,
+		collaborationService: collaborationService,
 	}
 }
 
@@ -84,7 +87,7 @@ func (s *ProjectService) GetAllProjects() ([]*models.Project, error) {
 	return s.projectRepo.GetAll()
 }
 
-func (s *ProjectService) UpdateProject(id uuid.UUID, req *dto.UpdateProjectRequest) (*models.Project, error) {
+func (s *ProjectService) UpdateProject(id uuid.UUID, req *dto.UpdateProjectRequest, userID uuid.UUID) (*models.Project, error) {
 	project, err := s.projectRepo.GetByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -118,8 +121,21 @@ func (s *ProjectService) UpdateProject(id uuid.UUID, req *dto.UpdateProjectReque
 		}
 		// Note: For production, you might want to use json.Valid() for proper validation
 		project.CanvasData = canvasData
+
+		// Debug logging for canvas data updates
+		log.Printf("CANVAS DEBUG: Updating canvas data for project %s, data length: %d",
+			project.ID.String(), len(canvasData))
+
+		// Broadcast canvas update to collaborators FIRST if canvas data was changed
+		if s.collaborationService != nil {
+			if err := s.collaborationService.BroadcastCanvasUpdate(id, project.CanvasData, userID); err != nil {
+				// Log error but don't fail the operation
+				// TODO: Add proper logging
+			}
+		}
 	}
 
+	// Then persist to database
 	if err := s.projectRepo.Update(project); err != nil {
 		return nil, err
 	}

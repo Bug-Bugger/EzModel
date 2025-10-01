@@ -51,8 +51,8 @@ func (m *MockProjectService) GetAllProjects() ([]*models.Project, error) {
 	return args.Get(0).([]*models.Project), args.Error(1)
 }
 
-func (m *MockProjectService) UpdateProject(id uuid.UUID, req *dto.UpdateProjectRequest) (*models.Project, error) {
-	args := m.Called(id, req)
+func (m *MockProjectService) UpdateProject(id uuid.UUID, req *dto.UpdateProjectRequest, userID uuid.UUID) (*models.Project, error) {
+	args := m.Called(id, req, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

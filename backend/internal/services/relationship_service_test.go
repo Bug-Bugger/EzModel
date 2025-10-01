@@ -71,12 +71,13 @@ func relationshipUUIDPtr(id uuid.UUID) *uuid.UUID {
 
 type RelationshipServiceTestSuite struct {
 	suite.Suite
-	mockRelationshipRepo *mockRepo.MockRelationshipRepository
-	mockProjectRepo      *mockRepo.MockProjectRepository
-	mockTableRepo        *mockRepo.MockTableRepository
-	mockFieldRepo        *mockRepo.MockFieldRepository
-	mockAuthService      *mockRelationshipAuthService
-	service              *RelationshipService
+	mockRelationshipRepo     *mockRepo.MockRelationshipRepository
+	mockProjectRepo          *mockRepo.MockProjectRepository
+	mockTableRepo            *mockRepo.MockTableRepository
+	mockFieldRepo            *mockRepo.MockFieldRepository
+	mockAuthService          *mockRelationshipAuthService
+	mockCollaborationService *mockCollaborationService
+	service                  *RelationshipService
 }
 
 func (suite *RelationshipServiceTestSuite) SetupTest() {
@@ -85,12 +86,14 @@ func (suite *RelationshipServiceTestSuite) SetupTest() {
 	suite.mockTableRepo = new(mockRepo.MockTableRepository)
 	suite.mockFieldRepo = new(mockRepo.MockFieldRepository)
 	suite.mockAuthService = new(mockRelationshipAuthService)
+	suite.mockCollaborationService = new(mockCollaborationService)
 	suite.service = NewRelationshipService(
 		suite.mockRelationshipRepo,
 		suite.mockProjectRepo,
 		suite.mockTableRepo,
 		suite.mockFieldRepo,
 		suite.mockAuthService,
+		suite.mockCollaborationService,
 	)
 }
 
@@ -134,8 +137,9 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_Success() {
 			rel.TargetFieldID == targetFieldID &&
 			rel.RelationType == "one_to_many"
 	})).Return(relationshipID, nil)
+	suite.mockCollaborationService.On("NotifyRelationshipCreated", projectID, mock.AnythingOfType("*models.Relationship"), mock.AnythingOfType("uuid.UUID")).Return(nil)
 
-	result, err := suite.service.CreateRelationship(projectID, req)
+	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -151,6 +155,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_Success() {
 	suite.mockTableRepo.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 }
 
 // Test CreateRelationship - Default RelationType
@@ -184,8 +189,9 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_DefaultRelatio
 	suite.mockRelationshipRepo.On("Create", mock.MatchedBy(func(rel *models.Relationship) bool {
 		return rel.RelationType == "one_to_many"
 	})).Return(relationshipID, nil)
+	suite.mockCollaborationService.On("NotifyRelationshipCreated", projectID, mock.AnythingOfType("*models.Relationship"), mock.AnythingOfType("uuid.UUID")).Return(nil)
 
-	result, err := suite.service.CreateRelationship(projectID, req)
+	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -195,6 +201,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_DefaultRelatio
 	suite.mockTableRepo.AssertExpectations(suite.T())
 	suite.mockFieldRepo.AssertExpectations(suite.T())
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 }
 
 // Test CreateRelationship - Project Not Found
@@ -210,7 +217,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_ProjectNotFoun
 
 	suite.mockProjectRepo.On("GetByID", projectID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.CreateRelationship(projectID, req)
+	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -236,7 +243,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_SourceTableNot
 	suite.mockProjectRepo.On("GetByID", projectID).Return(project, nil)
 	suite.mockTableRepo.On("GetByID", sourceTableID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.CreateRelationship(projectID, req)
+	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -269,7 +276,7 @@ func (suite *RelationshipServiceTestSuite) TestCreateRelationship_SourceFieldNot
 	suite.mockTableRepo.On("GetByID", targetTableID).Return(targetTable, nil)
 	suite.mockFieldRepo.On("GetByID", sourceFieldID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.CreateRelationship(projectID, req)
+	result, err := suite.service.CreateRelationship(projectID, req, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -373,8 +380,9 @@ func (suite *RelationshipServiceTestSuite) TestUpdateRelationship_Success() {
 			rel.SourceTableID == newSourceTableID &&
 			rel.RelationType == newRelationType
 	})).Return(nil)
+	suite.mockCollaborationService.On("NotifyRelationshipUpdated", existingRelationship.ProjectID, mock.AnythingOfType("*models.Relationship"), mock.AnythingOfType("uuid.UUID")).Return(nil)
 
-	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest)
+	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest, uuid.New())
 
 	suite.NoError(err)
 	suite.NotNil(result)
@@ -384,6 +392,7 @@ func (suite *RelationshipServiceTestSuite) TestUpdateRelationship_Success() {
 
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
 	suite.mockTableRepo.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 }
 
 // Test UpdateRelationship - Not Found
@@ -395,7 +404,7 @@ func (suite *RelationshipServiceTestSuite) TestUpdateRelationship_NotFound() {
 
 	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest)
+	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -418,7 +427,7 @@ func (suite *RelationshipServiceTestSuite) TestUpdateRelationship_SourceTableNot
 	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(existingRelationship, nil)
 	suite.mockTableRepo.On("GetByID", newSourceTableID).Return(nil, gorm.ErrRecordNotFound)
 
-	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest)
+	result, err := suite.service.UpdateRelationship(relationshipID, updateRequest, uuid.New())
 
 	suite.Error(err)
 	suite.Nil(result)
@@ -440,12 +449,14 @@ func (suite *RelationshipServiceTestSuite) TestDeleteRelationship_Success() {
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(existingRelationship, nil)
 	suite.mockRelationshipRepo.On("Delete", relationshipID).Return(nil)
+	suite.mockCollaborationService.On("NotifyRelationshipDeleted", projectID, relationshipID, userID).Return(nil)
 
 	err := suite.service.DeleteRelationship(relationshipID, userID)
 
 	suite.NoError(err)
 	suite.mockAuthService.AssertExpectations(suite.T())
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 }
 
 // Test DeleteRelationship - Not Found
@@ -491,6 +502,7 @@ func (suite *RelationshipServiceTestSuite) TestDeleteRelationship_RepositoryErro
 	suite.mockAuthService.On("GetProjectIDFromRelationship", relationshipID).Return(projectID, nil)
 	suite.mockAuthService.On("CanUserModifyProject", userID, projectID).Return(true, nil)
 	suite.mockRelationshipRepo.On("GetByID", relationshipID).Return(existingRelationship, nil)
+	suite.mockCollaborationService.On("NotifyRelationshipDeleted", projectID, relationshipID, userID).Return(nil)
 	suite.mockRelationshipRepo.On("Delete", relationshipID).Return(assert.AnError)
 
 	err := suite.service.DeleteRelationship(relationshipID, userID)
@@ -499,5 +511,6 @@ func (suite *RelationshipServiceTestSuite) TestDeleteRelationship_RepositoryErro
 	suite.Equal(assert.AnError, err)
 
 	suite.mockAuthService.AssertExpectations(suite.T())
+	suite.mockCollaborationService.AssertExpectations(suite.T())
 	suite.mockRelationshipRepo.AssertExpectations(suite.T())
 }

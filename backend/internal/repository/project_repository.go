@@ -24,7 +24,7 @@ func (r *ProjectRepository) Create(project *models.Project) (uuid.UUID, error) {
 
 func (r *ProjectRepository) GetByID(id uuid.UUID) (*models.Project, error) {
 	var project models.Project
-	err := r.db.Preload("Owner").Preload("Collaborators").First(&project, "id = ?", id).Error
+	err := r.db.Preload("Owner").Preload("Collaborators").Preload("Tables.Fields").Preload("Relationships").First(&project, "id = ?", id).Error
 	if err != nil {
 		return nil, err
 	}

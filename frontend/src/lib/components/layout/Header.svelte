@@ -14,7 +14,9 @@
 	}
 </script>
 
-<header class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+<header
+	class="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+>
 	<div class="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between px-4">
 		<div class="flex items-center gap-2">
 			<a href="/" class="flex items-center gap-2 font-bold text-xl">
@@ -25,9 +27,7 @@
 
 		<nav class="flex items-center gap-4">
 			{#if $authStore.isAuthenticated}
-				<a href="/dashboard" class="text-sm font-medium hover:text-primary">
-					Dashboard
-				</a>
+				<a href="/projects" class="text-sm font-medium hover:text-primary"> Projects </a>
 				<div class="flex items-center gap-2">
 					<span class="text-sm text-muted-foreground">
 						{$authStore.user?.username}
@@ -40,12 +40,8 @@
 					</Button>
 				</div>
 			{:else}
-				<a href="/login" class="text-sm font-medium hover:text-primary">
-					Login
-				</a>
-				<Button onclick={() => goto('/register')}>
-					Sign Up
-				</Button>
+				<a href="/login" class="text-sm font-medium hover:text-primary"> Login </a>
+				<Button onclick={() => goto('/register')}>Sign Up</Button>
 			{/if}
 		</nav>
 	</div>

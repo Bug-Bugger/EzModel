@@ -50,7 +50,7 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 
 	// CORS middleware
 	s.router.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000", "http://localhost:8080"},
+		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:4173"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
@@ -74,11 +74,11 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 
 	// Initialize services with authorization service
 	s.userService = services.NewUserService(s.userRepo)
-	s.projectService = services.NewProjectService(s.projectRepo, s.userRepo)
-	s.tableService = services.NewTableService(s.tableRepo, s.projectRepo, s.authService)
-	s.fieldService = services.NewFieldService(s.fieldRepo, s.tableRepo, s.authService)
-	s.relationshipService = services.NewRelationshipService(s.relationshipRepo, s.projectRepo, s.tableRepo, s.fieldRepo, s.authService)
-	s.collaborationService = services.NewCollaborationSessionService(s.collaborationRepo, s.projectRepo, s.userRepo, s.authService, s.websocketHub)
+	s.collaborationService = services.NewCollaborationSessionService(s.collaborationRepo, s.projectRepo, s.userRepo, s.tableRepo, s.relationshipRepo, s.authService, s.websocketHub)
+	s.projectService = services.NewProjectService(s.projectRepo, s.userRepo, s.collaborationService)
+	s.tableService = services.NewTableService(s.tableRepo, s.projectRepo, s.authService, s.collaborationService)
+	s.fieldService = services.NewFieldService(s.fieldRepo, s.tableRepo, s.authService, s.collaborationService)
+	s.relationshipService = services.NewRelationshipService(s.relationshipRepo, s.projectRepo, s.tableRepo, s.fieldRepo, s.authService, s.collaborationService)
 	s.jwtService = services.NewJWTService(cfg)
 
 	// Initialize middleware

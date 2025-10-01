@@ -69,12 +69,7 @@
 				)}
 				{...props}
 			>
-				<Button
-					variant="ghost"
-					size="icon"
-					class="absolute right-4 top-4 h-6 w-6"
-					onclick={close}
-				>
+				<Button variant="ghost" size="icon" class="absolute right-4 top-4 h-6 w-6" onclick={close}>
 					<X class="h-4 w-4" />
 					<span class="sr-only">Close</span>
 				</Button>
@@ -85,18 +80,10 @@
 				</div>
 
 				<div class="flex gap-2 pt-4">
-					<Button
-						variant="outline"
-						class="flex-1"
-						onclick={close}
-					>
+					<Button variant="outline" class="flex-1" onclick={close}>
 						{cancelText}
 					</Button>
-					<Button
-						variant={actionVariant}
-						class="flex-1"
-						onclick={handleAction}
-					>
+					<Button variant={actionVariant} class="flex-1" onclick={handleAction}>
 						{actionText}
 					</Button>
 				</div>

@@ -22,16 +22,18 @@ type AddCollaboratorRequest struct {
 }
 
 type ProjectResponse struct {
-	ID            uuid.UUID      `json:"id"`
-	Name          string         `json:"name"`
-	Description   string         `json:"description"`
-	OwnerID       uuid.UUID      `json:"owner_id"`
-	DatabaseType  string         `json:"database_type"`
-	CanvasData    string         `json:"canvas_data"`
-	Owner         UserResponse   `json:"owner"`
-	Collaborators []UserResponse `json:"collaborators,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID            uuid.UUID                 `json:"id"`
+	Name          string                    `json:"name"`
+	Description   string                    `json:"description"`
+	OwnerID       uuid.UUID                 `json:"owner_id"`
+	DatabaseType  string                    `json:"database_type"`
+	CanvasData    string                    `json:"canvas_data"`
+	Owner         UserResponse              `json:"owner"`
+	Collaborators []UserResponse            `json:"collaborators,omitempty"`
+	Tables        []TableWithFieldsResponse `json:"tables,omitempty"`
+	Relationships []RelationshipResponse    `json:"relationships,omitempty"`
+	CreatedAt     time.Time                 `json:"created_at"`
+	UpdatedAt     time.Time                 `json:"updated_at"`
 }
 
 type ProjectSummaryResponse struct {

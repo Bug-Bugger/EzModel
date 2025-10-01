@@ -11,8 +11,8 @@ type MockRelationshipService struct {
 	mock.Mock
 }
 
-func (m *MockRelationshipService) CreateRelationship(projectID uuid.UUID, req *dto.CreateRelationshipRequest) (*models.Relationship, error) {
-	args := m.Called(projectID, req)
+func (m *MockRelationshipService) CreateRelationship(projectID uuid.UUID, req *dto.CreateRelationshipRequest, userID uuid.UUID) (*models.Relationship, error) {
+	args := m.Called(projectID, req, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -43,8 +43,8 @@ func (m *MockRelationshipService) GetRelationshipsByTableID(tableID uuid.UUID) (
 	return args.Get(0).([]*models.Relationship), args.Error(1)
 }
 
-func (m *MockRelationshipService) UpdateRelationship(id uuid.UUID, req *dto.UpdateRelationshipRequest) (*models.Relationship, error) {
-	args := m.Called(id, req)
+func (m *MockRelationshipService) UpdateRelationship(id uuid.UUID, req *dto.UpdateRelationshipRequest, userID uuid.UUID) (*models.Relationship, error) {
+	args := m.Called(id, req, userID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

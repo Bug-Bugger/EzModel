@@ -4,58 +4,92 @@
 
 EzModel is a visual database schema design tool that empowers developers to create, design, and manage database schemas through an intuitive visual interface. Think of it as "Figma for databases" - providing real-time collaboration capabilities for database design teams.
 
-### Key Features
+### Key Features (Implemented)
 
-- **Visual Schema Design**: Drag-and-drop interface for designing database schemas
-- **Real-time Collaboration**: WebSocket-powered live collaboration for teams
-- **Multi-Database Support**: Generate SQL for PostgreSQL, MySQL, SQLite, and SQL Server
-- **Code Generation**: Automatic ORM model generation and SQL script output
-- **Team Management**: Project sharing and collaboration with role-based access
-
-Whether you're a beginner learning database design or a seasoned developer architecting complex systems, EzModel streamlines the database creation process.
+- **Visual Schema Design**: Drag-and-drop interface using @xyflow/svelte for designing database schemas
+- **Real-time Collaboration**: Fully implemented WebSocket-powered live collaboration with cursors, presence, and activities
+- **Multi-Database Support**: Support for PostgreSQL, MySQL, SQLite, and SQL Server project types
+- **Team Management**: Project sharing and collaboration with owner/collaborator roles
+- **Auto-save**: Automatic saving of canvas data and schema changes
+- **JWT Authentication**: Secure authentication with access and refresh tokens
 
 ## Tech Stack
 
-### Backend (Golang)
-**Why Golang was chosen:**
-- **WebSocket Excellence**: Perfect for handling real-time collaboration with excellent concurrent processing
-- **Code Generation**: Strong template system and reflection capabilities for generating SQL/ORM code
-- **Performance**: Compiled language with strict typing prevents bugs in critical schema generation
-- **Concurrency**: Goroutines handle multiple users collaborating simultaneously
-- **Database Integration**: Excellent ORM support with GORM
+### Backend (Go 1.24.1)
 
-**Current Stack:**
-- **Framework**: Chi router for HTTP handling
-- **Database**: PostgreSQL with GORM ORM
-- **Authentication**: JWT tokens (access + refresh)
-- **Validation**: go-playground/validator for input validation
-- **Configuration**: Environment-based config with .env support
+**Core Dependencies:**
+- **Framework**: Chi router (v5.2.1) for HTTP handling
+- **Database**: PostgreSQL with GORM (v1.26.0) ORM
+- **WebSocket**: Gorilla WebSocket (v1.5.3) for real-time collaboration
+- **Authentication**: JWT tokens using golang-jwt/jwt/v5 (v5.2.2)
+- **Validation**: go-playground/validator (v10.26.0) for input validation
+- **Configuration**: godotenv (v1.5.1) for environment management
+- **Security**: golang.org/x/crypto for password hashing
+
+### Frontend (SvelteKit + TypeScript)
+
+**Core Dependencies:**
+- **Framework**: SvelteKit (v2.22.0) with Svelte 5.0
+- **UI Components**: ShadCN-Svelte (v1.0.7) + Tailwind CSS (v3.4.0)
+- **Visual Canvas**: @xyflow/svelte (v1.3.1) for flow-based schema visualization
+- **HTTP Client**: Axios (v1.12.2) with automatic token refresh
+- **Icons**: Lucide Svelte (v0.544.0)
+- **Styling**: Tailwind CSS with forms and typography plugins
 
 ## Project Architecture
 
-### Clean Architecture Pattern
+### Backend Structure
+
 ```
 backend/
-├── cmd/api/                    # Application entry point
-├── internal/                   # Private application code
-│   ├── api/                   # HTTP layer (handlers, middleware, routes)
-│   ├── services/              # Business logic layer
-│   ├── repository/            # Data access layer
-│   ├── models/               # Domain entities
-│   ├── config/               # Configuration management
-│   ├── db/                   # Database connection
-│   └── validation/           # Input validation utilities
+├── cmd/api/                        # Application entry point
+│   └── main.go                     # Server startup with env loading
+├── internal/                       # Private application code
+│   ├── api/                       # HTTP layer
+│   │   ├── handlers/              # HTTP request handlers
+│   │   ├── middleware/            # Authentication middleware
+│   │   ├── routes/                # Route definitions
+│   │   ├── dto/                   # Data transfer objects
+│   │   └── responses/             # Response utilities
+│   ├── services/                  # Business logic layer
+│   ├── repository/                # Data access layer
+│   ├── models/                    # GORM domain entities
+│   ├── websocket/                 # WebSocket hub and messaging
+│   ├── config/                    # Configuration management
+│   ├── db/                        # Database connection
+│   └── validation/                # Input validation utilities
 ```
 
-### Core Design Patterns
-- **Dependency Injection**: Services receive dependencies through constructors
-- **Repository Pattern**: Abstract data access behind interfaces
-- **Interface Segregation**: Services depend on interfaces, not implementations
-- **Clean Separation**: Each layer has single responsibility
+### Frontend Structure
+
+```
+frontend/
+├── src/
+│   ├── lib/
+│   │   ├── components/            # Reusable UI components
+│   │   │   ├── ui/                # ShadCN-Svelte base components
+│   │   │   ├── layout/            # Layout components (Header)
+│   │   │   ├── flow/              # Database canvas components
+│   │   │   ├── collaboration/     # Real-time collaboration UI
+│   │   │   └── project/           # Project management components
+│   │   ├── services/              # API services and HTTP client
+│   │   ├── stores/                # Svelte stores for state management
+│   │   ├── types/                 # TypeScript type definitions
+│   │   └── utils/                 # Utility functions
+│   └── routes/                    # SvelteKit routes
+│       ├── +layout.svelte         # Root layout
+│       ├── +page.svelte           # Home page
+│       ├── login/                 # Authentication pages
+│       ├── register/
+│       └── projects/              # Project management
+│           └── [id]/              # Project details and editor
+│               └── edit/          # Visual schema editor
+```
 
 ## Development Commands
 
-### Essential Commands
+### Backend Commands
+
 ```bash
 # Start development server
 cd backend && go run cmd/api/main.go
@@ -69,143 +103,435 @@ cd backend && go test ./...
 # Install dependencies
 cd backend && go mod tidy
 
-# Database migration (auto-migration via GORM)
-# Runs automatically on startup
-```
-
-### Code Quality
-```bash
-# Format code
+# Code quality
 go fmt ./...
-
-# Vet code
 go vet ./...
-
-# Run with race detection
-go run -race cmd/api/main.go
 ```
 
-## Core Domain Models
+### Frontend Commands
 
-### Project Management
+```bash
+# Start development server
+cd frontend && pnpm dev
+
+# Build application
+cd frontend && pnpm build
+
+# Preview build
+cd frontend && pnpm preview
+
+# Type checking
+cd frontend && pnpm check
+
+# Install dependencies
+cd frontend && pnpm install
+```
+
+## Database Models (GORM)
+
+### Core Entities
+
 ```go
+// User represents a user in the system
+type User struct {
+    ID           uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+    Email        string    `gorm:"uniqueIndex;not null"`
+    Username     string    `gorm:"uniqueIndex;not null"`
+    PasswordHash string    `gorm:"not null"`
+    CreatedAt    time.Time
+    UpdatedAt    time.Time
+}
+
+// Project represents a database schema design project
 type Project struct {
-    ID           uuid.UUID     `json:"id"`
-    Name         string        `json:"name"`
-    Description  string        `json:"description"`
-    OwnerID      uuid.UUID     `json:"owner_id"`
-    DatabaseType string        `json:"database_type"` // postgresql, mysql, sqlite, sqlserver
-    CanvasData   string        `json:"canvas_data"`   // Visual design stored as JSONB
+    ID           uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+    Name         string    `gorm:"not null"`
+    Description  string
+    OwnerID      uuid.UUID `gorm:"type:uuid;not null"`
+    DatabaseType string    `gorm:"default:'postgresql'"` // postgresql, mysql, sqlite, sqlserver
+    CanvasData   string    `gorm:"type:jsonb"`           // Visual layout/positioning data
+    CreatedAt    time.Time
+    UpdatedAt    time.Time
 
     // Relationships
-    Owner         User                    `json:"owner"`
-    Collaborators []User                  `json:"collaborators"`
-    Tables        []Table                 `json:"tables"`
-    Relationships []Relationship          `json:"relationships"`
+    Owner         User           `gorm:"foreignKey:OwnerID"`
+    Collaborators []User         `gorm:"many2many:project_collaborators;"`
+    Tables        []Table        `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
+    Relationships []Relationship `gorm:"foreignKey:ProjectID;constraint:OnDelete:CASCADE"`
+}
+
+// Table represents a database table in the schema
+type Table struct {
+    ID        uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+    ProjectID uuid.UUID `gorm:"type:uuid;not null"`
+    Name      string    `gorm:"not null"`
+    PosX      float64   // Canvas position
+    PosY      float64   // Canvas position
+    CreatedAt time.Time
+    UpdatedAt time.Time
+
+    Fields []Field `gorm:"foreignKey:TableID;constraint:OnDelete:CASCADE"`
+}
+
+// Field represents a column in a database table
+type Field struct {
+    ID           uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+    TableID      uuid.UUID `gorm:"type:uuid;not null"`
+    Name         string    `gorm:"not null"`
+    DataType     string    `gorm:"not null"` // VARCHAR, INT, TEXT, etc.
+    IsPrimaryKey bool      `gorm:"default:false"`
+    IsNullable   bool      `gorm:"default:true"`
+    DefaultValue string
+    Position     int       // Field order in table
+    CreatedAt    time.Time
+    UpdatedAt    time.Time
+}
+
+// Relationship represents a foreign key relationship between tables
+type Relationship struct {
+    ID            uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+    ProjectID     uuid.UUID `gorm:"type:uuid;not null"`
+    SourceTableID uuid.UUID `gorm:"type:uuid;not null"`
+    SourceFieldID uuid.UUID `gorm:"type:uuid;not null"`
+    TargetTableID uuid.UUID `gorm:"type:uuid;not null"`
+    TargetFieldID uuid.UUID `gorm:"type:uuid;not null"`
+    RelationType  string    `gorm:"default:'one_to_many'"` // one_to_one, one_to_many, many_to_many
+    CreatedAt     time.Time
+    UpdatedAt     time.Time
+}
+
+// CollaborationSession tracks active collaboration sessions
+type CollaborationSession struct {
+    ID        uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+    UserID    uuid.UUID `gorm:"type:uuid;not null"`
+    ProjectID uuid.UUID `gorm:"type:uuid;not null"`
+    IsActive  bool      `gorm:"default:true"`
+    CursorX   float64
+    CursorY   float64
+    CreatedAt time.Time
+    UpdatedAt time.Time
 }
 ```
 
-### Database Design Entities
-- **Table**: Database table definitions with fields
-- **Field**: Column definitions with types, constraints, and validation
-- **Relationship**: Foreign key relationships between tables
-- **CollaborationSession**: Real-time collaboration tracking
+## API Endpoints (Implemented)
 
-## API Architecture
+### Authentication Endpoints
 
-### Authentication System
-- **JWT-based**: Access tokens (15min) + Refresh tokens (7 days)
-- **Middleware Protection**: Route-level authentication
-- **Context-based**: User info passed through request context
-
-### Core API Endpoints
-
-#### Authentication
 ```
-POST /register          # User registration
-POST /login             # User authentication
-POST /refresh-token     # Token refresh
+POST /api/login              # User login
+POST /api/refresh-token      # JWT token refresh
+POST /api/register           # User registration
+```
+
+### Protected Endpoints (Require JWT)
+
+#### User Management
+```
+GET    /api/me                      # Get current user profile
+GET    /api/users                   # List all users
+GET    /api/users/{user_id}         # Get user by ID
+PUT    /api/users/{user_id}         # Update user
+DELETE /api/users/{user_id}         # Delete user
+PUT    /api/users/{user_id}/password # Update user password
 ```
 
 #### Project Management
 ```
-GET    /projects        # List user's projects
-POST   /projects        # Create new project
-GET    /projects/{id}   # Get project details
-PUT    /projects/{id}   # Update project
-DELETE /projects/{id}   # Delete project
+GET    /api/projects                # List all projects
+POST   /api/projects                # Create new project
+GET    /api/projects/my             # Get current user's projects
+GET    /api/projects/{project_id}   # Get project details
+PUT    /api/projects/{project_id}   # Update project
+DELETE /api/projects/{project_id}   # Delete project
 
-POST   /projects/{id}/collaborators/{user_id}    # Add collaborator
-DELETE /projects/{id}/collaborators/{user_id}    # Remove collaborator
+# Collaboration
+POST   /api/projects/{project_id}/collaborators      # Add collaborator
+DELETE /api/projects/{project_id}/collaborators/{user_id} # Remove collaborator
 ```
 
-#### User Management
+#### Table Management
 ```
-GET    /users          # List users (admin)
-GET    /users/{id}     # Get user profile
-PUT    /users/{id}     # Update user
-DELETE /users/{id}     # Delete user
+POST   /api/projects/{project_id}/tables             # Create table
+GET    /api/projects/{project_id}/tables             # Get project tables
+GET    /api/projects/{project_id}/tables/{table_id}  # Get table details
+PUT    /api/projects/{project_id}/tables/{table_id}  # Update table
+DELETE /api/projects/{project_id}/tables/{table_id}  # Delete table
+PUT    /api/projects/{project_id}/tables/{table_id}/position # Update table position
+```
+
+#### Field Management
+```
+POST   /api/projects/{project_id}/tables/{table_id}/fields             # Create field
+GET    /api/projects/{project_id}/tables/{table_id}/fields             # Get table fields
+PUT    /api/projects/{project_id}/tables/{table_id}/fields/reorder     # Reorder fields
+GET    /api/projects/{project_id}/tables/{table_id}/fields/{field_id}  # Get field details
+PUT    /api/projects/{project_id}/tables/{table_id}/fields/{field_id}  # Update field
+DELETE /api/projects/{project_id}/tables/{table_id}/fields/{field_id}  # Delete field
+```
+
+#### Relationship Management
+```
+POST   /api/projects/{project_id}/relationships                     # Create relationship
+GET    /api/projects/{project_id}/relationships                     # Get project relationships
+GET    /api/projects/{project_id}/relationships/{relationship_id}   # Get relationship details
+PUT    /api/projects/{project_id}/relationships/{relationship_id}   # Update relationship
+DELETE /api/projects/{project_id}/relationships/{relationship_id}   # Delete relationship
+```
+
+#### Collaboration Sessions
+```
+POST   /api/projects/{project_id}/sessions                  # Create collaboration session
+GET    /api/projects/{project_id}/sessions                  # Get project sessions
+GET    /api/projects/{project_id}/sessions/active           # Get active sessions
+GET    /api/projects/{project_id}/sessions/{session_id}     # Get session details
+PUT    /api/projects/{project_id}/sessions/{session_id}     # Update session
+DELETE /api/projects/{project_id}/sessions/{session_id}     # Delete session
+PUT    /api/projects/{project_id}/sessions/{session_id}/cursor    # Update cursor position
+PUT    /api/projects/{project_id}/sessions/{session_id}/inactive  # Set session inactive
+```
+
+### WebSocket Endpoint
+```
+GET /api/projects/{project_id}/collaborate # WebSocket connection for real-time collaboration
 ```
 
 ### Response Format
-All API responses follow consistent structure:
+
+All API responses follow this consistent structure:
+
 ```json
 {
   "success": true,
   "message": "Operation completed successfully",
-  "data": { /* response payload */ }
+  "data": {
+    // Response payload
+  }
 }
 ```
 
-## Database Schema
+## Real-time Collaboration (WebSocket Implementation)
 
-### Key Features
-- **UUID Primary Keys**: Enhanced security and distribution support
-- **JSONB Storage**: Canvas visual data stored efficiently in PostgreSQL
-- **Audit Trails**: CreatedAt/UpdatedAt timestamps on all entities
-- **Soft Deletes**: Maintain data integrity with soft deletion patterns
-- **Referential Integrity**: Proper foreign key constraints
+### WebSocket Architecture
 
-### Database Configuration
+The WebSocket system is fully implemented with standardized broadcasting across all operations:
+
+#### Standardized Flow Architecture
+All CRUD operations follow the consistent pattern:
+```
+Handler → Service → Collaboration Service → WebSocket Hub → Clients
+```
+
+This ensures that **all** schema changes (tables, fields, relationships, projects) are broadcast in real-time with proper user attribution and error isolation.
+
+#### Hub Structure
+- **Client Management**: Tracks connected clients per project
+- **Message Broadcasting**: Distributes messages to project participants
+- **Heartbeat System**: 30-second ping/pong for connection health
+- **Graceful Cleanup**: Handles client disconnections and project cleanup
+
+#### Message Types
 ```go
-// Support for multiple database types
-DatabaseType: "postgresql" | "mysql" | "sqlite" | "sqlserver"
+const (
+    MessageTypeUserJoined         = "user_joined"
+    MessageTypeUserLeft           = "user_left"
+    MessageTypeUserPresence       = "user_presence"
+    MessageTypeCursorMove         = "cursor_move"
+    MessageTypeTableCreate        = "table_create"
+    MessageTypeTableUpdate        = "table_update"
+    MessageTypeTableDelete        = "table_delete"
+    MessageTypeFieldCreate        = "field_create"
+    MessageTypeFieldUpdate        = "field_update"
+    MessageTypeFieldDelete        = "field_delete"
+    MessageTypeRelationshipCreate = "relationship_create"
+    MessageTypeRelationshipUpdate = "relationship_update"
+    MessageTypeRelationshipDelete = "relationship_delete"
+    MessageTypeCanvasUpdate       = "canvas_update"
+    MessageTypePing               = "ping"
+    MessageTypePong               = "pong"
+)
 ```
 
-## Real-time Collaboration
+#### Collaboration Service Interface
+All services now integrate with the collaboration service for consistent WebSocket broadcasting:
 
-### WebSocket Architecture (Planned)
-- **Live Cursors**: See collaborators' cursors in real-time
-- **Schema Updates**: Broadcast table/field changes instantly
-- **Conflict Resolution**: Handle simultaneous edits gracefully
-- **Session Management**: Track active collaboration sessions
-
-### Current State
-- Models and database schema ready for WebSocket integration
-- CollaborationSession entity tracks active sessions
-- Project-based collaboration permissions established
-
-## Development Guidelines
-
-### Code Conventions
-- **Error Handling**: Custom error types for different scenarios
-- **Validation**: Multi-layer validation (struct tags + business rules)
-- **Security**: Password hashing, SQL injection prevention, input sanitization
-- **Testing**: Unit tests for services, integration tests for repositories
-
-### Service Layer Pattern
 ```go
-type ProjectService struct {
-    projectRepo repository.ProjectRepositoryInterface
-    userRepo    repository.UserRepositoryInterface
-}
+type CollaborationSessionServiceInterface interface {
+    // User presence and session management
+    CreateSession(projectID, userID uuid.UUID) (*models.CollaborationSession, error)
+    GetActiveSessionsByProjectID(projectID uuid.UUID) ([]*models.CollaborationSession, error)
 
-func (s *ProjectService) CreateProject(name, description string, ownerID uuid.UUID) (*models.Project, error) {
-    // Business logic here
+    // Field operations broadcasting
+    NotifyFieldCreated(projectID uuid.UUID, field *models.Field, userID uuid.UUID)
+    NotifyFieldUpdated(projectID uuid.UUID, field *models.Field, userID uuid.UUID)
+    NotifyFieldDeleted(projectID uuid.UUID, fieldID uuid.UUID, userID uuid.UUID)
+
+    // Table operations broadcasting (NEW)
+    NotifyTableCreated(projectID uuid.UUID, table *models.Table, userID uuid.UUID)
+    NotifyTableUpdated(projectID uuid.UUID, table *models.Table, userID uuid.UUID)
+    NotifyTableDeleted(projectID uuid.UUID, tableID uuid.UUID, userID uuid.UUID)
+
+    // Relationship operations broadcasting (NEW)
+    NotifyRelationshipCreated(projectID uuid.UUID, relationship *models.Relationship, userID uuid.UUID)
+    NotifyRelationshipUpdated(projectID uuid.UUID, relationship *models.Relationship, userID uuid.UUID)
+    NotifyRelationshipDeleted(projectID uuid.UUID, relationshipID uuid.UUID, userID uuid.UUID)
+
+    // Canvas operations broadcasting (NEW)
+    BroadcastCanvasUpdate(projectID uuid.UUID, canvasData string, userID uuid.UUID)
 }
 ```
 
-### Repository Interface Pattern
+#### Features Implemented
+- **Live Cursors**: Real-time cursor tracking and display
+- **User Presence**: Active user list with join/leave notifications
+- **Complete Schema Updates**: ALL operations broadcast instantly:
+  - ✅ Table creation, updates, position changes, deletion
+  - ✅ Field creation, updates, reordering, deletion
+  - ✅ Relationship creation, updates, deletion
+  - ✅ Project canvas updates and modifications
+- **Activity Feed**: Live activity log of all schema changes
+- **Connection Management**: Automatic reconnection and cleanup
+- **Error Isolation**: WebSocket failures don't break core business operations
+- **User Attribution**: All activities properly tracked to specific users
+
+#### Service Integration
+All services now include collaboration service dependencies with standardized userID parameters:
+
+```go
+// Example: TableService methods now include userID for proper attribution
+func (s *TableService) CreateTable(projectID uuid.UUID, name string, posX, posY float64, userID uuid.UUID) (*models.Table, error)
+func (s *TableService) UpdateTable(id uuid.UUID, req *dto.UpdateTableRequest, userID uuid.UUID) (*models.Table, error)
+func (s *TableService) DeleteTable(id uuid.UUID, userID uuid.UUID) error
+```
+
+This ensures consistent real-time collaboration across the entire application with no operations missing WebSocket notifications.
+
+## Frontend State Management
+
+### Svelte Stores
+
+#### Authentication Store (`auth.ts`)
+- User authentication state
+- JWT token management
+- Auto-initialization from localStorage
+
+#### Project Store (`project.ts`)
+- Project list and current project state
+- Auto-save functionality with debouncing
+- CRUD operations for projects
+
+#### Flow Store (`flow.ts`)
+- Canvas state for @xyflow/svelte
+- Table nodes and relationship edges
+- Position and viewport management
+
+#### Collaboration Store (`collaboration.ts`)
+- WebSocket connection management
+- Real-time user presence
+- Cursor tracking and activity feed
+
+#### Designer Store (`designer.ts`)
+- Visual designer UI state
+- Selected elements and properties
+- Tool selection and modes
+
+#### UI Store (`ui.ts`)
+- Toast notifications
+- Modal states
+- Global UI preferences
+
+### Services Layer
+
+#### API Client (`api.ts`)
+- Axios-based HTTP client
+- Automatic JWT token refresh
+- Request/response interceptors
+- Error handling
+
+#### Service Classes
+- **AuthService**: Authentication operations
+- **ProjectService**: Project CRUD operations
+- **UserService**: User management
+
+## Environment Configuration
+
+### Environment Files Structure
+
+The project uses centralized environment configuration:
+- **`.env.dev`**: Development environment settings
+- **`.env.prod`**: Production environment settings
+
+Both files are located in the project root and loaded by both backend and frontend.
+
+### Backend Environment Loading
+```go
+// cmd/api/main.go
+env := os.Getenv("ENV")
+if env == "" {
+    env = "development"
+}
+
+var envFile string
+if env == "production" {
+    envFile = "../.env.prod"
+} else {
+    envFile = "../.env.dev"
+}
+
+err := godotenv.Load(envFile)
+```
+
+### Frontend Environment Loading
+```typescript
+// vite.config.ts
+export default defineConfig({
+    envDir: '../', // Load environment variables from project root
+    // ...
+});
+```
+
+### Required Environment Variables
+
+```bash
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_NAME=ezmodel
+DB_SSLMODE=disable
+
+# JWT Configuration
+JWT_SECRET=your_jwt_secret
+JWT_ACCESS_TOKEN_EXP=15m
+JWT_REFRESH_TOKEN_EXP=168h
+
+# Server Configuration
+PORT=8080
+ENV=development
+
+# Frontend Configuration
+VITE_API_URL=http://localhost:8080/api
+```
+
+## Architecture Patterns
+
+### Backend Patterns
+
+#### Clean Architecture
+- **Handlers**: HTTP request/response handling
+- **Services**: Business logic and orchestration
+- **Repositories**: Data access abstraction
+- **Models**: Domain entities
+
+#### Dependency Injection
+```go
+// server/server.go - Dependency setup
+s.userRepo = repository.NewUserRepository(db)
+s.userService = services.NewUserService(s.userRepo)
+s.authService = services.NewAuthorizationService(s.projectRepo, s.tableRepo, s.fieldRepo, s.relationshipRepo, s.collaborationRepo)
+```
+
+#### Repository Pattern
 ```go
 type ProjectRepositoryInterface interface {
     Create(project *models.Project) (uuid.UUID, error)
@@ -216,78 +542,129 @@ type ProjectRepositoryInterface interface {
 }
 ```
 
-## Environment Configuration
+### Frontend Patterns
 
-### Required Environment Variables
-```bash
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_NAME=ezmodel
-DB_SSLMODE=disable
+#### Component Architecture
+- **UI Components**: Reusable ShadCN-Svelte components
+- **Layout Components**: Page structure and navigation
+- **Feature Components**: Domain-specific functionality
+- **Flow Components**: Database canvas visualization
 
-# JWT
-JWT_SECRET=your_jwt_secret
-JWT_ACCESS_TOKEN_EXP=15m
-JWT_REFRESH_TOKEN_EXP=168h
-
-# Server
-PORT=8080
-ENV=development
+#### Store Pattern
+```typescript
+// Svelte store creation pattern
+function createAuthStore() {
+    const { subscribe, set, update } = writable(initialState);
+    return {
+        subscribe,
+        init() { /* initialization logic */ },
+        setUser(user: User) { /* state mutations */ },
+        clear() { /* cleanup logic */ }
+    };
+}
 ```
 
-## Future Development
+## Security Implementation
 
-### Planned Features
-1. **WebSocket Integration**: Real-time collaboration implementation
-2. **SQL Generation**: Export complete database schemas
-3. **ORM Code Generation**: Generate model classes for various frameworks
-4. **Schema Validation**: Advanced constraint and relationship validation
-5. **Version Control**: Schema versioning and migration management
-6. **Team Management**: Advanced role-based permissions
+### Authentication
+- **JWT Tokens**: HS256 signing with configurable expiration
+- **Refresh Tokens**: 7-day expiration with automatic rotation
+- **Password Hashing**: bcrypt with salt
 
-### Code Generation Targets
-- **SQL Scripts**: DDL statements for schema creation
-- **GORM Models**: Go struct generation
-- **Database Migrations**: Migration file generation
-- **API Documentation**: Auto-generated API specs
+### Authorization
+- **Middleware**: JWT verification on protected routes
+- **Context Passing**: User ID available in request context
+- **Resource Access**: Owner/collaborator checks for projects
 
-## Testing Strategy
+### Input Validation
+- **Backend**: go-playground/validator struct tags + custom validation
+- **Frontend**: TypeScript interfaces + runtime validation
 
-### Current Test Structure
-- **Unit Tests**: Service layer business logic
-- **Integration Tests**: Repository database operations
-- **Handler Tests**: HTTP endpoint testing
+### Security Headers
+- **CORS**: Configurable allowed origins
+- **Request Limits**: Timeout and size restrictions
+
+## Testing Infrastructure
+
+### Backend Testing
+```bash
+# Test structure
+backend/internal/
+├── services/*_test.go          # Unit tests for business logic
+├── handlers/*_test.go          # HTTP handler tests
+├── websocket/*_test.go         # WebSocket functionality tests
+└── testutil/test_helpers.go    # Test utilities and mocks
+```
 
 ### Test Commands
 ```bash
 # Run all tests
 go test ./...
 
-# Run tests with coverage
+# Run with coverage
 go test -cover ./...
 
-# Run specific package tests
+# Run specific package
 go test ./internal/services/
 ```
 
-## Security Considerations
+### Mock Generation
+The project includes comprehensive mocks:
+- Repository interfaces
+- Service interfaces
+- External dependencies
 
-- **Authentication**: JWT with secure secret rotation
-- **Authorization**: Role-based access control ready
-- **Input Validation**: Comprehensive validation at all layers
-- **SQL Injection**: GORM ORM provides protection
-- **Password Security**: bcrypt hashing with salt
-- **CORS**: Configurable cross-origin resource sharing
+## Containerization
 
-## Documentation
+### Docker Configuration
 
-### Additional Resources
-- `ARCHITECTURE.md`: Detailed architecture documentation
-- `API_GUIDELINES.md`: API development standards
-- `DATABASE_GUIDE.md`: Database design guidelines
-- `DEVELOPMENT_GUIDE.md`: Setup and development instructions
+#### Backend (`Dockerfile.prod`)
+- Multi-stage build for optimized production image
+- Go binary compilation and minimal runtime
 
-This project follows clean architecture principles with a focus on maintainability, testability, and scalability. The modular design enables easy extension and modification as features are added.
+#### Frontend (`Dockerfile.prod`, `Dockerfile.dev`)
+- Node.js build environment
+- Static file serving with nginx
+
+#### Docker Compose
+- **`docker-compose.dev.yml`**: Development environment
+- **`docker-compose.prod.yml`**: Production environment
+
+### Development vs Production
+
+#### Development
+- Hot reloading for both backend and frontend
+- Database running in container
+- Environment variable loading from `.env.dev`
+
+#### Production
+- Optimized builds and minimal images
+- nginx serving static frontend files
+- Health checks and restart policies
+
+## Key File Locations
+
+### Backend Entry Points
+- **`backend/cmd/api/main.go`**: Application startup
+- **`backend/internal/api/server/server.go`**: Server initialization
+- **`backend/internal/api/routes/routes.go`**: Route definitions
+
+### Frontend Entry Points
+- **`frontend/src/routes/+layout.svelte`**: Root layout
+- **`frontend/src/routes/projects/[id]/edit/+page.svelte`**: Visual schema editor
+- **`frontend/vite.config.ts`**: Build configuration
+
+### Configuration Files
+- **`backend/internal/config/config.go`**: Backend configuration
+- **`backend/internal/db/db.go`**: Database connection and migration
+- **`frontend/package.json`**: Frontend dependencies and scripts
+
+This documentation reflects the actual implementation of EzModel as of the current codebase state. All endpoints, models, and features described are implemented and functional.
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+
+Frontend uses pnpm as the package manager. Run `pnpm build` and `pnpm check` when finish implementing.

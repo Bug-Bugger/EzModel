@@ -13,9 +13,6 @@ services:
 
     source_dir: /backend
 
-    build_command: go build -o bin/ezmodel cmd/api/main.go
-    run_command: ./bin/ezmodel
-
     dockerfile_path: backend/Dockerfile.prod
 
     http_port: 8080

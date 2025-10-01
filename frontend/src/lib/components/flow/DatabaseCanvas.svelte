@@ -264,20 +264,24 @@
 		let screenPosition = { x: 0, y: 0 };
 
 		// Try to extract coordinates from various event properties
-		if (
+		// Priority order based on SvelteFlow event structure (same as onNodeDrag)
+		if (event.event && event.event.clientX !== undefined && event.event.clientY !== undefined) {
+			// SvelteFlow events have the MouseEvent in event.event
+			screenPosition = { x: event.event.clientX, y: event.event.clientY };
+		} else if (event.clientX !== undefined && event.clientY !== undefined) {
+			// Direct mouse event coordinates (fallback)
+			screenPosition = { x: event.clientX, y: event.clientY };
+		} else if (event.detail && event.detail.event) {
+			// Event wrapped in detail.event (older compatibility)
+			const mouseEvent = event.detail.event;
+			screenPosition = { x: mouseEvent.clientX, y: mouseEvent.clientY };
+		} else if (
 			event.detail &&
 			typeof event.detail.clientX === 'number' &&
 			typeof event.detail.clientY === 'number'
 		) {
 			// Some SvelteFlow versions provide clientX/clientY in detail
 			screenPosition = { x: event.detail.clientX, y: event.detail.clientY };
-		} else if (event.clientX !== undefined && event.clientY !== undefined) {
-			// Standard mouse event coordinates
-			screenPosition = { x: event.clientX, y: event.clientY };
-		} else if (event.detail && event.detail.event) {
-			// Event wrapped in detail.event
-			const mouseEvent = event.detail.event;
-			screenPosition = { x: mouseEvent.clientX, y: mouseEvent.clientY };
 		} else {
 			// Fallback: use center of canvas if available
 			if (containerRect) {

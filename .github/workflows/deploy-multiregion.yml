@@ -51,6 +51,7 @@ jobs:
           sed -i "s/REPLACE_WITH_YOUR_JWT_SECRET/${{ secrets.JWT_SECRET }}/g" digitalocean-app-region1.yaml
           sed -i "s/REPLACE_WITH_REDIS_HOST/${{ secrets.REDIS_HOST }}/g" digitalocean-app-region1.yaml
           sed -i "s/REPLACE_WITH_REDIS_PASSWORD/${{ secrets.REDIS_PASSWORD }}/g" digitalocean-app-region1.yaml
+          sed -i "s|REPLACE_WITH_ALLOWED_ORIGINS|${{ secrets.ALLOWED_ORIGINS }}|g" digitalocean-app-region1.yaml
 
           cat digitalocean-app-region1.yaml
 
@@ -130,6 +131,7 @@ jobs:
           sed -i "s/REPLACE_WITH_DB_PRIMARY_HOST/${{ secrets.DB_PRIMARY_HOST }}/g" digitalocean-app-region2.yaml
           sed -i "s/REPLACE_WITH_REDIS_HOST/${{ secrets.REDIS_HOST }}/g" digitalocean-app-region2.yaml
           sed -i "s/REPLACE_WITH_REDIS_PASSWORD/${{ secrets.REDIS_PASSWORD }}/g" digitalocean-app-region2.yaml
+          sed -i "s|REPLACE_WITH_ALLOWED_ORIGINS|${{ secrets.ALLOWED_ORIGINS }}|g" digitalocean-app-region2.yaml
 
           cat digitalocean-app-region2.yaml
 

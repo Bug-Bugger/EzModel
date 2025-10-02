@@ -80,11 +80,17 @@ jobs:
         run: |
           APP_URL="${{ steps.deploy-sfo3.outputs.app_url }}"
 
+          # Remove https:// prefix if present (doctl output doesn't include protocol)
+          APP_URL="${APP_URL#https://}"
+          APP_URL="${APP_URL#http://}"
+
+          echo "Testing health endpoint: https://$APP_URL/api"
           echo "Waiting for app to be ready..."
           sleep 30
 
           # Health check with retries
           for i in {1..10}; do
+            echo "Attempt $i: Checking https://$APP_URL/api"
             if curl -f -s "https://$APP_URL/api" > /dev/null; then
               echo "✅ SFO3 health check passed"
               exit 0
@@ -93,7 +99,8 @@ jobs:
             sleep 10
           done
 
-          echo "❌ SFO3 health check failed"
+          echo "❌ SFO3 health check failed after 10 attempts"
+          echo "Final URL tested: https://$APP_URL/api"
           exit 1
 
   # Deploy to Region 2 (NYC3) - Replica
@@ -152,11 +159,17 @@ jobs:
         run: |
           APP_URL="${{ steps.deploy-nyc3.outputs.app_url }}"
 
+          # Remove https:// prefix if present (doctl output doesn't include protocol)
+          APP_URL="${APP_URL#https://}"
+          APP_URL="${APP_URL#http://}"
+
+          echo "Testing health endpoint: https://$APP_URL/api"
           echo "Waiting for app to be ready..."
           sleep 30
 
           # Health check with retries
           for i in {1..10}; do
+            echo "Attempt $i: Checking https://$APP_URL/api"
             if curl -f -s "https://$APP_URL/api" > /dev/null; then
               echo "✅ NYC3 health check passed"
               exit 0
@@ -165,7 +178,8 @@ jobs:
             sleep 10
           done
 
-          echo "❌ NYC3 health check failed"
+          echo "❌ NYC3 health check failed after 10 attempts"
+          echo "Final URL tested: https://$APP_URL/api"
           exit 1
 
   # Deploy Frontend to Spaces CDN

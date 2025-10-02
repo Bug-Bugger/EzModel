@@ -103,6 +103,10 @@ services:
       - key: JWT_REFRESH_TOKEN_EXP
         value: "168h"
 
+      # CORS Configuration
+      - key: ALLOWED_ORIGINS
+        value: "https://ezmodel-frontend.sfo3.cdn.digitaloceanspaces.com"
+
 databases:
   - name: ezmodel-db-primary
     cluster_name: ezmodel-db-primary

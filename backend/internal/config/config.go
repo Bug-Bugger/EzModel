@@ -7,10 +7,11 @@ import (
 )
 
 type Config struct {
-	Port     string
-	Env      string
-	Region   string
-	Database struct {
+	Port           string
+	Env            string
+	Region         string
+	AllowedOrigins []string
+	Database       struct {
 		Host     string
 		Port     string
 		User     string
@@ -53,6 +54,14 @@ func New() *Config {
 		Port:   port,
 		Env:    getEnv("ENV", "development"),
 		Region: getEnv("REGION", "region1"),
+	}
+
+	// CORS Configuration - parse comma-separated origins
+	originsStr := getEnv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:4173")
+	cfg.AllowedOrigins = strings.Split(originsStr, ",")
+	// Trim whitespace from each origin
+	for i, origin := range cfg.AllowedOrigins {
+		cfg.AllowedOrigins[i] = strings.TrimSpace(origin)
 	}
 
 	// Primary Database Configuration

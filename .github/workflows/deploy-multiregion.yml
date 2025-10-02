@@ -74,7 +74,7 @@ jobs:
           # Get app URL
           APP_URL=$(doctl apps get $APP_ID --format DefaultIngress --no-header)
           echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
-          echo "✅ SFO3 deployment URL: https://$APP_URL"
+          echo "✅ SFO3 deployment URL: $APP_URL"
 
       - name: Health check (SFO3)
         run: |
@@ -153,7 +153,7 @@ jobs:
           # Get app URL
           APP_URL=$(doctl apps get $APP_ID --format DefaultIngress --no-header)
           echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
-          echo "✅ NYC3 deployment URL: https://$APP_URL"
+          echo "✅ NYC3 deployment URL: $APP_URL"
 
       - name: Health check (NYC3)
         run: |
@@ -225,8 +225,10 @@ jobs:
 
       - name: Install AWS CLI (for S3-compatible Spaces)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y awscli
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip awscliv2.zip
+          sudo ./aws/install --update
+          aws --version
 
       - name: Configure AWS CLI for DigitalOcean Spaces
         run: |
@@ -319,8 +321,8 @@ jobs:
           # 🚀 Multi-Region Deployment Summary
 
           ## Deployment Status
-          - **Region 1 (SFO3)**: ${{ needs.deploy-region1.result == 'success' && '✅ Success' || '❌ Failed' }}
-          - **Region 2 (NYC3)**: ${{ needs.deploy-region2.result == 'success' && '✅ Success' || '❌ Failed' }}
+          - **Region 1 (SFO3 - Primary)**: ${{ needs.deploy-region1.result == 'success' && '✅ Success' || '❌ Failed' }}
+          - **Region 2 (NYC3 - Replica)**: ${{ needs.deploy-region2.result == 'success' && '✅ Success' || '❌ Failed' }}
           - **Frontend CDN**: ${{ needs.deploy-frontend.result == 'success' && '✅ Success' || '❌ Failed' }}
 
           ## Deployment Details
@@ -329,10 +331,11 @@ jobs:
           - **Triggered by**: @${{ github.actor }}
           - **Workflow**: [${{ github.workflow }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
-          ## URLs
+          ## Access URLs
+          Check the deployment logs above for the actual app URLs (DigitalOcean assigns random suffixes).
           - **Frontend CDN**: https://ezmodel-frontend.sfo3.cdn.digitaloceanspaces.com
-          - **SFO3 Backend (Primary)**: https://ezmodel-sfo3.ondigitalocean.app
-          - **NYC3 Backend (Replica)**: https://ezmodel-nyc3.ondigitalocean.app
+          - **SFO3 Backend**: Check "Deploy to App Platform (SFO3)" step logs
+          - **NYC3 Backend**: Check "Deploy to App Platform (NYC3)" step logs
 
           ## Next Steps
           1. Verify WebSocket synchronization across regions

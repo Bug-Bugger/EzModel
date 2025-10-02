@@ -257,8 +257,8 @@ jobs:
 
           ## Next Steps
           The **Multi-Region Deployment** workflow will deploy to:
-          - 🌎 Region 1 (NYC3)
-          - 🌎 Region 2 (SFO3)
+          - 🌎 Region 1 (SFO3 - Primary)
+          - 🌎 Region 2 (NYC3 - Replica)
           - 🌐 Frontend CDN
 
           [View Deployment →](https://github.com/${{ github.repository }}/actions/workflows/deploy-multiregion.yml)

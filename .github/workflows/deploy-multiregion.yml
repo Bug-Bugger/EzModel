@@ -256,29 +256,56 @@ jobs:
           region = sfo3
           EOF
 
+      - name: Verify build output
+        run: |
+          echo "Checking build directory..."
+          ls -la ./frontend/build || { echo "Build directory not found!"; exit 1; }
+
+          echo ""
+          echo "Build contents:"
+          find ./frontend/build -type f | head -20
+
+          echo ""
+          echo "Total files to upload:"
+          find ./frontend/build -type f | wc -l
+
       - name: Upload to Spaces
         working-directory: ./frontend/build
         run: |
+          echo "Current directory contents:"
+          ls -la
+
+          echo ""
+          echo "Starting upload to Spaces..."
+
           # Upload all files to Spaces
           aws s3 sync . s3://ezmodel-frontend/ \
             --endpoint-url https://sfo3.digitaloceanspaces.com \
             --acl public-read \
-            --delete
+            --delete || { echo "❌ Upload failed with exit code $?"; exit 1; }
+
+          echo "✅ Upload completed"
 
           # Set cache headers for static assets (1 year)
+          echo ""
+          echo "Setting cache headers for _app/ directory..."
           aws s3 cp s3://ezmodel-frontend/_app/ s3://ezmodel-frontend/_app/ \
             --endpoint-url https://sfo3.digitaloceanspaces.com \
             --recursive \
             --metadata-directive REPLACE \
             --cache-control "public, max-age=31536000, immutable" \
-            --acl public-read || true
+            --acl public-read || echo "⚠️ Cache header update for _app/ failed (may not exist yet)"
 
           # Set no-cache for index.html (SPA routing)
+          echo ""
+          echo "Setting cache headers for index.html..."
           aws s3 cp s3://ezmodel-frontend/index.html s3://ezmodel-frontend/index.html \
             --endpoint-url https://sfo3.digitaloceanspaces.com \
             --metadata-directive REPLACE \
             --cache-control "public, max-age=0, must-revalidate" \
-            --acl public-read
+            --acl public-read || echo "⚠️ Cache header update for index.html failed"
+
+          echo "✅ All uploads and cache headers completed"
 
       - name: Flush CDN cache
         run: |

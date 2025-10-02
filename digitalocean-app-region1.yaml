@@ -4,6 +4,10 @@
 name: ezmodel-backend-sfo3
 region: sfo3
 
+domains:
+  - domain: api-sfo3.ezmodel.org
+    type: PRIMARY
+
 services:
   - name: backend-sfo3
     github:

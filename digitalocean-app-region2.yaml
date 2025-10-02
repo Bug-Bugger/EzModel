@@ -4,6 +4,10 @@
 name: ezmodel-backend-nyc3
 region: nyc3
 
+domains:
+  - domain: api-nyc3.ezmodel.org
+    type: PRIMARY
+
 services:
   - name: backend-nyc3
     github:

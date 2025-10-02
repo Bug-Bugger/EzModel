@@ -223,38 +223,29 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
-      - name: Install AWS CLI (for S3-compatible Spaces)
+      - name: Install s3cmd (for DigitalOcean Spaces)
         run: |
-          # Check if AWS CLI v2 is already installed
-          if command -v aws &> /dev/null; then
-            echo "AWS CLI already installed: $(aws --version)"
-            exit 0
-          fi
-
-          # Download and install AWS CLI v2
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip -q awscliv2.zip
-          sudo ./aws/install --update
+          # Install s3cmd (better compatibility with DigitalOcean Spaces)
+          sudo apt-get update
+          sudo apt-get install -y s3cmd
 
           # Verify installation
-          aws --version
+          s3cmd --version
 
-          # Cleanup
-          rm -rf awscliv2.zip aws/
-
-      - name: Configure AWS CLI for DigitalOcean Spaces
+      - name: Configure s3cmd for DigitalOcean Spaces
         run: |
-          mkdir -p ~/.aws
-          cat > ~/.aws/credentials << EOF
+          # Create s3cmd configuration file
+          cat > ~/.s3cfg << EOF
           [default]
-          aws_access_key_id = ${{ secrets.SPACES_ACCESS_KEY }}
-          aws_secret_access_key = ${{ secrets.SPACES_SECRET_KEY }}
+          access_key = ${{ secrets.SPACES_ACCESS_KEY }}
+          secret_key = ${{ secrets.SPACES_SECRET_KEY }}
+          host_base = sfo3.digitaloceanspaces.com
+          host_bucket = %(bucket)s.sfo3.digitaloceanspaces.com
+          use_https = True
+          signature_v2 = False
           EOF
 
-          cat > ~/.aws/config << EOF
-          [default]
-          region = sfo3
-          EOF
+          echo "s3cmd configured successfully"
 
       - name: Verify build output
         run: |
@@ -276,34 +267,31 @@ jobs:
           ls -la
 
           echo ""
-          echo "Starting upload to Spaces..."
+          echo "Starting upload to Spaces with s3cmd..."
 
           # Upload all files to Spaces
-          aws s3 sync . s3://ezmodel-frontend/ \
-            --endpoint-url https://sfo3.digitaloceanspaces.com \
-            --acl public-read \
-            --delete || { echo "❌ Upload failed with exit code $?"; exit 1; }
+          s3cmd sync . s3://ezmodel-frontend/ \
+            --acl-public \
+            --delete-removed \
+            --no-mime-magic \
+            --guess-mime-type || { echo "❌ Upload failed with exit code $?"; exit 1; }
 
           echo "✅ Upload completed"
 
           # Set cache headers for static assets (1 year)
           echo ""
           echo "Setting cache headers for _app/ directory..."
-          aws s3 cp s3://ezmodel-frontend/_app/ s3://ezmodel-frontend/_app/ \
-            --endpoint-url https://sfo3.digitaloceanspaces.com \
+          s3cmd modify s3://ezmodel-frontend/_app/ \
             --recursive \
-            --metadata-directive REPLACE \
-            --cache-control "public, max-age=31536000, immutable" \
-            --acl public-read || echo "⚠️ Cache header update for _app/ failed (may not exist yet)"
+            --add-header="Cache-Control: public, max-age=31536000, immutable" \
+            --acl-public || echo "⚠️ Cache header update for _app/ failed (may not exist yet)"
 
           # Set no-cache for index.html (SPA routing)
           echo ""
           echo "Setting cache headers for index.html..."
-          aws s3 cp s3://ezmodel-frontend/index.html s3://ezmodel-frontend/index.html \
-            --endpoint-url https://sfo3.digitaloceanspaces.com \
-            --metadata-directive REPLACE \
-            --cache-control "public, max-age=0, must-revalidate" \
-            --acl public-read || echo "⚠️ Cache header update for index.html failed"
+          s3cmd modify s3://ezmodel-frontend/index.html \
+            --add-header="Cache-Control: public, max-age=0, must-revalidate" \
+            --acl-public || echo "⚠️ Cache header update for index.html failed"
 
           echo "✅ All uploads and cache headers completed"
 

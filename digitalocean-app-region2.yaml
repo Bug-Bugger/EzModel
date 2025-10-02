@@ -3,6 +3,7 @@
 
 name: ezmodel-backend-nyc3
 region: nyc3
+project_id: 6026028a-36c7-4cb0-b6bc-394cdb61e37a
 
 domains:
   - domain: api-nyc3.ezmodel.org

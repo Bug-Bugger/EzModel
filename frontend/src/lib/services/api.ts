@@ -22,22 +22,9 @@ class ApiClient {
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			timeout: 10000
+			timeout: 10000,
+			withCredentials: true // Include cookies in requests
 		});
-
-		// Request interceptor to add auth token
-		this.client.interceptors.request.use(
-			(config) => {
-				if (browser) {
-					const token = localStorage.getItem('access_token');
-					if (token) {
-						config.headers.Authorization = `Bearer ${token}`;
-					}
-				}
-				return config;
-			},
-			(error) => Promise.reject(error)
-		);
 
 		// Response interceptor for error handling
 		this.client.interceptors.response.use(
@@ -51,8 +38,7 @@ class ApiClient {
 						return new Promise((resolve, reject) => {
 							this.failedQueue.push({ resolve, reject });
 						})
-							.then((token) => {
-								originalRequest.headers.Authorization = `Bearer ${token}`;
+							.then(() => {
 								return this.client(originalRequest);
 							})
 							.catch((err) => {
@@ -63,40 +49,26 @@ class ApiClient {
 					originalRequest._retry = true;
 					this.isRefreshing = true;
 
-					const refreshToken = localStorage.getItem('refresh_token');
-					if (refreshToken) {
-						try {
-							const response = await this.client.post<ApiResponse<LoginResponse>>(
-								'/refresh-token',
-								{
-									refresh_token: refreshToken
-								}
-							);
+					try {
+						// Call refresh endpoint (cookies are sent automatically)
+						const response = await this.client.post<ApiResponse<LoginResponse>>('/refresh-token');
 
-							if (response.data.success && response.data.data) {
-								const newTokens = response.data.data;
-								localStorage.setItem('access_token', newTokens.access_token);
-								localStorage.setItem('refresh_token', newTokens.refresh_token);
+						if (response.data.success) {
+							// Tokens are now in httpOnly cookies, no need to store them
+							// Process the failed queue
+							// No error, no token needed for cookie-based auth
+							this.processQueue(/* error */ null, /* token */ null);
 
-								// Process the failed queue
-								this.processQueue(null, newTokens.access_token);
-
-								// Retry the original request
-								originalRequest.headers.Authorization = `Bearer ${newTokens.access_token}`;
-								return this.client(originalRequest);
-							}
-						} catch (refreshError) {
-							// Refresh failed, clear tokens and logout
-							this.processQueue(refreshError, null);
-							this.logout();
-							return Promise.reject(refreshError);
-						} finally {
-							this.isRefreshing = false;
+							// Retry the original request
+							return this.client(originalRequest);
 						}
-					} else {
-						// No refresh token, logout immediately
+					} catch (refreshError) {
+						// Refresh failed, clear tokens and logout
+						this.processQueue(refreshError, null);
 						this.logout();
-						return Promise.reject(error);
+						return Promise.reject(refreshError);
+					} finally {
+						this.isRefreshing = false;
 					}
 				}
 
@@ -123,10 +95,16 @@ class ApiClient {
 		this.failedQueue = [];
 	}
 
-	private logout() {
-		localStorage.removeItem('access_token');
-		localStorage.removeItem('refresh_token');
-		localStorage.removeItem('user');
+	private async logout() {
+		try {
+			// Call logout endpoint to clear httpOnly cookies on server
+			await this.client.post('/logout');
+		} catch (error) {
+			// Ignore errors during logout
+			console.error('Logout error:', error);
+		}
+
+		// Clear local user data
 		authStore.clear();
 		if (browser) {
 			window.location.href = '/login';

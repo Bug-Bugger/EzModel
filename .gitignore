@@ -32,3 +32,6 @@ Icon[]
 
 # Environment files
 .env*
+
+# Dev tooling artifacts
+backend/tmp/

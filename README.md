@@ -62,6 +62,20 @@ pnpm install
 pnpm dev
 ```
 
+### Backend Hot Reload (Optional)
+
+If you want the Go API to rebuild automatically on file changes, the repository now ships with an [Air](https://github.com/cosmtrek/air) config at `backend/.air.toml`:
+
+1. Install Air once: `go install github.com/air-verse/air@latest`
+2. In a new terminal, run the backend with hot reload
+
+```bash
+cd backend
+air
+```
+
+Air watches your Go files, rebuilds the binary into `backend/tmp`, and restarts the server whenever code or env files change. Keep using `go run` if you prefer manual restarts.
+
 ### Multi-Region Production Deployment
 
 See [DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md) for complete deployment guide.

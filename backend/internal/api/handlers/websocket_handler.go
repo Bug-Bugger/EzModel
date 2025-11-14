@@ -68,11 +68,9 @@ func NewWebSocketHandler(
 func (h *WebSocketHandler) checkOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 
-	// If no origin header (e.g., non-browser clients), allow for now
-	// In production, you might want to be more strict
 	if origin == "" {
 		log.Printf("WebSocket: No origin header present")
-		return true
+		return false
 	}
 
 	// Check if origin is in allowed list

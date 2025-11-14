@@ -27,7 +27,7 @@ func SetupRoutes(
 
 	// Handlers
 	userHandler := handlers.NewUserHandler(userService)
-	authHandler := handlers.NewAuthHandler(userService, jwtService)
+	authHandler := handlers.NewAuthHandler(userService, jwtService, cfg)
 	projectHandler := handlers.NewProjectHandler(projectService)
 	tableHandler := handlers.NewTableHandler(tableService)
 	fieldHandler := handlers.NewFieldHandler(fieldService)
@@ -44,6 +44,7 @@ func SetupRoutes(
 		r.Post("/login", authHandler.Login())
 		r.Post("/refresh-token", authHandler.RefreshToken())
 		r.Post("/register", userHandler.Create())
+		r.Post("/logout", authHandler.Logout())
 
 		// WebSocket routes (handle authentication internally)
 		r.Get("/projects/{project_id}/collaborate", websocketHandler.HandleWebSocket) // WebSocket endpoint for real-time collaboration

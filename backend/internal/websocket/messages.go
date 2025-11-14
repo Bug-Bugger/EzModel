@@ -35,6 +35,7 @@ const (
 	MessageTypeCanvasUpdated MessageType = "canvas_updated"
 
 	// System events
+	MessageTypeAuth  MessageType = "auth"
 	MessageTypeError MessageType = "error"
 	MessageTypePing  MessageType = "ping"
 	MessageTypePong  MessageType = "pong"
@@ -117,6 +118,15 @@ type CanvasUpdatedPayload struct {
 }
 
 // System payloads
+type AuthPayload struct {
+	Token string `json:"token"`
+}
+
+type AuthSuccessPayload struct {
+	Message string `json:"message"`
+	UserID  string `json:"user_id"`
+}
+
 type ErrorPayload struct {
 	Message string `json:"message"`
 	Code    string `json:"code,omitempty"`

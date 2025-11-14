@@ -93,7 +93,7 @@ func New(cfg *config.Config, db *gorm.DB) *Server {
 	s.authMiddleware = middleware.NewAuthMiddleware(s.jwtService)
 
 	// Setup routes
-	routes.SetupRoutes(s.router, s.userService, s.projectService, s.tableService, s.fieldService, s.relationshipService, s.collaborationService, s.jwtService, s.authMiddleware, s.websocketHub)
+	routes.SetupRoutes(s.router, s.config, s.userService, s.projectService, s.tableService, s.fieldService, s.relationshipService, s.collaborationService, s.jwtService, s.authMiddleware, s.websocketHub)
 
 	return s
 }

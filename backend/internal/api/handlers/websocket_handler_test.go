@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Bug-Bugger/ezmodel/internal/config"
 	mockService "github.com/Bug-Bugger/ezmodel/internal/mocks/service"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
@@ -21,6 +22,7 @@ import (
 
 type WebSocketHandlerTestSuite struct {
 	suite.Suite
+	cfg              *config.Config
 	handler          *WebSocketHandler
 	hub              *websocketPkg.Hub
 	mockJWTService   *mockService.MockJWTService
@@ -34,12 +36,21 @@ func (suite *WebSocketHandlerTestSuite) SetupTest() {
 	suite.hub = websocketPkg.NewHub()
 	go suite.hub.Run()
 
+	suite.cfg = &config.Config{
+		AllowedOrigins: []string{
+			"http://localhost:5173",
+			"http://127.0.0.1:5173",
+			"http://localhost:4173",
+		},
+	}
+
 	suite.mockJWTService = new(mockService.MockJWTService)
 	suite.mockUserService = new(mockService.MockUserService)
 	suite.mockProjService = new(mockService.MockProjectService)
 	suite.mockTableService = new(mockService.MockTableService)
 
 	suite.handler = NewWebSocketHandler(
+		suite.cfg,
 		suite.hub,
 		suite.mockJWTService,
 		suite.mockUserService,
@@ -409,12 +420,16 @@ func BenchmarkWebSocketHandlerAuthentication(b *testing.B) {
 	go hub.Run()
 	defer hub.Shutdown()
 
+	cfg := &config.Config{
+		AllowedOrigins: []string{"http://localhost:5173"},
+	}
+
 	mockJWTService := new(mockService.MockJWTService)
 	mockUserService := new(mockService.MockUserService)
 	mockProjService := new(mockService.MockProjectService)
 	mockTableService := new(mockService.MockTableService)
 
-	handler := NewWebSocketHandler(hub, mockJWTService, mockUserService, mockProjService, mockTableService)
+	handler := NewWebSocketHandler(cfg, hub, mockJWTService, mockUserService, mockProjService, mockTableService)
 
 	userID := uuid.New()
 	token := "test-token"

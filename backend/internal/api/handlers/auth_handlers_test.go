@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
+	"github.com/Bug-Bugger/ezmodel/internal/config"
 	mockService "github.com/Bug-Bugger/ezmodel/internal/mocks/service"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
 	"github.com/Bug-Bugger/ezmodel/internal/testutil"
@@ -19,16 +20,27 @@ type AuthHandlerTestSuite struct {
 	mockUserService *mockService.MockUserService
 	mockJWTService  *mockService.MockJWTService
 	handler         *AuthHandler
+	cfg             *config.Config
 }
 
 func (suite *AuthHandlerTestSuite) SetupTest() {
 	suite.mockUserService = new(mockService.MockUserService)
 	suite.mockJWTService = new(mockService.MockJWTService)
-	suite.handler = NewAuthHandler(suite.mockUserService, suite.mockJWTService)
+	suite.cfg = config.New()
+	suite.handler = NewAuthHandler(suite.mockUserService, suite.mockJWTService, suite.cfg)
 }
 
 func TestAuthHandlerSuite(t *testing.T) {
 	suite.Run(t, new(AuthHandlerTestSuite))
+}
+
+func (suite *AuthHandlerTestSuite) getCookie(cookies []*http.Cookie, name string) *http.Cookie {
+	for _, c := range cookies {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
 }
 
 // Test Login - Success
@@ -49,6 +61,7 @@ func (suite *AuthHandlerTestSuite) TestLogin_Success() {
 		Return(user, nil)
 	suite.mockJWTService.On("GenerateTokenPair", user).Return(tokenPair, nil)
 	suite.mockJWTService.On("GetAccessTokenExpiration").Return(15 * time.Minute)
+	suite.mockJWTService.On("GetRefreshTokenExpiration").Return(7 * 24 * time.Hour)
 
 	// Make request
 	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/login", loginRequest)
@@ -59,13 +72,32 @@ func (suite *AuthHandlerTestSuite) TestLogin_Success() {
 
 	// Assert
 	response := testutil.AssertSuccessResponse(suite.T(), w, http.StatusOK, "Login successful")
+	userPayload, ok := response.Data.(map[string]any)
+	suite.True(ok, "Response data should contain user payload")
+	userData, ok := userPayload["user"].(map[string]any)
+	suite.True(ok, "User payload should be a map")
+	suite.Equal(user.Email, userData["email"])
+	suite.Equal(user.Username, userData["username"])
 
-	tokenResponse, ok := response.Data.(map[string]any)
-	suite.True(ok, "Response data should be a token object")
-	suite.Equal(tokenPair.AccessToken, tokenResponse["access_token"])
-	suite.Equal(tokenPair.RefreshToken, tokenResponse["refresh_token"])
-	suite.Equal("Bearer", tokenResponse["token_type"])
-	suite.Equal(float64(900), tokenResponse["expires_in"]) // 15 minutes = 900 seconds
+	result := w.Result()
+	accessCookie := suite.getCookie(result.Cookies(), "access_token")
+	refreshCookie := suite.getCookie(result.Cookies(), "refresh_token")
+
+	suite.NotNil(accessCookie)
+	suite.Equal(tokenPair.AccessToken, accessCookie.Value)
+	suite.True(accessCookie.HttpOnly)
+	suite.Equal(suite.cfg.Env == "production", accessCookie.Secure)
+	suite.Equal(http.SameSiteStrictMode, accessCookie.SameSite)
+	suite.Equal("/", accessCookie.Path)
+	suite.Equal(900, accessCookie.MaxAge)
+
+	suite.NotNil(refreshCookie)
+	suite.Equal(tokenPair.RefreshToken, refreshCookie.Value)
+	suite.True(refreshCookie.HttpOnly)
+	suite.Equal(suite.cfg.Env == "production", refreshCookie.Secure)
+	suite.Equal(http.SameSiteStrictMode, refreshCookie.SameSite)
+	suite.Equal("/", refreshCookie.Path)
+	suite.Equal(7*24*60*60, refreshCookie.MaxAge)
 
 	suite.mockUserService.AssertExpectations(suite.T())
 	suite.mockJWTService.AssertExpectations(suite.T())
@@ -143,54 +175,56 @@ func (suite *AuthHandlerTestSuite) TestLogin_JWTGenerationError() {
 
 // Test RefreshToken - Success
 func (suite *AuthHandlerTestSuite) TestRefreshToken_Success() {
-	refreshRequest := dto.RefreshTokenRequest{
-		RefreshToken: "valid_refresh_token",
-	}
-
+	refreshToken := "valid_refresh_token"
 	newTokenPair := &services.TokenPair{
 		AccessToken:  "new_access_token_123",
 		RefreshToken: "new_refresh_token_123",
 	}
 
-	suite.mockJWTService.On("RefreshTokens", refreshRequest.RefreshToken).Return(newTokenPair, nil)
+	suite.mockJWTService.On("RefreshTokens", refreshToken).Return(newTokenPair, nil)
 	suite.mockJWTService.On("GetAccessTokenExpiration").Return(15 * time.Minute)
+	suite.mockJWTService.On("GetRefreshTokenExpiration").Return(7 * 24 * time.Hour)
 
-	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/refresh-token", refreshRequest)
+	req := httptest.NewRequest(http.MethodPost, "/refresh-token", nil)
+	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
 	w := httptest.NewRecorder()
 
 	suite.handler.RefreshToken()(w, req)
 
 	response := testutil.AssertSuccessResponse(suite.T(), w, http.StatusOK, "Token refreshed successfully")
+	suite.Nil(response.Data)
 
-	tokenResponse, ok := response.Data.(map[string]any)
-	suite.True(ok)
-	suite.Equal(newTokenPair.AccessToken, tokenResponse["access_token"])
-	suite.Equal(newTokenPair.RefreshToken, tokenResponse["refresh_token"])
-	suite.Equal("Bearer", tokenResponse["token_type"])
+	result := w.Result()
+	accessCookie := suite.getCookie(result.Cookies(), "access_token")
+	refreshCookie := suite.getCookie(result.Cookies(), "refresh_token")
+
+	suite.NotNil(accessCookie)
+	suite.Equal(newTokenPair.AccessToken, accessCookie.Value)
+	suite.Equal(900, accessCookie.MaxAge)
+	suite.NotNil(refreshCookie)
+	suite.Equal(newTokenPair.RefreshToken, refreshCookie.Value)
+	suite.Equal(7*24*60*60, refreshCookie.MaxAge)
 
 	suite.mockJWTService.AssertExpectations(suite.T())
 }
 
-// Test RefreshToken - Invalid JSON
-func (suite *AuthHandlerTestSuite) TestRefreshToken_InvalidJSON() {
-	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/refresh-token", "invalid json")
+func (suite *AuthHandlerTestSuite) TestRefreshToken_MissingCookie() {
+	req := httptest.NewRequest(http.MethodPost, "/refresh-token", nil)
 	w := httptest.NewRecorder()
 
 	suite.handler.RefreshToken()(w, req)
 
-	testutil.AssertErrorResponse(suite.T(), w, http.StatusBadRequest, "Invalid request body")
+	testutil.AssertErrorResponse(suite.T(), w, http.StatusUnauthorized, "No refresh token found")
 }
 
 // Test RefreshToken - Invalid Token
 func (suite *AuthHandlerTestSuite) TestRefreshToken_InvalidToken() {
-	refreshRequest := dto.RefreshTokenRequest{
-		RefreshToken: "invalid_refresh_token",
-	}
-
-	suite.mockJWTService.On("RefreshTokens", refreshRequest.RefreshToken).
+	refreshToken := "invalid_refresh_token"
+	suite.mockJWTService.On("RefreshTokens", refreshToken).
 		Return(nil, services.ErrInvalidToken)
 
-	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/refresh-token", refreshRequest)
+	req := httptest.NewRequest(http.MethodPost, "/refresh-token", nil)
+	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
 	w := httptest.NewRecorder()
 
 	suite.handler.RefreshToken()(w, req)
@@ -201,14 +235,12 @@ func (suite *AuthHandlerTestSuite) TestRefreshToken_InvalidToken() {
 
 // Test RefreshToken - Expired Token
 func (suite *AuthHandlerTestSuite) TestRefreshToken_ExpiredToken() {
-	refreshRequest := dto.RefreshTokenRequest{
-		RefreshToken: "expired_refresh_token",
-	}
-
-	suite.mockJWTService.On("RefreshTokens", refreshRequest.RefreshToken).
+	refreshToken := "expired_refresh_token"
+	suite.mockJWTService.On("RefreshTokens", refreshToken).
 		Return(nil, services.ErrExpiredToken)
 
-	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/refresh-token", refreshRequest)
+	req := httptest.NewRequest(http.MethodPost, "/refresh-token", nil)
+	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
 	w := httptest.NewRecorder()
 
 	suite.handler.RefreshToken()(w, req)
@@ -219,18 +251,38 @@ func (suite *AuthHandlerTestSuite) TestRefreshToken_ExpiredToken() {
 
 // Test RefreshToken - Service Error
 func (suite *AuthHandlerTestSuite) TestRefreshToken_ServiceError() {
-	refreshRequest := dto.RefreshTokenRequest{
-		RefreshToken: "some_refresh_token",
-	}
-
-	suite.mockJWTService.On("RefreshTokens", refreshRequest.RefreshToken).
+	refreshToken := "some_refresh_token"
+	suite.mockJWTService.On("RefreshTokens", refreshToken).
 		Return(nil, assert.AnError)
 
-	req := testutil.MakeJSONRequest(suite.T(), http.MethodPost, "/refresh-token", refreshRequest)
+	req := httptest.NewRequest(http.MethodPost, "/refresh-token", nil)
+	req.AddCookie(&http.Cookie{Name: "refresh_token", Value: refreshToken})
 	w := httptest.NewRecorder()
 
 	suite.handler.RefreshToken()(w, req)
 
 	testutil.AssertErrorResponse(suite.T(), w, http.StatusInternalServerError, "Failed to refresh token")
 	suite.mockJWTService.AssertExpectations(suite.T())
+}
+
+func (suite *AuthHandlerTestSuite) TestLogout_Success() {
+	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+	w := httptest.NewRecorder()
+
+	suite.handler.Logout()(w, req)
+
+	response := testutil.AssertSuccessResponse(suite.T(), w, http.StatusOK, "Logout successful")
+	suite.Nil(response.Data)
+
+	result := w.Result()
+	accessCookie := suite.getCookie(result.Cookies(), "access_token")
+	refreshCookie := suite.getCookie(result.Cookies(), "refresh_token")
+
+	suite.NotNil(accessCookie)
+	suite.Equal(-1, accessCookie.MaxAge)
+	suite.Equal("", accessCookie.Value)
+
+	suite.NotNil(refreshCookie)
+	suite.Equal(-1, refreshCookie.MaxAge)
+	suite.Equal("", refreshCookie.Value)
 }

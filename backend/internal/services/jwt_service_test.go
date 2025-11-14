@@ -213,6 +213,12 @@ func (suite *JWTServiceTestSuite) TestGetAccessTokenExpiration() {
 	suite.Equal(suite.config.JWT.AccessTokenExp, expiration)
 }
 
+// Test GetRefreshTokenExpiration
+func (suite *JWTServiceTestSuite) TestGetRefreshTokenExpiration() {
+	expiration := suite.service.GetRefreshTokenExpiration()
+	suite.Equal(suite.config.JWT.RefreshTokenExp, expiration)
+}
+
 // Test Token Claims Structure
 func (suite *JWTServiceTestSuite) TestTokenClaims_Structure() {
 	tokenPair, err := suite.service.GenerateTokenPair(suite.testUser)

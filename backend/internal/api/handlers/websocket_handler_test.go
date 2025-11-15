@@ -104,8 +104,8 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_InvalidToken() {
 
 	// Connect WebSocket client
 	wsURL := "ws" + server.URL[4:] // Replace http with ws
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	assert.NoError(suite.T(), err)
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
 	defer ws.Close()
 
 	// Send auth message with invalid token
@@ -148,8 +148,8 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_ExpiredToken() {
 
 	// Connect WebSocket client
 	wsURL := "ws" + server.URL[4:]
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	assert.NoError(suite.T(), err)
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
 	defer ws.Close()
 
 	// Send auth message with expired token
@@ -188,8 +188,8 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_NonAuthMessageFirst(
 
 	// Connect WebSocket client
 	wsURL := "ws" + server.URL[4:]
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	assert.NoError(suite.T(), err)
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
 	defer ws.Close()
 
 	// Send non-auth message (should fail)
@@ -237,8 +237,8 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_UserNotFound() {
 
 	// Connect WebSocket client
 	wsURL := "ws" + server.URL[4:]
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	assert.NoError(suite.T(), err)
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
 	defer ws.Close()
 
 	// Send auth message
@@ -293,8 +293,8 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_ProjectNotFound() {
 
 	// Connect WebSocket client
 	wsURL := "ws" + server.URL[4:]
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	assert.NoError(suite.T(), err)
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
 	defer ws.Close()
 
 	// Send auth message
@@ -355,8 +355,8 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_AccessDenied() {
 
 	// Connect WebSocket client
 	wsURL := "ws" + server.URL[4:]
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	assert.NoError(suite.T(), err)
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
 	defer ws.Close()
 
 	// Send auth message
@@ -384,20 +384,18 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_AccessDenied() {
 	suite.mockProjService.AssertExpectations(suite.T())
 }
 
-// Test successful authentication as project owner
-func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsOwner() {
+// Test authentication succeeds when token is provided via Authorization header
+func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_TokenFromAuthorizationHeader() {
 	projectID := uuid.New()
 	userID := uuid.New()
-	token := "valid-token"
+	token := "header-token"
 
-	// Setup test data
 	user := testutil.CreateTestUser()
 	user.ID = userID
 
-	project := testutil.CreateTestProject(userID) // User is the owner
+	project := testutil.CreateTestProject(userID)
 	project.ID = projectID
 
-	// Setup mocks
 	claims := &services.CustomClaims{
 		UserID: userID,
 		Email:  user.Email,
@@ -406,42 +404,32 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsOwner() {
 	suite.mockUserService.On("GetUserByID", userID).Return(user, nil)
 	suite.mockProjService.On("GetProjectByID", projectID).Return(project, nil)
 
-	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r = suite.addURLParam(r, "project_id", projectID.String())
 		suite.handler.HandleWebSocket(w, r)
 	}))
 	defer server.Close()
 
-	// Connect WebSocket client
+	headers := http.Header{}
+	headers.Set("Authorization", "Bearer "+token)
+
 	wsURL := "ws" + server.URL[4:]
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	assert.NoError(suite.T(), err)
+	ws, err := suite.dialWebSocket(wsURL, headers)
+	suite.Require().NoError(err)
 	defer ws.Close()
 
-	// Send auth message
 	authMsg := map[string]interface{}{
 		"type": "auth",
-		"data": map[string]interface{}{
-			"token": token,
-		},
+		"data": map[string]interface{}{}, // No token in payload
 	}
-	err = ws.WriteJSON(authMsg)
-	assert.NoError(suite.T(), err)
+	suite.Require().NoError(ws.WriteJSON(authMsg))
 
-	// Read auth success response
 	var response map[string]interface{}
-	err = ws.ReadJSON(&response)
-	assert.NoError(suite.T(), err)
-
-	// Assert auth success message received
-	assert.Equal(suite.T(), "auth", response["type"])
+	suite.Require().NoError(ws.ReadJSON(&response))
+	suite.Equal("auth", response["type"])
 	data := response["data"].(map[string]interface{})
-	assert.Equal(suite.T(), "Authentication successful", data["message"])
-	assert.Equal(suite.T(), userID.String(), data["user_id"])
-
-	// Wait a moment for client registration
-	time.Sleep(50 * time.Millisecond)
+	suite.Equal("Authentication successful", data["message"])
+	suite.Equal(userID.String(), data["user_id"])
 
 	suite.mockJWTService.AssertExpectations(suite.T())
 	suite.mockUserService.AssertExpectations(suite.T())
@@ -478,7 +466,7 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_TokenFromCookie() {
 	headers.Set("Cookie", (&http.Cookie{Name: "access_token", Value: token}).String())
 
 	wsURL := "ws" + server.URL[4:]
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
+	ws, err := suite.dialWebSocket(wsURL, headers)
 	suite.Require().NoError(err)
 	defer ws.Close()
 
@@ -534,8 +522,8 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsCollaborato
 
 	// Connect WebSocket client
 	wsURL := "ws" + server.URL[4:]
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	assert.NoError(suite.T(), err)
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
 	defer ws.Close()
 
 	// Send auth message
@@ -564,6 +552,18 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsCollaborato
 	suite.mockJWTService.AssertExpectations(suite.T())
 	suite.mockUserService.AssertExpectations(suite.T())
 	suite.mockProjService.AssertExpectations(suite.T())
+}
+
+// Helper method to dial WebSocket connections with default allowed origin
+func (suite *WebSocketHandlerTestSuite) dialWebSocket(wsURL string, headers http.Header) (*websocket.Conn, error) {
+	if headers == nil {
+		headers = http.Header{}
+	}
+	if headers.Get("Origin") == "" && len(suite.cfg.AllowedOrigins) > 0 {
+		headers.Set("Origin", suite.cfg.AllowedOrigins[0])
+	}
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
+	return conn, err
 }
 
 // Helper method to add URL parameters to request

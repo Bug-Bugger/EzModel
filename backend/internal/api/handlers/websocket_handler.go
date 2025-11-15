@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Bug-Bugger/ezmodel/internal/api/dto"
+	"github.com/Bug-Bugger/ezmodel/internal/config"
 	"github.com/Bug-Bugger/ezmodel/internal/models"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
 	websocketPkg "github.com/Bug-Bugger/ezmodel/internal/websocket"
@@ -26,38 +27,63 @@ const (
 	maxMessageSize = 512
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		// Allow connections from any origin for now
-		// In production, you should validate the origin
-		return true
-	},
-}
-
 type WebSocketHandler struct {
+	config         *config.Config
 	hub            *websocketPkg.Hub
 	jwtService     services.JWTServiceInterface
 	userService    services.UserServiceInterface
 	projectService services.ProjectServiceInterface
 	tableService   services.TableServiceInterface
+	upgrader       websocket.Upgrader
 }
 
 func NewWebSocketHandler(
+	cfg *config.Config,
 	hub *websocketPkg.Hub,
 	jwtService services.JWTServiceInterface,
 	userService services.UserServiceInterface,
 	projectService services.ProjectServiceInterface,
 	tableService services.TableServiceInterface,
 ) *WebSocketHandler {
-	return &WebSocketHandler{
+	h := &WebSocketHandler{
+		config:         cfg,
 		hub:            hub,
 		jwtService:     jwtService,
 		userService:    userService,
 		projectService: projectService,
 		tableService:   tableService,
 	}
+
+	// Initialize upgrader with origin validation
+	h.upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin:     h.checkOrigin,
+	}
+
+	return h
+}
+
+// checkOrigin validates WebSocket connection origins against allowed origins
+func (h *WebSocketHandler) checkOrigin(r *http.Request) bool {
+	origin := r.Header.Get("Origin")
+
+	if origin == "" {
+		log.Printf("WebSocket: No origin header present")
+		return false
+	}
+
+	// Check if origin is in allowed list
+	for _, allowed := range h.config.AllowedOrigins {
+		if origin == allowed {
+			log.Printf("WebSocket: Accepted connection from authorized origin: %s", origin)
+			return true
+		}
+	}
+
+	// Log rejected origin for security monitoring
+	log.Printf("WebSocket: Rejected connection from unauthorized origin: %s (allowed: %v)", origin, h.config.AllowedOrigins)
+	return false
 }
 
 // HandleWebSocket upgrades HTTP connection to WebSocket for real-time collaboration
@@ -105,7 +131,7 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Upgrade connection to WebSocket
-	conn, err := upgrader.Upgrade(w, r, nil)
+	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("Failed to upgrade connection: %v", err)
 		return

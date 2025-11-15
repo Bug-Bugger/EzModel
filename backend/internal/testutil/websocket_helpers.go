@@ -23,6 +23,12 @@ type WebSocketTestServer struct {
 	upgrader websocket.Upgrader
 }
 
+const defaultTestOrigin = "http://localhost:5173"
+
+type contextKey string
+
+const projectIDCtxKey contextKey = "projectID"
+
 // NewWebSocketTestServer creates a new WebSocket test server
 func NewWebSocketTestServer() *WebSocketTestServer {
 	hub := websocketPkg.NewHub()
@@ -131,7 +137,10 @@ func ConnectWebSocket(t *testing.T, serverURL string) *websocket.Conn {
 	// Convert http:// to ws://
 	wsURL := strings.Replace(serverURL, "http://", "ws://", 1)
 
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	headers := http.Header{}
+	headers.Set("Origin", defaultTestOrigin)
+
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
 	require.NoError(t, err)
 
 	return conn
@@ -151,7 +160,10 @@ func ConnectWebSocketWithAuth(t *testing.T, serverURL, token string) *websocket.
 		wsURL += separator + "token=" + token
 	}
 
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	headers := http.Header{}
+	headers.Set("Origin", defaultTestOrigin)
+
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
 	require.NoError(t, err)
 
 	return conn
@@ -298,9 +310,10 @@ func CreateWebSocketRequestWithAuth(t *testing.T, url, token string, projectID u
 	req.Header.Set("Upgrade", "websocket")
 	req.Header.Set("Sec-WebSocket-Version", "13")
 	req.Header.Set("Sec-WebSocket-Key", "test-key")
+	req.Header.Set("Origin", defaultTestOrigin)
 
 	// Add project ID to context or URL params
-	ctx := context.WithValue(req.Context(), "projectID", projectID.String())
+	ctx := context.WithValue(req.Context(), projectIDCtxKey, projectID.String())
 	return req.WithContext(ctx)
 }
 
@@ -311,12 +324,13 @@ func CreateWebSocketRequestWithHeaderAuth(t *testing.T, url, token string, proje
 	req.Header.Set("Upgrade", "websocket")
 	req.Header.Set("Sec-WebSocket-Version", "13")
 	req.Header.Set("Sec-WebSocket-Key", "test-key")
+	req.Header.Set("Origin", defaultTestOrigin)
 
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 
 	// Add project ID to context or URL params
-	ctx := context.WithValue(req.Context(), "projectID", projectID.String())
+	ctx := context.WithValue(req.Context(), projectIDCtxKey, projectID.String())
 	return req.WithContext(ctx)
 }

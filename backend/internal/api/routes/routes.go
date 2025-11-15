@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/Bug-Bugger/ezmodel/internal/api/handlers"
 	"github.com/Bug-Bugger/ezmodel/internal/api/middleware"
+	"github.com/Bug-Bugger/ezmodel/internal/config"
 	"github.com/Bug-Bugger/ezmodel/internal/services"
 	websocketPkg "github.com/Bug-Bugger/ezmodel/internal/websocket"
 	"github.com/go-chi/chi/v5"
@@ -10,6 +11,7 @@ import (
 
 func SetupRoutes(
 	r *chi.Mux,
+	cfg *config.Config,
 	userService services.UserServiceInterface,
 	projectService services.ProjectServiceInterface,
 	tableService services.TableServiceInterface,
@@ -31,7 +33,7 @@ func SetupRoutes(
 	fieldHandler := handlers.NewFieldHandler(fieldService)
 	relationshipHandler := handlers.NewRelationshipHandler(relationshipService)
 	collaborationHandler := handlers.NewCollaborationHandler(collaborationService)
-	websocketHandler := handlers.NewWebSocketHandler(websocketHub, jwtService, userService, projectService, tableService)
+	websocketHandler := handlers.NewWebSocketHandler(cfg, websocketHub, jwtService, userService, projectService, tableService)
 
 	// Mount all API routes under /api prefix
 	r.Route("/api", func(r chi.Router) {

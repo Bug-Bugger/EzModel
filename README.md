@@ -31,6 +31,7 @@ EzModel empowers developers to visually design database schemas with real-time c
 ```
 
 **Latency Performance:**
+
 - SFO3 users: ~5-10ms WebSocket latency
 - NYC3 users: ~5-10ms WebSocket latency
 - Cross-region sync: ~20-30ms (via Redis Pub/Sub)
@@ -38,6 +39,7 @@ EzModel empowers developers to visually design database schemas with real-time c
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Go 1.24.1+
 - Node.js 20+
 - pnpm
@@ -47,6 +49,8 @@ EzModel empowers developers to visually design database schemas with real-time c
 ### Local Development
 
 ```bash
+docker compose -f docker-compose.dev.yml up -d postgres
+
 # Backend
 cd backend
 go mod download
@@ -57,6 +61,20 @@ cd frontend
 pnpm install
 pnpm dev
 ```
+
+### Backend Hot Reload (Optional)
+
+If you want the Go API to rebuild automatically on file changes, the repository now ships with an [Air](https://github.com/cosmtrek/air) config at `backend/.air.toml`:
+
+1. Install Air once: `go install github.com/air-verse/air@latest`
+2. In a new terminal, run the backend with hot reload
+
+```bash
+cd backend
+air
+```
+
+Air watches your Go files, rebuilds the binary into `backend/tmp`, and restarts the server whenever code or env files change. Keep using `go run` if you prefer manual restarts.
 
 ### Multi-Region Production Deployment
 
@@ -83,17 +101,20 @@ gh run watch
 ## 📚 Documentation
 
 ### Getting Started
+
 - **[Deployment Guide](./DEPLOYMENT_GUIDE.md)** - Complete deployment walkthrough (45-60 min)
 - [Database Setup](./DIGITALOCEAN_DATABASE_SETUP.md) - PostgreSQL & Redis detailed setup
 - [Project Documentation](./CLAUDE.md) - Complete codebase overview
 
 ### CI/CD & DevOps
+
 - [CI/CD Guide](./.github/CICD_GUIDE.md) - Automated deployment workflows
 - [Secrets Setup](./.github/SECRETS_SETUP.md) - GitHub secrets configuration
 
 ## 🛠️ Tech Stack
 
 ### Backend (Go 1.24.1)
+
 - **Framework**: Chi router
 - **Database**: PostgreSQL + GORM
 - **WebSocket**: Gorilla WebSocket
@@ -101,12 +122,14 @@ gh run watch
 - **Authentication**: JWT (golang-jwt)
 
 ### Frontend (SvelteKit + TypeScript)
+
 - **Framework**: SvelteKit (Svelte 5.0)
 - **UI**: ShadCN-Svelte + Tailwind CSS
 - **Canvas**: @xyflow/svelte
 - **HTTP Client**: Axios
 
 ### Infrastructure
+
 - **Compute**: DigitalOcean App Platform (multi-region)
 - **Database**: DigitalOcean Managed PostgreSQL (primary + replica)
 - **Cache**: Upstash Redis (serverless)
@@ -116,18 +139,21 @@ gh run watch
 ## 💡 Key Features Explained
 
 ### Real-time Collaboration
+
 - **WebSocket Hubs** in each region manage local connections
 - **Redis Pub/Sub** synchronizes messages across regions
 - Users see cursors, table creation, and schema changes instantly
 - Sub-10ms latency for local users
 
 ### Multi-Region Architecture
+
 - **Region 1 (SFO3)**: Primary database + Redis (Upstash)
 - **Region 2 (NYC3)**: Read replica for fast local reads
 - **Global CDN**: Frontend served from edge locations
 - Automatic failover if replica goes down
 
 ### Automated Deployment
+
 - Push to `main` → automatic deployment
 - Tests run first (backend + frontend)
 - Deploys to both regions in parallel
@@ -155,19 +181,21 @@ cd frontend && pnpm build
 ## 📊 Performance & Cost
 
 ### Performance
+
 - **WebSocket latency**: 5-10ms (within region)
 - **Database reads**: 5-10ms (local replica)
 - **Database writes**: 50ms (to primary)
 - **Frontend load**: <1s (global CDN)
 
 ### Cost (Monthly)
-| Service | Cost |
-|---------|------|
-| App Platform (2 instances) | $24 |
-| PostgreSQL (primary + replica) | $60 |
-| Upstash Redis (Fixed Plan) | $10 |
-| Spaces CDN | $5 |
-| **Total** | **$99** |
+
+| Service                        | Cost    |
+| ------------------------------ | ------- |
+| App Platform (2 instances)     | $24     |
+| PostgreSQL (primary + replica) | $60     |
+| Upstash Redis (Fixed Plan)     | $10     |
+| Spaces CDN                     | $5      |
+| **Total**                      | **$99** |
 
 ## 🤝 Contributing
 
@@ -182,6 +210,7 @@ We welcome contributions! Please see our contributing guidelines.
 ## 👥 Team
 
 Meet the Pioneers:
+
 - **Frank Dai** - Project Lead
 - **Anson Zhong** - Backend Developer
 - **Johnson Wang** - Full Stack Developer

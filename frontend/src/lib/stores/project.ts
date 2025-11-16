@@ -165,6 +165,14 @@ function createProjectStore() {
 		// Clear all state
 		clear() {
 			set(initialState);
+		},
+
+		// Cleanup method to clear pending timeouts
+		cleanup() {
+			if (autoSaveTimeoutId) {
+				clearTimeout(autoSaveTimeoutId);
+				autoSaveTimeoutId = null;
+			}
 		}
 	};
 

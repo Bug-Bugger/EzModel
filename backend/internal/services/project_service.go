@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"strings"
@@ -115,11 +116,16 @@ func (s *ProjectService) UpdateProject(id uuid.UUID, req *dto.UpdateProjectReque
 
 	if req.CanvasData != nil {
 		canvasData := strings.TrimSpace(*req.CanvasData)
-		// Validate that it's valid JSON (basic check)
+		// Validate that it's valid JSON
 		if canvasData == "" {
 			canvasData = "{}"
 		}
-		// Note: For production, you might want to use json.Valid() for proper validation
+
+		// Validate JSON format
+		if !json.Valid([]byte(canvasData)) {
+			return nil, ErrInvalidInput
+		}
+
 		project.CanvasData = canvasData
 
 		// Debug logging for canvas data updates

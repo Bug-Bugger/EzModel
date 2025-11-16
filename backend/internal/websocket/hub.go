@@ -16,15 +16,16 @@ import (
 
 // Client represents a WebSocket client connection
 type Client struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	ProjectID uuid.UUID
-	Username  string
-	UserColor string
-	Conn      *websocket.Conn
-	Send      chan []byte
-	Hub       *Hub
-	LastPing  time.Time
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	ProjectID   uuid.UUID
+	Username    string
+	UserColor   string
+	Conn        *websocket.Conn
+	Send        chan []byte
+	Hub         *Hub
+	LastPing    time.Time
+	RateLimiter *RateLimiter
 }
 
 // Hub maintains the set of active clients and broadcasts messages to them

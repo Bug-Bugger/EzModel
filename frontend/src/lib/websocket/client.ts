@@ -30,6 +30,7 @@ export class WebSocketClient {
 	private isAuthenticated = false;
 	private connectionResolver: ((value: void) => void) | null = null;
 	private connectionRejecter: ((reason: Error) => void) | null = null;
+	private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(config: WebSocketConfig) {
 		this.config = config;
@@ -149,6 +150,12 @@ export class WebSocketClient {
 			return;
 		}
 
+		// Clear any existing reconnect timeout
+		if (this.reconnectTimeoutId) {
+			clearTimeout(this.reconnectTimeoutId);
+			this.reconnectTimeoutId = null;
+		}
+
 		this.reconnectAttempts++;
 		const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
 
@@ -156,12 +163,13 @@ export class WebSocketClient {
 			`Scheduling reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`
 		);
 
-		setTimeout(() => {
+		this.reconnectTimeoutId = setTimeout(() => {
 			if (!this.isDestroyed) {
 				this.connect().catch((error) => {
 					console.error('Reconnection failed:', error);
 				});
 			}
+			this.reconnectTimeoutId = null;
 		}, delay);
 	}
 
@@ -181,6 +189,12 @@ export class WebSocketClient {
 	disconnect() {
 		this.isDestroyed = true;
 		this.isAuthenticated = false;
+
+		// Clear any pending reconnection timeout
+		if (this.reconnectTimeoutId) {
+			clearTimeout(this.reconnectTimeoutId);
+			this.reconnectTimeoutId = null;
+		}
 
 		if (this.ws) {
 			this.ws.close(1000, 'Client disconnecting');

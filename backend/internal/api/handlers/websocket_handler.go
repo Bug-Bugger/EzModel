@@ -289,17 +289,22 @@ func (h *WebSocketHandler) registerAuthenticatedClient(conn *websocket.Conn, use
 	// Generate a random color for the user
 	userColor := generateRandomColor()
 
+	// Create rate limiter: 100 messages per second (100 tokens, refill every 10ms)
+	// This allows burst of up to 100 messages, then sustained rate of 100 msg/s
+	rateLimiter := websocketPkg.NewRateLimiter(100, 10*time.Millisecond)
+
 	// Create client
 	client := &websocketPkg.Client{
-		ID:        uuid.New(),
-		UserID:    user.ID,
-		ProjectID: projectID,
-		Username:  user.Username,
-		UserColor: userColor,
-		Conn:      conn,
-		Send:      make(chan []byte, 256),
-		Hub:       h.hub,
-		LastPing:  time.Now(),
+		ID:          uuid.New(),
+		UserID:      user.ID,
+		ProjectID:   projectID,
+		Username:    user.Username,
+		UserColor:   userColor,
+		Conn:        conn,
+		Send:        make(chan []byte, 256),
+		Hub:         h.hub,
+		LastPing:    time.Now(),
+		RateLimiter: rateLimiter,
 	}
 
 	// Register client with hub
@@ -332,6 +337,31 @@ func (h *WebSocketHandler) readPump(client *websocketPkg.Client) {
 				log.Printf("WebSocket error: %v", err)
 			}
 			break
+		}
+
+		// Rate limit check (skip if rate limiter is not configured)
+		if client.RateLimiter != nil && !client.RateLimiter.Allow() {
+			log.Printf("Rate limit exceeded for client %s (user: %s, project: %s)",
+				client.ID, client.UserID, client.ProjectID)
+
+			// Send rate limit error to client
+			errorMsg := websocketPkg.ErrorPayload{
+				Message: "Rate limit exceeded. Please slow down.",
+			}
+			msgBytes, err := json.Marshal(map[string]interface{}{
+				"type": websocketPkg.MessageTypeError,
+				"data": errorMsg,
+			})
+			if err == nil {
+				select {
+				case client.Send <- msgBytes:
+				default:
+					// Channel full, skip error message
+				}
+			}
+
+			// Skip processing this message
+			continue
 		}
 
 		// Parse message

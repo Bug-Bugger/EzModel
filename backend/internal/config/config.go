@@ -1,6 +1,9 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -95,7 +98,21 @@ func New() *Config {
 	}
 
 	// JWT Configuration
-	cfg.JWT.Secret = getEnv("JWT_SECRET", "")
+	jwtSecret := getEnv("JWT_SECRET", "")
+	if jwtSecret == "" {
+		if cfg.Env == "production" {
+			log.Fatal("JWT_SECRET environment variable is required in production")
+		}
+		// Generate random secret for development
+		randomBytes := make([]byte, 32)
+		if _, err := rand.Read(randomBytes); err != nil {
+			log.Fatal("Failed to generate random JWT secret:", err)
+		}
+		jwtSecret = base64.StdEncoding.EncodeToString(randomBytes)
+		log.Println("WARNING: Using randomly generated JWT secret. Set JWT_SECRET environment variable for production!")
+	}
+	cfg.JWT.Secret = jwtSecret
+
 	accessExp, _ := time.ParseDuration(getEnv("JWT_ACCESS_TOKEN_EXP", "15m"))
 	refreshExp, _ := time.ParseDuration(getEnv("JWT_REFRESH_TOKEN_EXP", "7d"))
 	cfg.JWT.AccessTokenExp = accessExp

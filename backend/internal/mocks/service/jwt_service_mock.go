@@ -33,6 +33,11 @@ func (m *MockJWTService) GetAccessTokenExpiration() time.Duration {
 	return args.Get(0).(time.Duration)
 }
 
+func (m *MockJWTService) GetRefreshTokenExpiration() time.Duration {
+	args := m.Called()
+	return args.Get(0).(time.Duration)
+}
+
 func (m *MockJWTService) ValidateToken(tokenString string) (*services.CustomClaims, error) {
 	args := m.Called(tokenString)
 	if args.Get(0) == nil {

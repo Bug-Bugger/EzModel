@@ -87,46 +87,16 @@ func (h *WebSocketHandler) checkOrigin(r *http.Request) bool {
 }
 
 // HandleWebSocket upgrades HTTP connection to WebSocket for real-time collaboration
+// Authentication is done via auth message after connection is established
 func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	log.Printf("WebSocket: Connection attempt from %s to %s", r.RemoteAddr, r.URL.String())
 
-	// Get project ID from URL - now using standardized "project_id" parameter
+	// Get project ID from URL
 	projectIDStr := chi.URLParam(r, "project_id")
-	log.Printf("WebSocket: Extracted projectIDStr from 'project_id' param: '%s'", projectIDStr)
 	projectID, err := uuid.Parse(projectIDStr)
 	if err != nil {
-		log.Printf("WebSocket: UUID parsing error for '%s': %v", projectIDStr, err)
+		log.Printf("WebSocket: Invalid project ID '%s': %v", projectIDStr, err)
 		http.Error(w, "Invalid project ID", http.StatusBadRequest)
-		return
-	}
-
-	// Authenticate user from token
-	user, err := h.authenticateWebSocketRequest(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	// Verify user has access to the project
-	project, err := h.projectService.GetProjectByID(projectID)
-	if err != nil {
-		http.Error(w, "Project not found", http.StatusNotFound)
-		return
-	}
-
-	// Check if user is owner or collaborator
-	hasAccess := project.OwnerID == user.ID
-	if !hasAccess {
-		for _, collaborator := range project.Collaborators {
-			if collaborator.ID == user.ID {
-				hasAccess = true
-				break
-			}
-		}
-	}
-
-	if !hasAccess {
-		http.Error(w, "Access denied to project", http.StatusForbidden)
 		return
 	}
 
@@ -137,6 +107,185 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Wait for authentication message
+	log.Printf("WebSocket: Connection established, waiting for authentication message")
+	h.handleUnauthenticatedConnection(conn, r, projectID)
+}
+
+// handleUnauthenticatedConnection waits for an auth message on a new WebSocket connection
+func (h *WebSocketHandler) handleUnauthenticatedConnection(conn *websocket.Conn, r *http.Request, projectID uuid.UUID) {
+	// Set read deadline for authentication (10 seconds)
+	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+
+	// Wait for auth message
+	_, messageBytes, err := conn.ReadMessage()
+	if err != nil {
+		log.Printf("WebSocket: Failed to read auth message: %v", err)
+		h.sendErrorAndClose(conn, "Authentication timeout or failed to read message")
+		return
+	}
+
+	// Parse message
+	var message websocketPkg.WebSocketMessage
+	if err := json.Unmarshal(messageBytes, &message); err != nil {
+		log.Printf("WebSocket: Failed to parse auth message: %v", err)
+		h.sendErrorAndClose(conn, "Invalid message format")
+		return
+	}
+
+	// Verify it's an auth message
+	if message.Type != websocketPkg.MessageTypeAuth {
+		log.Printf("WebSocket: Expected auth message, got: %s", message.Type)
+		h.sendErrorAndClose(conn, "Authentication required. Send auth message first")
+		return
+	}
+
+	// Parse auth payload
+	var authPayload websocketPkg.AuthPayload
+	if err := message.UnmarshalData(&authPayload); err != nil {
+		log.Printf("WebSocket: Failed to parse auth payload: %v", err)
+		h.sendErrorAndClose(conn, "Invalid auth payload")
+		return
+	}
+
+	token := strings.TrimSpace(authPayload.Token)
+	if token == "" {
+		var fallbackErr error
+		token, fallbackErr = h.extractTokenFromRequest(r)
+		if fallbackErr != nil {
+			log.Printf("WebSocket: No authentication token provided in message or cookies: %v", fallbackErr)
+			h.sendErrorAndClose(conn, "Authentication failed: no token provided")
+			return
+		}
+	}
+
+	// Authenticate user with token
+	user, err := h.authenticateToken(token)
+	if err != nil {
+		log.Printf("WebSocket: Authentication failed: %v", err)
+		h.sendErrorAndClose(conn, "Authentication failed: "+err.Error())
+		return
+	}
+
+	// Verify user has access to the project
+	if err := h.verifyProjectAccess(user.ID, projectID); err != nil {
+		log.Printf("WebSocket: Access denied: %v", err)
+		h.sendErrorAndClose(conn, err.Error())
+		return
+	}
+
+	log.Printf("WebSocket: Authentication successful for user %s (%s)", user.Username, user.ID)
+
+	// Send auth success message
+	h.sendAuthSuccess(conn, user.ID)
+
+	// Register authenticated client
+	h.registerAuthenticatedClient(conn, user, projectID)
+}
+
+// extractTokenFromRequest attempts to read a JWT token from cookies or headers
+func (h *WebSocketHandler) extractTokenFromRequest(r *http.Request) (string, error) {
+	if r == nil {
+		return "", fmt.Errorf("request context unavailable")
+	}
+
+	if cookie, err := r.Cookie("access_token"); err == nil {
+		if value := strings.TrimSpace(cookie.Value); value != "" {
+			return value, nil
+		}
+	}
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+			if value := strings.TrimSpace(parts[1]); value != "" {
+				return value, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no authentication token found in cookies or headers")
+}
+
+// authenticateToken validates a JWT token and returns the user
+func (h *WebSocketHandler) authenticateToken(token string) (*models.User, error) {
+	// Validate token
+	claims, err := h.jwtService.ValidateToken(token)
+	if err != nil {
+		if err == services.ErrExpiredToken {
+			return nil, fmt.Errorf("token has expired")
+		}
+		return nil, fmt.Errorf("invalid token")
+	}
+
+	// Get user information
+	user, err := h.userService.GetUserByID(claims.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	return user, nil
+}
+
+// verifyProjectAccess checks if user has access to the project
+func (h *WebSocketHandler) verifyProjectAccess(userID, projectID uuid.UUID) error {
+	project, err := h.projectService.GetProjectByID(projectID)
+	if err != nil {
+		return fmt.Errorf("project not found")
+	}
+
+	// Check if user is owner or collaborator
+	hasAccess := project.OwnerID == userID
+	if !hasAccess {
+		for _, collaborator := range project.Collaborators {
+			if collaborator.ID == userID {
+				hasAccess = true
+				break
+			}
+		}
+	}
+
+	if !hasAccess {
+		return fmt.Errorf("access denied to project")
+	}
+
+	return nil
+}
+
+// sendErrorAndClose sends an error message and closes the connection
+func (h *WebSocketHandler) sendErrorAndClose(conn *websocket.Conn, message string) {
+	errorMsg := websocketPkg.ErrorPayload{
+		Message: message,
+	}
+	msgBytes, err := json.Marshal(map[string]interface{}{
+		"type": websocketPkg.MessageTypeError,
+		"data": errorMsg,
+	})
+	if err != nil {
+		log.Printf("WebSocket: Failed to marshal error message: %v", err)
+		conn.Close()
+		return
+	}
+	conn.WriteMessage(websocket.TextMessage, msgBytes)
+	conn.Close()
+}
+
+// sendAuthSuccess sends an authentication success message
+func (h *WebSocketHandler) sendAuthSuccess(conn *websocket.Conn, userID uuid.UUID) {
+	successMsg := websocketPkg.AuthSuccessPayload{
+		Message: "Authentication successful",
+		UserID:  userID.String(),
+	}
+	msgBytes, _ := json.Marshal(map[string]interface{}{
+		"type": websocketPkg.MessageTypeAuth,
+		"data": successMsg,
+	})
+	conn.WriteMessage(websocket.TextMessage, msgBytes)
+}
+
+// registerAuthenticatedClient creates and registers an authenticated client
+func (h *WebSocketHandler) registerAuthenticatedClient(conn *websocket.Conn, user *models.User, projectID uuid.UUID) {
 	// Generate a random color for the user
 	userColor := generateRandomColor()
 
@@ -150,6 +299,7 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 		Conn:      conn,
 		Send:      make(chan []byte, 256),
 		Hub:       h.hub,
+		LastPing:  time.Now(),
 	}
 
 	// Register client with hub
@@ -158,62 +308,6 @@ func (h *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Reques
 	// Start goroutines for reading and writing
 	go h.writePump(client)
 	go h.readPump(client)
-}
-
-// authenticateWebSocketRequest authenticates the WebSocket connection using token from query parameter or Authorization header
-// Browser WebSocket API doesn't support custom headers, so we primarily use query parameters, but support headers for testing
-func (h *WebSocketHandler) authenticateWebSocketRequest(r *http.Request) (*models.User, error) {
-	var token string
-
-	// First try to get token from query parameter (preferred for WebSocket)
-	token = r.URL.Query().Get("token")
-	if token == "" {
-		// Fallback to Authorization header (for testing purposes)
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			log.Printf("WebSocket: No token provided in query parameter")
-			return nil, fmt.Errorf("no token provided in query parameter")
-		}
-
-		// Check if it's a Bearer token
-		const bearerPrefix = "Bearer "
-		if !strings.HasPrefix(authHeader, bearerPrefix) {
-			return nil, fmt.Errorf("invalid authorization format")
-		}
-
-		token = authHeader[len(bearerPrefix):]
-		if token == "" {
-			return nil, fmt.Errorf("no authorization header provided")
-		}
-	}
-
-	tokenLength := len(token)
-	previewLength := 50
-	if tokenLength < previewLength {
-		previewLength = tokenLength
-	}
-	log.Printf("WebSocket: Received token (first 50 chars): %s...", token[:previewLength])
-	log.Printf("WebSocket: Token length: %d", tokenLength)
-
-	// Validate token
-	claims, err := h.jwtService.ValidateToken(token)
-	if err != nil {
-		log.Printf("WebSocket: Token validation failed: %v", err)
-		if err == services.ErrExpiredToken {
-			return nil, fmt.Errorf("token has expired")
-		}
-		return nil, fmt.Errorf("invalid token")
-	}
-
-	log.Printf("WebSocket: Token validation successful for user: %s", claims.UserID)
-
-	// Get user information
-	user, err := h.userService.GetUserByID(claims.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("user not found")
-	}
-
-	return user, nil
 }
 
 // readPump pumps messages from the WebSocket connection to the hub

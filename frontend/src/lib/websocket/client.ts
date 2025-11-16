@@ -1,4 +1,3 @@
-import { authStore } from '../stores/auth';
 import { browser } from '$app/environment';
 import { dev } from '$app/environment';
 
@@ -14,7 +13,7 @@ export interface WebSocketMessage {
 
 export interface WebSocketConfig {
 	url: string;
-	token: string;
+	token?: string | null;
 	onMessage: (message: WebSocketMessage) => void;
 	onOpen?: () => void;
 	onClose?: () => void;
@@ -28,6 +27,9 @@ export class WebSocketClient {
 	private maxReconnectAttempts = 5;
 	private reconnectDelay = 1000;
 	private isDestroyed = false;
+	private isAuthenticated = false;
+	private connectionResolver: ((value: void) => void) | null = null;
+	private connectionRejecter: ((reason: Error) => void) | null = null;
 
 	constructor(config: WebSocketConfig) {
 		this.config = config;
@@ -36,30 +38,26 @@ export class WebSocketClient {
 	connect(): Promise<void> {
 		return new Promise((resolve, reject) => {
 			try {
-				// Browser WebSocket API doesn't support headers parameter
-				// We need to pass the token as a query parameter instead
-				const urlWithAuth = `${this.config.url}?token=${encodeURIComponent(this.config.token)}`;
-				console.log('WebSocket: Final URL with auth:', urlWithAuth);
-				console.log(
-					'WebSocket: Token in URL (first 100 chars):',
-					urlWithAuth.match(/token=([^&]*)/)?.[1]?.substring(0, 100) + '...'
-				);
-				this.ws = new WebSocket(urlWithAuth);
+				// Connect to WebSocket without token in URL (more secure)
+				console.log('WebSocket: Connecting to:', this.config.url);
+				this.ws = new WebSocket(this.config.url);
+
+				// Store resolve/reject for authentication flow
+				this.connectionResolver = resolve;
+				this.connectionRejecter = reject;
 
 				this.ws.onopen = () => {
-					console.log('WebSocket connected');
+					console.log('WebSocket connected, sending authentication message');
 
-					this.reconnectAttempts = 0;
-					this.config.onOpen?.();
-					resolve();
+					// Send authentication message after connection is established
+					this.send({
+						type: 'auth',
+						data: this.config.token ? { token: this.config.token } : {}
+					});
 				};
 
 				this.ws.onmessage = (event) => {
 					try {
-						// Debug logging to see raw message content
-						console.log('Raw WebSocket message:', event.data);
-						console.log('Message length:', event.data.length);
-
 						// Handle newline-separated JSON messages from backend
 						const messages = event.data
 							.trim()
@@ -69,6 +67,38 @@ export class WebSocketClient {
 						for (const messageText of messages) {
 							try {
 								const message: WebSocketMessage = JSON.parse(messageText);
+
+								// Handle authentication response
+								if (message.type === 'auth' && !this.isAuthenticated) {
+									console.log('WebSocket: Authentication successful');
+									this.isAuthenticated = true;
+									this.reconnectAttempts = 0;
+
+									// Resolve the connection promise
+									if (this.connectionResolver) {
+										this.connectionResolver();
+										this.connectionResolver = null;
+										this.connectionRejecter = null;
+									}
+
+									// Call onOpen callback after successful authentication
+									this.config.onOpen?.();
+									continue;
+								}
+
+								// Handle authentication errors
+								if (message.type === 'error' && !this.isAuthenticated) {
+									console.error('WebSocket: Authentication failed:', message.data);
+									if (this.connectionRejecter) {
+										this.connectionRejecter(new Error('Authentication failed'));
+										this.connectionResolver = null;
+										this.connectionRejecter = null;
+									}
+									this.ws?.close(4001, 'Authentication failed');
+									continue;
+								}
+
+								// Pass other messages to the message handler
 								this.config.onMessage(message);
 							} catch (parseError) {
 								console.error('Failed to parse individual message:', parseError);
@@ -84,6 +114,15 @@ export class WebSocketClient {
 				this.ws.onclose = (event) => {
 					console.log('WebSocket disconnected:', event.code, event.reason);
 					this.ws = null;
+					this.isAuthenticated = false;
+
+					// Reject connection promise if it's still pending
+					if (this.connectionRejecter) {
+						this.connectionRejecter(new Error('Connection closed before authentication'));
+						this.connectionResolver = null;
+						this.connectionRejecter = null;
+					}
+
 					this.config.onClose?.();
 
 					// Attempt to reconnect if not destroyed and not a normal closure
@@ -141,10 +180,18 @@ export class WebSocketClient {
 
 	disconnect() {
 		this.isDestroyed = true;
+		this.isAuthenticated = false;
 
 		if (this.ws) {
 			this.ws.close(1000, 'Client disconnecting');
 			this.ws = null;
+		}
+
+		// Clean up any pending promises
+		if (this.connectionRejecter) {
+			this.connectionRejecter(new Error('Disconnected by user'));
+			this.connectionResolver = null;
+			this.connectionRejecter = null;
 		}
 	}
 
@@ -183,20 +230,6 @@ export function createCollaborationClient(
 	}
 ): Promise<WebSocketClient> {
 	return new Promise((resolve, reject) => {
-		// Get auth token from localStorage (same pattern as API client)
-		let token: string | null = null;
-		if (browser) {
-			token = localStorage.getItem('access_token');
-		}
-
-		if (!token) {
-			reject(new Error('No authentication token available'));
-			return;
-		}
-
-		console.log('WebSocket: Token from localStorage:', token.substring(0, 50) + '...');
-		console.log('WebSocket: Token length:', token.length);
-
 		// Create WebSocket URL
 		let wsUrl: string;
 		let protocol: string;
@@ -218,12 +251,11 @@ export function createCollaborationClient(
 			wsUrl = `${protocol}//${host}:5173/api/projects/${projectId}/collaborate`;
 		}
 
-		console.log('WebSocket: Base URL:', wsUrl);
-		console.log('WebSocket: Encoded token:', encodeURIComponent(token));
+		console.log('WebSocket: Connecting to:', wsUrl);
 
 		const client = new WebSocketClient({
 			url: wsUrl,
-			token,
+			token: null, // Tokens are now sent via secure cookies
 			onMessage: callbacks?.onMessage || (() => {}),
 			onOpen: callbacks?.onOpen || (() => console.log('Collaboration WebSocket connected')),
 			onClose: callbacks?.onClose || (() => console.log('Collaboration WebSocket disconnected')),

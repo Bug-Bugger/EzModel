@@ -112,3 +112,7 @@ func (s *JWTService) RefreshTokens(refreshToken string) (*TokenPair, error) {
 func (s *JWTService) GetAccessTokenExpiration() time.Duration {
 	return s.config.JWT.AccessTokenExp
 }
+
+func (s *JWTService) GetRefreshTokenExpiration() time.Duration {
+	return s.config.JWT.RefreshTokenExp
+}

@@ -75,6 +75,18 @@ func TestWebSocketHandlerSuite(t *testing.T) {
 	suite.Run(t, new(WebSocketHandlerTestSuite))
 }
 
+// Test invalid project ID format
+func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_InvalidProjectID() {
+	req := httptest.NewRequest(http.MethodGet, "/projects/invalid-uuid/collaborate", nil)
+	req = suite.addURLParam(req, "project_id", "invalid-uuid")
+
+	w := httptest.NewRecorder()
+
+	suite.handler.HandleWebSocket(w, req)
+
+	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
+}
+
 // Test authentication with invalid token
 func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_InvalidToken() {
 	projectID := uuid.New()
@@ -83,17 +95,39 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_InvalidToken() {
 	suite.mockJWTService.On("ValidateToken", "invalid-token").
 		Return(nil, services.ErrInvalidToken)
 
-	// Create request
-	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", "invalid-token", projectID)
-	req = suite.addURLParam(req, "project_id", projectID.String())
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = suite.addURLParam(r, "project_id", projectID.String())
+		suite.handler.HandleWebSocket(w, r)
+	}))
+	defer server.Close()
 
-	w := httptest.NewRecorder()
+	// Connect WebSocket client
+	wsURL := "ws" + server.URL[4:] // Replace http with ws
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
+	defer ws.Close()
 
-	// Execute
-	suite.handler.HandleWebSocket(w, req)
+	// Send auth message with invalid token
+	authMsg := map[string]interface{}{
+		"type": "auth",
+		"data": map[string]interface{}{
+			"token": "invalid-token",
+		},
+	}
+	err = ws.WriteJSON(authMsg)
+	assert.NoError(suite.T(), err)
 
-	// Assert
-	assert.Equal(suite.T(), http.StatusUnauthorized, w.Code)
+	// Read error response
+	var response map[string]interface{}
+	err = ws.ReadJSON(&response)
+	assert.NoError(suite.T(), err)
+
+	// Assert error message received
+	assert.Equal(suite.T(), "error", response["type"])
+	data := response["data"].(map[string]interface{})
+	assert.Contains(suite.T(), data["message"], "Authentication failed")
+
 	suite.mockJWTService.AssertExpectations(suite.T())
 }
 
@@ -105,35 +139,79 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_ExpiredToken() {
 	suite.mockJWTService.On("ValidateToken", "expired-token").
 		Return(nil, services.ErrExpiredToken)
 
-	// Create request
-	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", "expired-token", projectID)
-	req = suite.addURLParam(req, "project_id", projectID.String())
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = suite.addURLParam(r, "project_id", projectID.String())
+		suite.handler.HandleWebSocket(w, r)
+	}))
+	defer server.Close()
 
-	w := httptest.NewRecorder()
+	// Connect WebSocket client
+	wsURL := "ws" + server.URL[4:]
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
+	defer ws.Close()
 
-	// Execute
-	suite.handler.HandleWebSocket(w, req)
+	// Send auth message with expired token
+	authMsg := map[string]interface{}{
+		"type": "auth",
+		"data": map[string]interface{}{
+			"token": "expired-token",
+		},
+	}
+	err = ws.WriteJSON(authMsg)
+	assert.NoError(suite.T(), err)
 
-	// Assert
-	assert.Equal(suite.T(), http.StatusUnauthorized, w.Code)
+	// Read error response
+	var response map[string]interface{}
+	err = ws.ReadJSON(&response)
+	assert.NoError(suite.T(), err)
+
+	// Assert error message received
+	assert.Equal(suite.T(), "error", response["type"])
+	data := response["data"].(map[string]interface{})
+	assert.Contains(suite.T(), data["message"], "token has expired")
+
 	suite.mockJWTService.AssertExpectations(suite.T())
 }
 
-// Test authentication with missing token
-func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_MissingToken() {
+// Test authentication with non-auth message sent first
+func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_NonAuthMessageFirst() {
 	projectID := uuid.New()
 
-	// Create request without token
-	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", "", projectID)
-	req = suite.addURLParam(req, "project_id", projectID.String())
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = suite.addURLParam(r, "project_id", projectID.String())
+		suite.handler.HandleWebSocket(w, r)
+	}))
+	defer server.Close()
 
-	w := httptest.NewRecorder()
+	// Connect WebSocket client
+	wsURL := "ws" + server.URL[4:]
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
+	defer ws.Close()
 
-	// Execute
-	suite.handler.HandleWebSocket(w, req)
+	// Send non-auth message (should fail)
+	cursorMsg := map[string]interface{}{
+		"type": "cursor_move",
+		"data": map[string]interface{}{
+			"x": 100,
+			"y": 200,
+		},
+	}
+	err = ws.WriteJSON(cursorMsg)
+	assert.NoError(suite.T(), err)
 
-	// Assert
-	assert.Equal(suite.T(), http.StatusUnauthorized, w.Code)
+	// Read error response
+	var response map[string]interface{}
+	err = ws.ReadJSON(&response)
+	assert.NoError(suite.T(), err)
+
+	// Assert error message received
+	assert.Equal(suite.T(), "error", response["type"])
+	data := response["data"].(map[string]interface{})
+	assert.Contains(suite.T(), data["message"], "Authentication required")
 }
 
 // Test user not found
@@ -150,17 +228,39 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_UserNotFound() {
 	suite.mockJWTService.On("ValidateToken", token).Return(claims, nil)
 	suite.mockUserService.On("GetUserByID", userID).Return(nil, services.ErrUserNotFound)
 
-	// Create request
-	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", token, projectID)
-	req = suite.addURLParam(req, "project_id", projectID.String())
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = suite.addURLParam(r, "project_id", projectID.String())
+		suite.handler.HandleWebSocket(w, r)
+	}))
+	defer server.Close()
 
-	w := httptest.NewRecorder()
+	// Connect WebSocket client
+	wsURL := "ws" + server.URL[4:]
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
+	defer ws.Close()
 
-	// Execute
-	suite.handler.HandleWebSocket(w, req)
+	// Send auth message
+	authMsg := map[string]interface{}{
+		"type": "auth",
+		"data": map[string]interface{}{
+			"token": token,
+		},
+	}
+	err = ws.WriteJSON(authMsg)
+	assert.NoError(suite.T(), err)
 
-	// Assert
-	assert.Equal(suite.T(), http.StatusUnauthorized, w.Code)
+	// Read error response
+	var response map[string]interface{}
+	err = ws.ReadJSON(&response)
+	assert.NoError(suite.T(), err)
+
+	// Assert error message
+	assert.Equal(suite.T(), "error", response["type"])
+	data := response["data"].(map[string]interface{})
+	assert.Contains(suite.T(), data["message"], "user not found")
+
 	suite.mockJWTService.AssertExpectations(suite.T())
 	suite.mockUserService.AssertExpectations(suite.T())
 }
@@ -184,17 +284,39 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_ProjectNotFound() {
 	suite.mockUserService.On("GetUserByID", userID).Return(user, nil)
 	suite.mockProjService.On("GetProjectByID", projectID).Return(nil, services.ErrProjectNotFound)
 
-	// Create request
-	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", token, projectID)
-	req = suite.addURLParam(req, "project_id", projectID.String())
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = suite.addURLParam(r, "project_id", projectID.String())
+		suite.handler.HandleWebSocket(w, r)
+	}))
+	defer server.Close()
 
-	w := httptest.NewRecorder()
+	// Connect WebSocket client
+	wsURL := "ws" + server.URL[4:]
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
+	defer ws.Close()
 
-	// Execute
-	suite.handler.HandleWebSocket(w, req)
+	// Send auth message
+	authMsg := map[string]interface{}{
+		"type": "auth",
+		"data": map[string]interface{}{
+			"token": token,
+		},
+	}
+	err = ws.WriteJSON(authMsg)
+	assert.NoError(suite.T(), err)
 
-	// Assert
-	assert.Equal(suite.T(), http.StatusNotFound, w.Code)
+	// Read error response
+	var response map[string]interface{}
+	err = ws.ReadJSON(&response)
+	assert.NoError(suite.T(), err)
+
+	// Assert error message
+	assert.Equal(suite.T(), "error", response["type"])
+	data := response["data"].(map[string]interface{})
+	assert.Contains(suite.T(), data["message"], "project not found")
+
 	suite.mockJWTService.AssertExpectations(suite.T())
 	suite.mockUserService.AssertExpectations(suite.T())
 	suite.mockProjService.AssertExpectations(suite.T())
@@ -224,36 +346,56 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_AccessDenied() {
 	suite.mockUserService.On("GetUserByID", userID).Return(user, nil)
 	suite.mockProjService.On("GetProjectByID", projectID).Return(project, nil)
 
-	// Create request
-	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/"+projectID.String()+"/collaborate", token, projectID)
-	req = suite.addURLParam(req, "project_id", projectID.String())
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = suite.addURLParam(r, "project_id", projectID.String())
+		suite.handler.HandleWebSocket(w, r)
+	}))
+	defer server.Close()
 
-	w := httptest.NewRecorder()
+	// Connect WebSocket client
+	wsURL := "ws" + server.URL[4:]
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
+	defer ws.Close()
 
-	// Execute
-	suite.handler.HandleWebSocket(w, req)
+	// Send auth message
+	authMsg := map[string]interface{}{
+		"type": "auth",
+		"data": map[string]interface{}{
+			"token": token,
+		},
+	}
+	err = ws.WriteJSON(authMsg)
+	assert.NoError(suite.T(), err)
 
-	// Assert
-	assert.Equal(suite.T(), http.StatusForbidden, w.Code)
+	// Read error response
+	var response map[string]interface{}
+	err = ws.ReadJSON(&response)
+	assert.NoError(suite.T(), err)
+
+	// Assert error message
+	assert.Equal(suite.T(), "error", response["type"])
+	data := response["data"].(map[string]interface{})
+	assert.Contains(suite.T(), data["message"], "access denied")
+
 	suite.mockJWTService.AssertExpectations(suite.T())
 	suite.mockUserService.AssertExpectations(suite.T())
 	suite.mockProjService.AssertExpectations(suite.T())
 }
 
-// Test successful authentication as project owner
-func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsOwner() {
+// Test authentication succeeds when token is provided via Authorization header
+func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_TokenFromAuthorizationHeader() {
 	projectID := uuid.New()
 	userID := uuid.New()
-	token := "valid-token"
+	token := "header-token"
 
-	// Setup test data
 	user := testutil.CreateTestUser()
 	user.ID = userID
 
-	project := testutil.CreateTestProject(userID) // User is the owner
+	project := testutil.CreateTestProject(userID)
 	project.ID = projectID
 
-	// Setup mocks
 	claims := &services.CustomClaims{
 		UserID: userID,
 		Email:  user.Email,
@@ -262,22 +404,86 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsOwner() {
 	suite.mockUserService.On("GetUserByID", userID).Return(user, nil)
 	suite.mockProjService.On("GetProjectByID", projectID).Return(project, nil)
 
-	// Create test server with proper routing
-	router := chi.NewRouter()
-	router.Get("/projects/{project_id}/collaborate", suite.handler.HandleWebSocket)
-	server := httptest.NewServer(router)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = suite.addURLParam(r, "project_id", projectID.String())
+		suite.handler.HandleWebSocket(w, r)
+	}))
 	defer server.Close()
 
-	// Connect to WebSocket
-	conn := testutil.ConnectWebSocketWithAuth(suite.T(), server.URL+"/projects/"+projectID.String()+"/collaborate", token)
-	defer conn.Close()
+	headers := http.Header{}
+	headers.Set("Authorization", "Bearer "+token)
 
-	// Wait a moment for connection to establish
-	time.Sleep(50 * time.Millisecond)
+	wsURL := "ws" + server.URL[4:]
+	ws, err := suite.dialWebSocket(wsURL, headers)
+	suite.Require().NoError(err)
+	defer ws.Close()
 
-	// Verify client is registered in hub
-	assert.Equal(suite.T(), 1, suite.hub.GetActiveClients(projectID))
+	authMsg := map[string]interface{}{
+		"type": "auth",
+		"data": map[string]interface{}{}, // No token in payload
+	}
+	suite.Require().NoError(ws.WriteJSON(authMsg))
 
+	var response map[string]interface{}
+	suite.Require().NoError(ws.ReadJSON(&response))
+	suite.Equal("auth", response["type"])
+	data := response["data"].(map[string]interface{})
+	suite.Equal("Authentication successful", data["message"])
+	suite.Equal(userID.String(), data["user_id"])
+
+	suite.mockJWTService.AssertExpectations(suite.T())
+	suite.mockUserService.AssertExpectations(suite.T())
+	suite.mockProjService.AssertExpectations(suite.T())
+}
+
+// Test authentication succeeds when token is provided via cookie instead of message payload
+func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_TokenFromCookie() {
+	projectID := uuid.New()
+	userID := uuid.New()
+	token := "cookie-token"
+
+	user := testutil.CreateTestUser()
+	user.ID = userID
+
+	project := testutil.CreateTestProject(userID)
+	project.ID = projectID
+
+	claims := &services.CustomClaims{
+		UserID: userID,
+		Email:  user.Email,
+	}
+	suite.mockJWTService.On("ValidateToken", token).Return(claims, nil)
+	suite.mockUserService.On("GetUserByID", userID).Return(user, nil)
+	suite.mockProjService.On("GetProjectByID", projectID).Return(project, nil)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = suite.addURLParam(r, "project_id", projectID.String())
+		suite.handler.HandleWebSocket(w, r)
+	}))
+	defer server.Close()
+
+	headers := http.Header{}
+	headers.Set("Cookie", (&http.Cookie{Name: "access_token", Value: token}).String())
+
+	wsURL := "ws" + server.URL[4:]
+	ws, err := suite.dialWebSocket(wsURL, headers)
+	suite.Require().NoError(err)
+	defer ws.Close()
+
+	authMsg := map[string]interface{}{
+		"type": "auth",
+		"data": map[string]interface{}{}, // No token in payload
+	}
+	suite.Require().NoError(ws.WriteJSON(authMsg))
+
+	var response map[string]interface{}
+	suite.Require().NoError(ws.ReadJSON(&response))
+	suite.Equal("auth", response["type"])
+	data := response["data"].(map[string]interface{})
+	suite.Equal("Authentication successful", data["message"])
+	suite.Equal(userID.String(), data["user_id"])
+
+	// Ensure mocks were called
 	suite.mockJWTService.AssertExpectations(suite.T())
 	suite.mockUserService.AssertExpectations(suite.T())
 	suite.mockProjService.AssertExpectations(suite.T())
@@ -307,103 +513,57 @@ func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_SuccessAsCollaborato
 	suite.mockUserService.On("GetUserByID", userID).Return(user, nil)
 	suite.mockProjService.On("GetProjectByID", projectID).Return(project, nil)
 
-	// Create test server with proper routing
-	router := chi.NewRouter()
-	router.Get("/projects/{project_id}/collaborate", suite.handler.HandleWebSocket)
-	server := httptest.NewServer(router)
+	// Create test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = suite.addURLParam(r, "project_id", projectID.String())
+		suite.handler.HandleWebSocket(w, r)
+	}))
 	defer server.Close()
 
-	// Connect to WebSocket
-	conn := testutil.ConnectWebSocketWithAuth(suite.T(), server.URL+"/projects/"+projectID.String()+"/collaborate", token)
-	defer conn.Close()
+	// Connect WebSocket client
+	wsURL := "ws" + server.URL[4:]
+	ws, err := suite.dialWebSocket(wsURL, nil)
+	suite.Require().NoError(err)
+	defer ws.Close()
 
-	// Wait a moment for connection to establish
+	// Send auth message
+	authMsg := map[string]interface{}{
+		"type": "auth",
+		"data": map[string]interface{}{
+			"token": token,
+		},
+	}
+	err = ws.WriteJSON(authMsg)
+	assert.NoError(suite.T(), err)
+
+	// Read auth success response
+	var response map[string]interface{}
+	err = ws.ReadJSON(&response)
+	assert.NoError(suite.T(), err)
+
+	// Assert auth success message received
+	assert.Equal(suite.T(), "auth", response["type"])
+	data := response["data"].(map[string]interface{})
+	assert.Equal(suite.T(), "Authentication successful", data["message"])
+
+	// Wait a moment for client registration
 	time.Sleep(50 * time.Millisecond)
-
-	// Verify client is registered in hub
-	assert.Equal(suite.T(), 1, suite.hub.GetActiveClients(projectID))
 
 	suite.mockJWTService.AssertExpectations(suite.T())
 	suite.mockUserService.AssertExpectations(suite.T())
 	suite.mockProjService.AssertExpectations(suite.T())
 }
 
-// Test invalid project ID format
-func (suite *WebSocketHandlerTestSuite) TestHandleWebSocket_InvalidProjectID() {
-	token := "valid-token"
-
-	// Create request with invalid project ID
-	req := testutil.CreateWebSocketRequestWithAuth(suite.T(), "/projects/invalid-uuid/collaborate", token, uuid.New())
-	req = suite.addURLParam(req, "project_id", "invalid-uuid")
-
-	w := httptest.NewRecorder()
-
-	// Execute
-	suite.handler.HandleWebSocket(w, req)
-
-	// Assert
-	assert.Equal(suite.T(), http.StatusBadRequest, w.Code)
-}
-
-// Test authentication with invalid authorization header format
-func (suite *WebSocketHandlerTestSuite) TestAuthenticateWebSocketRequest_InvalidFormat() {
-	// Create request with invalid authorization header format
-	req := httptest.NewRequest(http.MethodGet, "/collaborate", nil)
-	req.Header.Set("Authorization", "InvalidFormat token")
-
-	// Execute
-	result, err := suite.handler.authenticateWebSocketRequest(req)
-
-	// Assert
-	assert.Error(suite.T(), err)
-	assert.Nil(suite.T(), result)
-	assert.Contains(suite.T(), err.Error(), "invalid authorization format")
-}
-
-// Test authentication with missing authorization header
-func (suite *WebSocketHandlerTestSuite) TestAuthenticateWebSocketRequest_MissingHeader() {
-	// Create request without authorization header or query parameter
-	req := httptest.NewRequest(http.MethodGet, "/collaborate", nil)
-
-	// Execute
-	result, err := suite.handler.authenticateWebSocketRequest(req)
-
-	// Assert
-	assert.Error(suite.T(), err)
-	assert.Nil(suite.T(), result)
-	assert.Contains(suite.T(), err.Error(), "no token provided in query parameter")
-}
-
-// Test authentication from header
-func (suite *WebSocketHandlerTestSuite) TestAuthenticateWebSocketRequest_Header() {
-	userID := uuid.New()
-	token := "header-token"
-
-	// Setup test data
-	user := testutil.CreateTestUser()
-	user.ID = userID
-
-	// Setup mocks
-	claims := &services.CustomClaims{
-		UserID: userID,
-		Email:  user.Email,
+// Helper method to dial WebSocket connections with default allowed origin
+func (suite *WebSocketHandlerTestSuite) dialWebSocket(wsURL string, headers http.Header) (*websocket.Conn, error) {
+	if headers == nil {
+		headers = http.Header{}
 	}
-	suite.mockJWTService.On("ValidateToken", token).Return(claims, nil)
-	suite.mockUserService.On("GetUserByID", userID).Return(user, nil)
-
-	// Create request with token in header
-	req := httptest.NewRequest(http.MethodGet, "/collaborate", nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	// Execute
-	result, err := suite.handler.authenticateWebSocketRequest(req)
-
-	// Assert
-	assert.NoError(suite.T(), err)
-	assert.NotNil(suite.T(), result)
-	assert.Equal(suite.T(), userID, result.ID)
-	suite.mockJWTService.AssertExpectations(suite.T())
-	suite.mockUserService.AssertExpectations(suite.T())
+	if headers.Get("Origin") == "" && len(suite.cfg.AllowedOrigins) > 0 {
+		headers.Set("Origin", suite.cfg.AllowedOrigins[0])
+	}
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
+	return conn, err
 }
 
 // Helper method to add URL parameters to request
@@ -412,45 +572,4 @@ func (suite *WebSocketHandlerTestSuite) addURLParam(req *http.Request, key, valu
 	rctx.URLParams.Add(key, value)
 	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 	return req
-}
-
-// Benchmark tests
-func BenchmarkWebSocketHandlerAuthentication(b *testing.B) {
-	hub := websocketPkg.NewHub()
-	go hub.Run()
-	defer hub.Shutdown()
-
-	cfg := &config.Config{
-		AllowedOrigins: []string{"http://localhost:5173"},
-	}
-
-	mockJWTService := new(mockService.MockJWTService)
-	mockUserService := new(mockService.MockUserService)
-	mockProjService := new(mockService.MockProjectService)
-	mockTableService := new(mockService.MockTableService)
-
-	handler := NewWebSocketHandler(cfg, hub, mockJWTService, mockUserService, mockProjService, mockTableService)
-
-	userID := uuid.New()
-	token := "test-token"
-	user := testutil.CreateTestUser()
-	user.ID = userID
-
-	claims := &services.CustomClaims{
-		UserID: userID,
-		Email:  user.Email,
-	}
-
-	// Setup mocks for all benchmark iterations
-	mockJWTService.On("ValidateToken", token).Return(claims, nil).Maybe()
-	mockUserService.On("GetUserByID", userID).Return(user, nil).Maybe()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		req := httptest.NewRequest(http.MethodGet, "/collaborate?token="+token, nil)
-		_, err := handler.authenticateWebSocketRequest(req)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
 }

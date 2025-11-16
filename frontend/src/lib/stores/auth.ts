@@ -20,16 +20,14 @@ function createAuthStore() {
 	return {
 		subscribe,
 
-		// Initialize auth state from localStorage
 		init() {
 			if (!browser) return;
 
 			update((state) => ({ ...state, isLoading: true }));
 
-			const token = localStorage.getItem('access_token');
 			const userStr = localStorage.getItem('user');
 
-			if (token && userStr) {
+			if (userStr) {
 				try {
 					const user = JSON.parse(userStr);
 					set({
@@ -39,8 +37,6 @@ function createAuthStore() {
 					});
 				} catch (error) {
 					// Invalid stored user data, clear it
-					localStorage.removeItem('access_token');
-					localStorage.removeItem('refresh_token');
 					localStorage.removeItem('user');
 					set({
 						user: null,
@@ -72,8 +68,6 @@ function createAuthStore() {
 		// Clear auth state (logout)
 		clear() {
 			if (browser) {
-				localStorage.removeItem('access_token');
-				localStorage.removeItem('refresh_token');
 				localStorage.removeItem('user');
 			}
 			set({

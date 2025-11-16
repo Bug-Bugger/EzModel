@@ -4,14 +4,11 @@ import type { User } from '$lib/types/models';
 
 export class AuthService {
 	async login(credentials: LoginRequest): Promise<User> {
-		const response = await apiClient.post<LoginResponse>('/login', credentials);
+		// Tokens are now set as httpOnly cookies by the backend
+		const response = await apiClient.post<{ user: User }>('/login', credentials);
 		if (response.success && response.data) {
-			// Store tokens
-			localStorage.setItem('access_token', response.data.access_token);
-			localStorage.setItem('refresh_token', response.data.refresh_token);
-
-			// Fetch user data using the new token
-			const user = await this.fetchCurrentUser();
+			// Backend now returns user data directly
+			const user = response.data.user;
 			localStorage.setItem('user', JSON.stringify(user));
 			return user;
 		}
@@ -34,27 +31,22 @@ export class AuthService {
 		throw new Error(response.message || 'Registration failed');
 	}
 
-	async refreshToken(refreshToken: string): Promise<LoginResponse> {
-		const response = await apiClient.post<LoginResponse>('/refresh-token', {
-			refresh_token: refreshToken
-		});
-		if (response.success && response.data) {
-			localStorage.setItem('access_token', response.data.access_token);
-			localStorage.setItem('refresh_token', response.data.refresh_token);
-			return response.data;
+	async logout(): Promise<void> {
+		// Call backend to clear httpOnly cookies
+		try {
+			await apiClient.post('/logout');
+		} catch (error) {
+			console.error('Logout error:', error);
 		}
-		throw new Error(response.message || 'Token refresh failed');
-	}
-
-	logout(): void {
-		localStorage.removeItem('access_token');
-		localStorage.removeItem('refresh_token');
+		// Clear local user data
 		localStorage.removeItem('user');
 	}
 
 	isAuthenticated(): boolean {
-		const token = localStorage.getItem('access_token');
-		return !!token;
+		// Check if user data exists in localStorage
+		// Actual authentication is handled by httpOnly cookies
+		const userStr = localStorage.getItem('user');
+		return !!userStr;
 	}
 
 	getCurrentUser(): User | null {

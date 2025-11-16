@@ -26,21 +26,30 @@ func NewAuthMiddleware(jwtService services.JWTServiceInterface) *AuthMiddleware 
 
 func (m *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extract the token from the Authorization header
-		authHeader := r.Header.Get(authorizationHeader)
-		if authHeader == "" {
-			responses.RespondWithError(w, http.StatusUnauthorized, "No authorization header provided")
-			return
+		var token string
+
+		// Try to get token from cookie first (preferred method)
+		cookie, err := r.Cookie("access_token")
+		if err == nil && cookie.Value != "" {
+			token = cookie.Value
+		} else {
+			// Fall back to Authorization header for backward compatibility
+			authHeader := r.Header.Get(authorizationHeader)
+			if authHeader == "" {
+				responses.RespondWithError(w, http.StatusUnauthorized, "No authentication credentials provided")
+				return
+			}
+
+			// Check if the format is "Bearer <token>"
+			parts := strings.Split(authHeader, " ")
+			if len(parts) != 2 || parts[0] != "Bearer" {
+				responses.RespondWithError(w, http.StatusUnauthorized, "Invalid authorization format")
+				return
+			}
+
+			token = parts[1]
 		}
 
-		// Check if the format is "Bearer <token>"
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			responses.RespondWithError(w, http.StatusUnauthorized, "Invalid authorization format")
-			return
-		}
-
-		token := parts[1]
 		claims, err := m.jwtService.ValidateToken(token)
 		if err != nil {
 			if err == services.ErrExpiredToken {

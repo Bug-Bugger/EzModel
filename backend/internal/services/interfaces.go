@@ -91,5 +91,6 @@ type JWTServiceInterface interface {
 	GenerateTokenPair(user *models.User) (*TokenPair, error)
 	RefreshTokens(refreshToken string) (*TokenPair, error)
 	GetAccessTokenExpiration() time.Duration
+	GetRefreshTokenExpiration() time.Duration
 	ValidateToken(tokenString string) (*CustomClaims, error)
 }

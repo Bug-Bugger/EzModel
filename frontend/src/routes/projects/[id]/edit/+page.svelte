@@ -162,6 +162,7 @@
 
 	onDestroy(() => {
 		collaborationStore.disconnect();
+		projectStore.cleanup();
 	});
 
 	function toggleLeftSidebar() {
